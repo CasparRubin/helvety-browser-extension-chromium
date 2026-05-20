@@ -15,7 +15,7 @@ import {
   EXTENSION_PASSKEY_PARAMS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
   getExtensionOrigin,
-} from "./env";
+} from "./config";
 import { helvetyAuthFetch } from "./helvety-auth-api";
 
 import type { UserPasskeyParams } from "@helvety/shared/types/entities";
@@ -30,9 +30,9 @@ type OptionsPayload = {
 };
 
 /**
- * WebAuthn + PRF unlock against production auth (`HELVETY_AUTH_ORIGIN` / `EXTENSION_*_PATH`
- * in `env.ts`). Verify omits `clientExtensionResults`; PRF output stays in the extension
- * to derive and cache the master key (KCV checked when present).
+ * WebAuthn + PRF unlock via `EXTENSION_*_PATH` on `HELVETY_AUTH_ORIGIN`.
+ * Fails if those routes are not deployed (404 on production today).
+ * Verify omits `clientExtensionResults`; PRF derives the master key locally (KCV when present).
  */
 export async function unlockEncryptionWithPasskey(input: {
   accessToken: string;

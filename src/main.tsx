@@ -13,6 +13,7 @@ import { ExternalLink, Loader2, Lock, LogOut } from "lucide-react";
 import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import { HELVETY_AUTH_ORIGIN, HELVETY_GATEWAY } from "./lib/config";
 import {
   decryptContactLabel,
   decryptLinkName,
@@ -25,7 +26,6 @@ import {
   NOTE_LIST_SELECT,
   TASK_LIST_SELECT,
 } from "./lib/e2ee-data-select";
-import { getHelvetyAuthOrigin, HELVETY_GATEWAY } from "./lib/env";
 import { createExtensionSupabaseClient } from "./lib/extension-supabase";
 import { unlockEncryptionWithPasskey } from "./lib/passkey-unlock";
 
@@ -286,8 +286,9 @@ function App() {
           <h1 className="text-lg font-semibold tracking-tight">Helvety</h1>
           <p className="text-muted-foreground text-sm">
             Sign in with email and a one-time code (Supabase Auth — same project
-            as the web apps). Passkey unlock uses{" "}
-            <span className="font-mono text-xs">{getHelvetyAuthOrigin()}</span>
+            as helvety.com). After sign-in, unlock with your passkey via{" "}
+            <span className="font-mono text-xs">{HELVETY_AUTH_ORIGIN}</span>{" "}
+            (requires extension API routes on that host).
           </p>
         </div>
         <Card>
@@ -378,9 +379,11 @@ function App() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
-              Use your Helvety passkey with PRF to derive your local master key
-              (same E2EE pattern as the web apps; ceremony runs here against
-              helvety.com).
+              Use your Helvety passkey (PRF) to derive the master key—the same
+              E2EE pattern as the web apps. The auth server at{" "}
+              <span className="font-mono text-xs">{HELVETY_AUTH_ORIGIN}</span>{" "}
+              must expose the extension passkey API; if those routes are
+              missing, unlock will fail.
             </p>
             <Button disabled={cryptoBusy} onClick={() => void handleUnlock()}>
               {cryptoBusy ? (

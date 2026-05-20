@@ -2,9 +2,8 @@
 dist/
 node_modules/
 
-# Local env (copy from .env.example)
-.env
-.env.local
+# Fetched by scripts/ensure-helvety.mjs when ../helvety is not present
+.helvety/
 
 # OS
 .DS_Store

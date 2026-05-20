@@ -12,7 +12,9 @@ import {
  * PostgREST as plaintext — future writes should use ciphertext (or a reviewed API).
  */
 
-/** Minimal encrypted row shapes for list rendering (matches Helvety DB). */
+/**
+ *
+ */
 export interface TaskEncryptedRow {
   id: string;
   encrypted_title: string;

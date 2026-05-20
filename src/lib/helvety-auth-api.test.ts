@@ -4,7 +4,7 @@ import {
   buildHelvetyAuthApiUrl,
   EXTENSION_AUTH_API_PATHS,
   HELVETY_AUTH_ORIGIN,
-} from "./env";
+} from "./config";
 import { helvetyAuthFetch } from "./helvety-auth-api";
 
 describe("helvetyAuthFetch", () => {
@@ -96,6 +96,69 @@ describe("helvetyAuthFetch", () => {
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
+  });
+
+  it("normalizes Invalid server response on 401", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid server response",
+        }),
+        { status: 401 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch("/api/x", {
+      method: "GET",
+      accessToken: "bad",
+    });
+
+    expect(result).toEqual({ success: false, error: "Not authenticated" });
+  });
+
+  it("does not rewrite non-401 failure responses", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: "Unexpected server response",
+        }),
+        { status: 500 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch("/api/x", {
+      method: "GET",
+      accessToken: "token",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Unexpected server response",
+    });
+  });
+
+  it("omits Content-Type on GET without body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: null }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await helvetyAuthFetch(EXTENSION_AUTH_API_PATHS[0], {
+      method: "GET",
+      accessToken: "t",
+    });
+
+    const headers = new Headers(
+      (fetchMock.mock.calls[0]?.[1] as RequestInit).headers
+    );
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("Authorization")).toBe("Bearer t");
   });
 
   it("falls back when 401 body omits error string", async () => {

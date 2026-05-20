@@ -1,4 +1,4 @@
-import { buildHelvetyAuthApiUrl } from "./env";
+import { buildHelvetyAuthApiUrl } from "./config";
 import { parseHelvetyActionJsonText } from "./parse-helvety-action-json";
 
 import type { HelvetyJsonResponse } from "./parse-helvety-action-json";
@@ -6,7 +6,7 @@ import type { HelvetyJsonResponse } from "./parse-helvety-action-json";
 export type { HelvetyJsonResponse } from "./parse-helvety-action-json";
 
 /**
- * JSON fetch to `HELVETY_AUTH_ORIGIN` (`src/lib/env.ts`) for extension passkey routes.
+ * JSON fetch to `HELVETY_AUTH_ORIGIN` (`src/lib/config.ts`) for extension passkey routes.
  * Entity rows use the Supabase client; decrypted fields are not sent to these endpoints.
  */
 async function parseJson<T>(
@@ -16,9 +16,7 @@ async function parseJson<T>(
   return parseHelvetyActionJsonText<T>(text);
 }
 
-/**
- *
- */
+/** Authenticated fetch to a path under `HELVETY_AUTH_ORIGIN`. */
 export async function helvetyAuthFetch<T>(
   path: string,
   init: RequestInit & { accessToken: string }

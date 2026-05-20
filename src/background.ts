@@ -1,3 +1,3 @@
 void chrome.runtime.onInstalled.addListener(() => {
-  // Reserved for alarms / session refresh in a follow-up.
+  // MV3 service worker placeholder (popup holds auth and UI).
 });

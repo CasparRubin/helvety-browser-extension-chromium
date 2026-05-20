@@ -1,6 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { getSupabasePublishableKey, getSupabaseUrl } from "./env";
+import {
+  HELVETY_SUPABASE_PUBLISHABLE_KEY,
+  HELVETY_SUPABASE_URL,
+} from "./config";
 
 const STORAGE_KEY = "helvety-extension-supabase-auth";
 
@@ -21,9 +24,11 @@ const chromeLocalStorageAdapter = {
 /**
  * Supabase browser client for the extension: session persisted in
  * `chrome.storage.local` (not the website cookie jar).
+ *
+ * Uses public URL + publishable key from `config.ts` (safe to ship — see file header).
  */
 export function createExtensionSupabaseClient() {
-  return createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+  return createClient(HELVETY_SUPABASE_URL, HELVETY_SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storage: chromeLocalStorageAdapter,
       storageKey: STORAGE_KEY,

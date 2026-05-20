@@ -60,6 +60,19 @@ describe("decrypt-entities (client-side roundtrip)", () => {
     await expect(decryptContactLabel(row, key)).resolves.toBe("Ada Lovelace");
   });
 
+  it("decryptContactLabel trims when last name decrypts empty", async () => {
+    const key = await aes256GcmKey();
+    const aad = buildAAD("contacts", CONTACT_ID);
+    const encFirst = await encrypt("Madonna", key, aad);
+    const encLast = await encrypt("", key, aad);
+    const row = {
+      id: CONTACT_ID,
+      encrypted_first_name: serializeEncryptedData(encFirst),
+      encrypted_last_name: serializeEncryptedData(encLast),
+    };
+    await expect(decryptContactLabel(row, key)).resolves.toBe("Madonna");
+  });
+
   it("decryptLinkName decrypts bookmark title", async () => {
     const key = await aes256GcmKey();
     const plaintext = "Helvety docs";

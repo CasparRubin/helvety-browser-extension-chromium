@@ -1,50 +1,63 @@
 # Extension E2EE boundary (network and trust model)
 
-This document describes **what this extension is designed to do** and **what it does not guarantee**. It follows the same **client-side decrypt** model as the Helvety web apps for tasks, notes, contacts, and links: **ciphertext** is stored in Postgres (via Supabase) and **plaintext** is intended to exist **only in the extension** after you unlock.
+What this extension is **designed** to do and what it **does not** guarantee. Same **client-side decrypt** model as Helvety web apps for tasks, notes, contacts, and links: **ciphertext** in Postgres (Supabase), **plaintext** only in the client after unlock.
 
-This is **not** a formal threat model or security audit. Operational security still depends on your Supabase project settings, RLS policies, extension packaging, browser updates, and host integrity.
+Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
-Canonical production URLs and auth API paths live in **`src/lib/env.ts`** (`HELVETY_AUTH_ORIGIN`, `HELVETY_GATEWAY`, `EXTENSION_*_PATH`).
+URLs and API path constants: **`src/lib/config.ts`**.
+
+## Hardcoded “public” config (not a leak)
+
+`config.ts` embeds the Supabase project URL and **publishable** key (and Helvety HTTPS origins). That matches how the web apps ship `NEXT_PUBLIC_SUPABASE_*`: these values are **meant for client code** and appear in every user’s browser anyway.
+
+- **Fine to commit** in this repository and ship in the extension bundle.
+- **Does not** decrypt user data or bypass E2EE — ciphertext stays ciphertext without the passkey-derived master key.
+- **Does not** replace RLS — the publishable key only allows what your Supabase policies grant the authenticated user.
+- **Never** add server-only secrets to the extension (`SUPABASE_SECRET_KEY`, `sb_secret_*`, cookie-signing secrets, etc.). Those would be a real compromise.
+
+User **access tokens** after OTP sign-in live in `chrome.storage.local` and are sensitive at runtime, but they are session material — not the constants in `config.ts`.
 
 ## Entity content (tasks, notes, contacts, links)
 
 ### Fetch
 
-For the list UI, the extension requests **only ciphertext columns** (see `src/lib/e2ee-data-select.ts`). That limits what crosses the wire to PostgREST and reduces the chance of accidentally pulling future non-E2EE columns if the schema grows.
-
-**Caveat:** Broader `select('*')` (or server-side tools) could still return other columns if code changes—reviews should keep list projections explicit.
+List queries use **ciphertext-only** projections (`src/lib/e2ee-data-select.ts`). Avoid `select('*')` so new columns are not pulled accidentally.
 
 ### Decrypt
 
-`decrypt*` helpers in `src/lib/decrypt-entities.ts` run in the extension and use `crypto.subtle` via `@helvety/shared/crypto/encryption`. Plaintext exists in **extension runtime memory** (and in UI state) while unlocked; it is cleared when you sign out or when the shared key-storage layer removes the cached key.
+`decrypt*` in `src/lib/decrypt-entities.ts` use Web Crypto via `@helvety/shared/crypto/encryption`. Plaintext lives in extension memory and React state while unlocked; sign-out clears the cached master key via `@helvety/shared/crypto/key-storage`.
 
-**Caveat:** Malware, a compromised extension build, or a debugger attached to the browser can read process memory. “Client-side only” means **not intentionally sent to Helvety application APIs as plaintext**, not “impossible to extract on a hostile device.”
+**Limitation:** malware, a tampered build, or a debugger can read memory. “Client-side only” means **not sent as plaintext to Helvety app APIs by this code**, not “unextractable on a hostile machine.”
 
 ### Master key
 
-The AES master key is **derived in the extension** from WebAuthn **PRF** output (`unlockEncryptionWithPasskey` in `src/lib/passkey-unlock.ts`), then cached via `@helvety/shared/crypto/key-storage` (IndexedDB in the extension context). **This implementation does not** serialize the `CryptoKey` or PRF output into the JSON bodies sent to Helvety auth routes below.
+Derived in the extension from WebAuthn **PRF** (`unlockEncryptionWithPasskey` in `passkey-unlock.ts`), then cached in **IndexedDB** through shared key-storage. PRF output and the raw `CryptoKey` are **not** sent in the passkey verify JSON body.
 
-### Writes (current release)
+### Writes (this release)
 
-The MVP is **read-only**. There is **no** implemented path that POSTs decrypted titles or bodies to Helvety Next.js server actions. Future writes must send **ciphertext** (or use a reviewed API contract)—never plaintext entity fields to application servers.
+**Read-only** MVP. No path posts decrypted titles or bodies to Helvety server actions. Future writes must use ciphertext or a reviewed API.
 
 ## What is sent where (by design)
 
-| Data                                     | Where                          | Notes                                                                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email + OTP                              | **Supabase Auth**              | Identity provider for the project. Not the same as E2EE payload encryption; subject to Supabase’s policies and logging.                                                                                                |
-| `Authorization: Bearer`                  | **`https://helvety.com/auth`** | Only for the three `/api/extension/*` passkey routes (see `EXTENSION_*_PATH` in `src/lib/env.ts`). The bearer token is visible to that server over TLS like any authenticated HTTP call.                               |
-| WebAuthn assertion (no PRF payload)      | **Helvety auth** (same origin) | Standard `clientDataJSON` / `authenticatorData` / `signature` on verify—**not** decrypted task or note text.                                                                                                           |
-| `prf_salt`, `version`, `key_check_value` | **Helvety auth** + database    | PRF salt and KCV are **server-stored parameters** for the same passkey-E2EE design as the web app. They are **not** a substitute for secrecy of user content; secrecy comes from the authenticator and key derivation. |
-| Ciphertext columns                       | **Supabase** (PostgREST)       | Encrypted blobs under RLS. **Database operators** (Supabase staff per their policies) and anyone with `service_role` / backups could access ciphertext or metadata—same trust boundary as any hosted database.         |
+| Data                                       | Where                          | Notes                                                                                   |
+| ------------------------------------------ | ------------------------------ | --------------------------------------------------------------------------------------- |
+| Email + OTP                                | **Supabase Auth**              | Identity for the project in `config.ts`; separate from E2EE field encryption.           |
+| `Authorization: Bearer`                    | **`https://helvety.com/auth`** | Only for `EXTENSION_*_PATH` passkey routes when those routes exist on the deployment.   |
+| WebAuthn assertion (no PRF in verify body) | **Helvety auth**               | Standard assertion fields — not decrypted entity text.                                  |
+| `prf_salt`, `version`, `key_check_value`   | **Auth + DB**                  | Same passkey-E2EE parameter model as the web app; not a substitute for content secrecy. |
+| Ciphertext columns                         | **Supabase**                   | Under RLS; operators/backups can see ciphertext/metadata like any hosted DB.            |
 
 ## PRF output in verify requests
 
-`clientExtensionResults` (including PRF output) is **not** included in the JSON body sent to `EXTENSION_PASSKEY_VERIFY_PATH` (`/api/extension/passkey/verify` under the auth origin). PRF output is used **in the extension** to derive the master key after the server accepts the WebAuthn assertion.
+`clientExtensionResults` is **not** in the JSON body to `EXTENSION_PASSKEY_VERIFY_PATH`. PRF output stays in the extension to derive the master key after verify succeeds.
 
-## Relationship to “Helvety” vs infrastructure
+## Passkey routes and production
 
-- **Helvety application code** (auth routes in the `helvety` monorepo, Next.js apps) is written so that **normal paths** for these features do not require decrypted entity plaintext on the server—the same architectural goal as the web apps.
-- **Supabase** provides Auth and Postgres. **TLS** protects data in transit between the extension and Supabase/Helvety; **at-rest** protection is your project configuration and provider contracts.
+The extension is built against the path constants in `config.ts`. If production auth does not implement them (e.g. HTTP 404), unlock never runs and encrypted lists cannot be decrypted—OTP sign-in alone is not enough.
 
-If any statement here disagrees with the code, **the code wins**—treat this file as explanatory, not a warranty.
+## Helvety vs infrastructure
+
+- **Helvety auth** (when extension routes are deployed) should verify WebAuthn without requiring decrypted entity plaintext on the server.
+- **Supabase** provides Auth and Postgres. TLS protects transit; at-rest depends on your project and provider.
+
+If this document disagrees with the code, **the code wins**.

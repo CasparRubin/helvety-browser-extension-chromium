@@ -1,63 +1,82 @@
 # Helvety Chromium extension
 
-MV3 popup that reuses **Helvety Tailwind v4** and **`@helvety/ui`**, uses **`@helvety/shared`** for Web Crypto (PRF → AES-GCM) consistent with the web apps, and stores the **Supabase session** in `chrome.storage.local`.
+Chromium MV3 extension for **Helvety** [helvety.com](https://helvety.com): email OTP sign-in (Supabase Auth), **passkey + PRF** unlock for E2EE, and read-only lists of tasks, notes, contacts, and links (decrypted only in the extension).
+
+You do **not** need the Helvety monorepo or a local auth server to **build** this project. Public URLs and Supabase keys are hardcoded in **`src/lib/config.ts`**.
+
+## What works today (production)
+
+| Feature                                                   | Status                                                        |
+| --------------------------------------------------------- | ------------------------------------------------------------- |
+| Build & load unpacked (`dist/`)                           | Yes                                                           |
+| Email OTP sign-in                                         | Yes — talks to the production Supabase project in `config.ts` |
+| Decrypted task/note/contact/link lists                    | **Only after passkey unlock**                                 |
+| Passkey unlock (`/api/extension/*` on `helvety.com/auth`) | **No** — those routes return **404** on production auth today |
+
+So you can sign in, but **unlock and list decryption will fail** until the Helvety **auth** deployment exposes the extension JSON routes (and WebAuthn origin policy for `chrome-extension://…`). This repo implements the client side only; it does not change the `helvety` monorepo.
+
+## What talks to what
+
+| Piece                             | Runs where                                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Email OTP sign-in                 | **Supabase Auth** (`HELVETY_SUPABASE_*` in `config.ts`)                                                         |
+| Passkey params / options / verify | **`https://helvety.com/auth`** — paths in `EXTENSION_*_PATH` (`config.ts`); must exist on the deployed auth app |
+| Encrypted list rows               | **Supabase** PostgREST (RLS; ciphertext columns only — see `e2ee-data-select.ts`)                               |
+| Decryption                        | **This extension** (`decrypt-entities.ts`, `@helvety/shared` crypto)                                            |
+
+## Why `pnpm install` fetches the Helvety repo
+
+`@helvety/ui` and `@helvety/shared` supply **UI and cryptography** aligned with the web apps. Auth stays remote. `preinstall` runs `scripts/ensure-helvety.mjs`:
+
+- Optional: symlink **`../helvety`** if you already have the monorepo.
+- Otherwise: shallow clone into **`.helvety/`** (gitignored).
+
+That clone is **not** required to run the extension in Chrome—only to compile.
 
 ## Prerequisites
 
-- Node 22+ and pnpm
-- A sibling checkout of the Helvety monorepo at `../helvety` (this project uses `file:../helvety/packages/*` plus **`pnpm.overrides`** so nested `workspace:*` dependencies from `@helvety/ui` resolve to those folders)
-- Production auth deployed with extension API routes (`helvety/apps/auth/app/api/extension/*`) at **`https://helvety.com/auth`**
-- `HELVETY_WEBAUTHN_EXTENSION_ORIGINS` on that auth deployment set to your extension origin(s), e.g. `chrome-extension://<id>` (Chrome → Extensions → Details → ID). Use commas for multiple IDs
+- Node 22+ and **pnpm**
+- Git (for the shallow clone when `../helvety` is absent)
 
-## Configuration
-
-| What                           | Where                                                                                                                                                 |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Auth API base                  | Fixed: `https://helvety.com/auth` (`HELVETY_AUTH_ORIGIN` in `src/lib/env.ts`)                                                                         |
-| “Open in web” links            | Fixed: `https://helvety.com` (`HELVETY_GATEWAY`)                                                                                                      |
-| Supabase URL + publishable key | **Required** at build time: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` in `.env.local` (same values as `NEXT_PUBLIC_*` in the Helvety apps) |
-
-Helvety host URLs are **not** env-configurable in this repo—only Supabase project settings use `VITE_*`.
+When passkey unlock is enabled on production auth, operators must also allow your extension origin in that deployment’s WebAuthn configuration (`chrome-extension://<id>` from Chrome → Extensions → Details). See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## Setup
 
 ```bash
+git clone https://github.com/CasparRubin/helvety-browser-extension-chromium.git
 cd helvety-browser-extension-chromium
-cp .env.example .env.local
-# Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local
 pnpm install
-pnpm dev   # or pnpm build
+pnpm build
 ```
 
-Vite inlines `VITE_*` when you **build** the bundle; the installed extension does not read `.env` at runtime. Publishable Supabase values are public but **per-project**, so they are not committed here.
+Load **`dist/`** in Chrome: Extensions → Developer mode → **Load unpacked** → select the `dist` folder.
 
-After `pnpm build`, load the **unpacked** extension from `dist/` (Chrome → Extensions → Load unpacked).
+## Configuration
 
-## Testing
+Edit **`src/lib/config.ts`** and rebuild to change production URLs or Supabase keys.
+
+The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvety.com): project URL, publishable/anon key, and HTTPS app URLs. They are **intentionally not secret** — RLS and user sessions protect data, not hiding those strings. **Never** put server secrets (`SUPABASE_SECRET_KEY`, `sb_secret_*`, etc.) in the extension. See the comment block at the top of `config.ts`.
+
+| Setting           | Constant / location                                        |
+| ----------------- | ---------------------------------------------------------- |
+| Auth zone         | `HELVETY_AUTH_ORIGIN` → `https://helvety.com/auth`         |
+| Web deep links    | `HELVETY_GATEWAY` → `https://helvety.com`                  |
+| Supabase (public) | `HELVETY_SUPABASE_URL`, `HELVETY_SUPABASE_PUBLISHABLE_KEY` |
+
+## Scripts
 
 ```bash
-pnpm test         # Vitest (unit)
-pnpm test:watch   # watch mode
-pnpm type-check   # tsc --noEmit
-pnpm ci:check     # format:check + lint + type-check + test
-pnpm ci:release   # ci:check + production build (dist/)
+pnpm test
+pnpm type-check
+pnpm ci:check
+pnpm ci:release   # check + build → dist/
 ```
 
-Tests cover: production URL constants (`src/lib/env.ts`), Helvety auth JSON envelopes, ciphertext-only list `select` projections, AES-GCM decrypt helpers, and `helvetyAuthFetch` (URLs, headers, 401 normalization).
+## Docs
 
-## WebAuthn and extensions
+- [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md) — trust boundaries and data flows
+- [docs/webauthn-extension.md](docs/webauthn-extension.md) — passkey ceremony and server requirements
 
-Passkeys use RP ID **`helvety.com`**. Ceremonies run from `chrome-extension://…`; the auth server must allow that origin via `HELVETY_WEBAUTHN_EXTENSION_ORIGINS`. **Whether a web-registered credential works from an extension context must be validated on real devices**—see [docs/webauthn-extension.md](docs/webauthn-extension.md).
+## Mutations
 
-## Privacy and E2EE (entity data)
-
-See **[docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md)** for what goes to Supabase vs Helvety auth, what stays ciphertext on the wire in this MVP, and known trust boundaries.
-
-## Mutations (not in this MVP)
-
-Creating or updating rows from the extension is **not implemented**. The web apps use CSRF-protected server actions; any future extension writes need ciphertext + RLS (or dedicated APIs) and a security review—not a config flag.
-
-## Documentation index
-
-- [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md) — trust model and data flows
-- [docs/webauthn-extension.md](docs/webauthn-extension.md) — WebAuthn / RP / extension ceremony
+Read-only MVP. Writes would need a separate security design.
