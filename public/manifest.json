@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Helvety",
+  "description": "Helvety end-to-end encrypted tasks, contacts, notes, and links",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://*.supabase.co/*",
+    "https://helvety.com/*",
+    "https://*.helvety.com/*"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Helvety"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}

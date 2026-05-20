@@ -1,0 +1,11 @@
+# Build
+dist/
+node_modules/
+
+# Local env (copy from .env.example)
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,5 @@
+@import "@helvety/ui/globals.css";
+
+/* Tailwind v4: scan Helvety workspace packages used by @helvety/ui */
+@source "../node_modules/@helvety/ui/src";
+@source "../node_modules/@helvety/brand/src";
