@@ -1,3 +1,4 @@
 dist
 node_modules
+.helvety
 pnpm-lock.yaml

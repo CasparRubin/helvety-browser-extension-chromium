@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install, verify, and build
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run ci:release
+
+      - name: Package dist as zip
+        run: (cd dist && zip -r "../helvety-browser-extension-${{ github.ref_name }}.zip" .)
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: helvety-browser-extension-${{ github.ref_name }}.zip
+          generate_release_notes: true

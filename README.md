@@ -30,12 +30,30 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 ## Why `pnpm install` fetches the Helvety repo
 
-`@helvety/ui` and `@helvety/shared` supply **UI and cryptography** aligned with the web apps. Auth HTTP routes stay on the deployed auth service. `preinstall` runs `scripts/ensure-helvety.mjs`:
+Workspace packages supply **popup chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-- Optional: symlink **`../helvety`** if you already have the monorepo.
-- Otherwise: shallow clone into **`.helvety/`** (gitignored).
+| Package                     | Role in this extension                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `@helvety/extension-chrome` | Popup shell (320px), theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
+| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                               |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                          |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                           |
 
-That clone is **not** required to run the extension in Chrome—only to compile.
+Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
+
+- If **`../helvety`** exists: **junction/symlink** `.helvety` → sibling monorepo (read-only for install; does not patch sibling `package.json`).
+- Otherwise: shallow **clone** into **`.helvety/`** (gitignored).
+
+That vendor tree is **not** required to run the extension in Chrome—only to compile.
+
+## Popup UI (structure)
+
+- Entry: `index.html` → `src/popup/main.tsx` (imports `@helvety/extension-chrome/theme-boot` before React).
+- Root: `src/popup/App.tsx` — sign-in, unlock, or data tabs after session + passkey unlock.
+- Views: `src/popup/views/` (`SignInView`, `UnlockView`, `DataTabsView`, `AboutTab`).
+- Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header + `assets/icon-48.png`), `ExtensionMark.tsx` (icon URL only).
+- Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
+- About tab: version, extension ID, auth origin, security doc links; **no** session tokens or OTP in the DOM.
 
 ## Prerequisites
 
@@ -71,11 +89,21 @@ The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvet
 ## Scripts
 
 ```bash
-pnpm test
+pnpm test          # src/lib/*.test.ts + tests/*.test.ts (popup layout contracts)
 pnpm type-check
 pnpm ci:check
 pnpm ci:release   # check + build → dist/
 ```
+
+## Repository layout
+
+| Path                         | Purpose                                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/lib/`                   | Supabase auth, passkey unlock, decrypt, config (E2EE core)                                  |
+| `src/popup/`                 | React popup shell and views                                                                 |
+| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`)                |
+| `tests/`                     | Vitest layout/drift tests (`about-meta`, `popup-chrome`, `popup-shell`, `theme-preference`) |
+| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                     |
 
 ## Docs
 

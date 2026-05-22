@@ -1,0 +1,15 @@
+import "@helvety/extension-chrome/theme-boot";
+import "../globals.css";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+
+import App from "./App";
+
+const root = document.getElementById("root");
+if (root) {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+}

@@ -1,5 +1,8 @@
 @import "@helvety/ui/globals.css";
+@import "./popup/extension-tokens.css";
+@import "@helvety/extension-chrome/popup.css";
 
-/* Tailwind v4: scan Helvety workspace packages used by @helvety/ui */
+/* Tailwind v4: scan Helvety workspace packages used by the popup */
 @source "../node_modules/@helvety/ui/src";
 @source "../node_modules/@helvety/brand/src";
+@source "../node_modules/@helvety/extension-chrome/src";

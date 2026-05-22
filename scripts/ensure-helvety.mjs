@@ -1,6 +1,7 @@
 /**
  * Ensures `file:.helvety/packages/*` paths exist before pnpm resolves dependencies.
- * Uses sibling `../helvety` when present (junction), otherwise shallow-clones into `.helvety/`.
+ * Uses sibling `../helvety` when present (directory junction on Windows, symlink elsewhere),
+ * otherwise shallow-clones into `.helvety/`. Does not modify the monorepo.
  */
 import { execSync } from "node:child_process";
 import fs from "node:fs";
@@ -15,7 +16,10 @@ const repo = "https://github.com/CasparRubin/helvety.git";
 function hasWorkspacePackages(dir) {
   return (
     fs.existsSync(path.join(dir, "packages", "shared", "package.json")) &&
-    fs.existsSync(path.join(dir, "packages", "ui", "package.json"))
+    fs.existsSync(path.join(dir, "packages", "ui", "package.json")) &&
+    fs.existsSync(
+      path.join(dir, "packages", "extension-chrome", "package.json")
+    )
   );
 }
 
