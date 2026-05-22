@@ -51,9 +51,9 @@ Auth base: **`HELVETY_AUTH_ORIGIN`** (default `https://helvety.com/auth`; overri
 4. `POST …/passkey/verify` — send assertion + `challengeEnvelope`; server verifies WebAuthn and updates counter only (no new Supabase session).
 5. Derive master key from PRF locally; verify KCV when present; cache via `@helvety/shared/crypto/key-storage` (IndexedDB in the extension origin).
 
-Bearer tokens go only to auth passkey routes over HTTPS. List rows use Supabase under RLS with ciphertext projections only.
+Bearer tokens go only to auth passkey routes over HTTPS. Entity **reads** and encrypted **writes** use Supabase under RLS; reads use narrow ciphertext projections (`e2ee-data-select.ts`), never plaintext content columns.
 
-Dev builds log unlock/auth issues as `[helvety-unlock]` / `[helvety-auth]`; production builds do not.
+Dev builds may log sanitized unlock steps as `[helvety-unlock]` and auth HTTP status as `[helvety-auth]` (no tokens or entity content); production builds do not.
 
 ## Troubleshooting: params errors or no QR
 

@@ -8,31 +8,50 @@ import {
   deleteMasterKey,
   getMasterKey,
 } from "@helvety/shared/crypto/key-storage";
+import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HELVETY_GATEWAY } from "../lib/config";
-import {
-  decryptContactLabel,
-  decryptLinkName,
-  decryptNoteTitle,
-  decryptTaskTitle,
-} from "../lib/decrypt-entities";
-import {
-  CONTACT_LIST_SELECT,
-  LINK_LIST_SELECT,
-  NOTE_LIST_SELECT,
-  TASK_LIST_SELECT,
-} from "../lib/e2ee-data-select";
+import { EntityRepository } from "../lib/entity-repository";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
 
 import { STORAGE_KEY_POPUP_THEME } from "./constants";
+import {
+  contactToInput,
+  emptyContactInput,
+  emptyLinkFolderInput,
+  emptyLinkInput,
+  emptyNoteInput,
+  emptyTaskInput,
+  linkFolderToInput,
+  linkToInput,
+  noteToInput,
+  taskToInput,
+} from "./entity-drafts";
+import {
+  entityKindForTab,
+  type EntityScreen,
+  type LinksSection,
+} from "./entity-navigation";
 import { DataTabsView, type EntityTabId } from "./views/DataTabsView";
 import { SignInView } from "./views/SignInView";
 import { UnlockView, type ParamsPreflight } from "./views/UnlockView";
 
-/** Root popup: OTP sign-in, passkey unlock, read-only E2EE lists. */
+import type { EntityFormDraft } from "./views/EntityFormView";
+import type {
+  Contact,
+  EntityListItem,
+  EntityRecord,
+  Link,
+  LinkFolder,
+  Note,
+  Task,
+  EntityKind,
+} from "../lib/entity-types";
+
+/** Root popup: OTP sign-in, passkey unlock, E2EE CRUD for Helvety entities. */
 export default function App() {
   const supabase = useMemo(() => createExtensionSupabaseClient(), []);
   const { themePreference, saveTheme } = usePopupTheme(STORAGE_KEY_POPUP_THEME);
@@ -54,15 +73,57 @@ export default function App() {
     useState<ParamsPreflight | null>(null);
 
   const [tab, setTab] = useState<EntityTabId>("tasks");
+  const [linksSection, setLinksSection] = useState<LinksSection>("links");
+  const [screen, setScreen] = useState<EntityScreen>({ mode: "list" });
+
   const [listBusy, setListBusy] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
-  const [notes, setNotes] = useState<{ id: string; title: string }[]>([]);
-  const [contacts, setContacts] = useState<{ id: string; title: string }[]>([]);
-  const [links, setLinks] = useState<{ id: string; title: string }[]>([]);
+  const [tasks, setTasks] = useState<EntityListItem[]>([]);
+  const [notes, setNotes] = useState<EntityListItem[]>([]);
+  const [contacts, setContacts] = useState<EntityListItem[]>([]);
+  const [links, setLinks] = useState<EntityListItem[]>([]);
+  const [linkFolders, setLinkFolders] = useState<EntityListItem[]>([]);
   const [loadedTabs, setLoadedTabs] = useState<Set<EntityTabId>>(new Set());
 
-  const shellClass = `flex ${POPUP_WIDTH_CLASS} ${POPUP_SHELL_CLASS} text-foreground`;
+  const [detailRecord, setDetailRecord] = useState<EntityRecord | null>(null);
+  const [detailBusy, setDetailBusy] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const [formDraft, setFormDraft] = useState<EntityFormDraft | null>(null);
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    kind: EntityKind;
+    id: string;
+    label: string;
+  } | null>(null);
+
+  const repo = useMemo(() => {
+    if (!masterKey || !userId) {
+      return null;
+    }
+    return new EntityRepository(supabase, userId, masterKey);
+  }, [masterKey, supabase, userId]);
+
+  /** Drop decrypted entity data from React state (sign-out / account switch). */
+  const clearDecryptedEntityState = useCallback(() => {
+    setTasks([]);
+    setNotes([]);
+    setContacts([]);
+    setLinks([]);
+    setLinkFolders([]);
+    setDetailRecord(null);
+    setDetailError(null);
+    setFormDraft(null);
+    setListError(null);
+    setDeleteOpen(false);
+    setDeleteTarget(null);
+    setScreen({ mode: "list" });
+  }, []);
+
+  const shellClass = `flex min-h-[520px] h-[600px] max-h-[600px] flex-col ${POPUP_WIDTH_CLASS} ${POPUP_SHELL_CLASS} text-foreground`;
 
   const refreshSession = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -91,16 +152,17 @@ export default function App() {
   }, [refreshSession, supabase]);
 
   useEffect(() => {
+    setLoadedTabs(new Set());
+    clearDecryptedEntityState();
+    setMasterKey(null);
     if (!userId) {
-      setMasterKey(null);
-      setLoadedTabs(new Set());
       return;
     }
     void (async () => {
       const key = await getMasterKey(userId);
       setMasterKey(key);
     })();
-  }, [userId]);
+  }, [userId, clearDecryptedEntityState]);
 
   useEffect(() => {
     if (!userId || !accessToken || masterKey) {
@@ -131,84 +193,21 @@ export default function App() {
 
   const loadTab = useCallback(
     async (target: EntityTabId) => {
-      if (!masterKey || !userId || target === "about") {
+      if (!repo || target === "about") {
         return;
       }
       setListBusy(true);
       setListError(null);
       try {
         if (target === "tasks") {
-          const { data, error } = await supabase
-            .from("items")
-            .select(TASK_LIST_SELECT)
-            .eq("user_id", userId)
-            .order("sort_order", { ascending: true })
-            .limit(500);
-          if (error) {
-            setListError(error.message);
-            return;
-          }
-          const rows = await Promise.all(
-            (data ?? []).map(async (row) => ({
-              id: row.id,
-              title: await decryptTaskTitle(row, masterKey),
-            }))
-          );
-          setTasks(rows);
+          setTasks(await repo.listTasks());
         } else if (target === "notes") {
-          const { data, error } = await supabase
-            .from("notes")
-            .select(NOTE_LIST_SELECT)
-            .eq("user_id", userId)
-            .order("sort_order", { ascending: true })
-            .limit(500);
-          if (error) {
-            setListError(error.message);
-            return;
-          }
-          const rows = await Promise.all(
-            (data ?? []).map(async (row) => ({
-              id: row.id,
-              title: await decryptNoteTitle(row, masterKey),
-            }))
-          );
-          setNotes(rows);
+          setNotes(await repo.listNotes());
         } else if (target === "contacts") {
-          const { data, error } = await supabase
-            .from("contacts")
-            .select(CONTACT_LIST_SELECT)
-            .eq("user_id", userId)
-            .order("sort_order", { ascending: true })
-            .limit(500);
-          if (error) {
-            setListError(error.message);
-            return;
-          }
-          const rows = await Promise.all(
-            (data ?? []).map(async (row) => ({
-              id: row.id,
-              title: await decryptContactLabel(row, masterKey),
-            }))
-          );
-          setContacts(rows);
+          setContacts(await repo.listContacts());
         } else if (target === "links") {
-          const { data, error } = await supabase
-            .from("links")
-            .select(LINK_LIST_SELECT)
-            .eq("user_id", userId)
-            .order("sort_order", { ascending: true })
-            .limit(500);
-          if (error) {
-            setListError(error.message);
-            return;
-          }
-          const rows = await Promise.all(
-            (data ?? []).map(async (row) => ({
-              id: row.id,
-              title: await decryptLinkName(row, masterKey),
-            }))
-          );
-          setLinks(rows);
+          setLinks(await repo.listLinks());
+          setLinkFolders(await repo.listLinkFolders());
         }
         setLoadedTabs((prev) => new Set(prev).add(target));
       } catch (e) {
@@ -217,17 +216,65 @@ export default function App() {
         setListBusy(false);
       }
     },
-    [masterKey, supabase, userId]
+    [repo]
   );
 
+  const invalidateTab = useCallback((target: EntityTabId) => {
+    setLoadedTabs((prev) => {
+      const next = new Set(prev);
+      next.delete(target);
+      return next;
+    });
+  }, []);
+
+  const reloadCurrentTab = useCallback(async () => {
+    if (tab === "about") {
+      return;
+    }
+    invalidateTab(tab);
+    await loadTab(tab);
+  }, [invalidateTab, loadTab, tab]);
+
   useEffect(() => {
-    if (!masterKey || !userId || tab === "about") {
+    if (!repo || tab === "about") {
       return;
     }
     if (!loadedTabs.has(tab)) {
       void loadTab(tab);
     }
-  }, [loadTab, loadedTabs, masterKey, tab, userId]);
+  }, [loadTab, loadedTabs, repo, tab]);
+
+  useEffect(() => {
+    if (!repo || screen.mode !== "detail") {
+      setDetailRecord(null);
+      setDetailError(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailBusy(true);
+    setDetailError(null);
+    void (async () => {
+      try {
+        const record = await fetchEntity(repo, screen.kind, screen.id);
+        if (!cancelled) {
+          setDetailRecord(record);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setDetailError(
+            e instanceof Error ? e.message : "Failed to load details"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailBusy(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [repo, screen]);
 
   const handleSendOtp = async () => {
     setAuthError(null);
@@ -272,6 +319,7 @@ export default function App() {
     if (userId) {
       await deleteMasterKey(userId);
     }
+    clearDecryptedEntityState();
     setMasterKey(null);
     setLoadedTabs(new Set());
     await supabase.auth.signOut();
@@ -312,6 +360,7 @@ export default function App() {
       const key = await getMasterKey(userId);
       setMasterKey(key);
       setLoadedTabs(new Set());
+      setScreen({ mode: "list" });
     } finally {
       setCryptoBusy(false);
     }
@@ -320,6 +369,20 @@ export default function App() {
   const handleTabChange = (next: EntityTabId) => {
     setTab(next);
     setListError(null);
+    setScreen({ mode: "list" });
+    setMutationError(null);
+    setFormDraft(null);
+    setDetailRecord(null);
+    setDetailError(null);
+  };
+
+  const handleLinksSectionChange = (section: LinksSection) => {
+    setLinksSection(section);
+    setScreen({ mode: "list" });
+    setMutationError(null);
+    setFormDraft(null);
+    setDetailRecord(null);
+    setDetailError(null);
   };
 
   const handleRetryList = () => {
@@ -327,6 +390,121 @@ export default function App() {
       void loadTab(tab);
     }
   };
+
+  const goToList = () => {
+    setScreen({ mode: "list" });
+    setMutationError(null);
+    setFormDraft(null);
+  };
+
+  const openDetail = (kind: EntityKind, id: string) => {
+    setDetailRecord(null);
+    setDetailBusy(true);
+    setDetailError(null);
+    setScreen({ mode: "detail", kind, id });
+    setMutationError(null);
+  };
+
+  const openCreate = (kind: EntityKind) => {
+    setFormDraft(draftForKind(kind));
+    setScreen({ mode: "form", kind, formMode: "create" });
+    setMutationError(null);
+  };
+
+  const openEdit = () => {
+    if (!repo || screen.mode !== "detail" || !detailRecord) {
+      return;
+    }
+    setFormDraft(draftFromRecord(screen.kind, detailRecord));
+    setScreen({
+      mode: "form",
+      kind: screen.kind,
+      formMode: "edit",
+      id: screen.id,
+    });
+    setMutationError(null);
+  };
+
+  const handleSave = async () => {
+    if (!repo || screen.mode !== "form" || !formDraft) {
+      return;
+    }
+    const validationError = validateDraft(formDraft);
+    if (validationError) {
+      setMutationError(validationError);
+      return;
+    }
+    setMutationBusy(true);
+    setMutationError(null);
+    try {
+      if (screen.formMode === "create") {
+        const id = await createEntity(repo, formDraft);
+        await reloadCurrentTab();
+        setScreen({ mode: "detail", kind: screen.kind, id });
+      } else if (screen.id) {
+        await updateEntity(repo, screen.kind, screen.id, formDraft);
+        await reloadCurrentTab();
+        setScreen({ mode: "detail", kind: screen.kind, id: screen.id });
+      }
+      setFormDraft(null);
+    } catch (e) {
+      setMutationError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setMutationBusy(false);
+    }
+  };
+
+  const requestDelete = () => {
+    if (screen.mode !== "detail" || !detailRecord) {
+      return;
+    }
+    setDeleteTarget({
+      kind: screen.kind,
+      id: screen.id,
+      label: deleteLabel(screen.kind, detailRecord),
+    });
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!repo || !deleteTarget) {
+      return;
+    }
+    setMutationBusy(true);
+    try {
+      await deleteEntity(repo, deleteTarget.kind, deleteTarget.id);
+      await reloadCurrentTab();
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      goToList();
+    } catch (e) {
+      setDeleteOpen(false);
+      setMutationError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setMutationBusy(false);
+    }
+  };
+
+  const retryDetail = useCallback(() => {
+    if (!repo || screen.mode !== "detail") {
+      return;
+    }
+    setDetailRecord(null);
+    setDetailError(null);
+    setDetailBusy(true);
+    void fetchEntity(repo, screen.kind, screen.id)
+      .then((record) => {
+        setDetailRecord(record);
+      })
+      .catch((e) => {
+        setDetailError(
+          e instanceof Error ? e.message : "Failed to load details"
+        );
+      })
+      .finally(() => {
+        setDetailBusy(false);
+      });
+  }, [repo, screen]);
 
   const currentList =
     tab === "tasks"
@@ -336,7 +514,9 @@ export default function App() {
         : tab === "contacts"
           ? contacts
           : tab === "links"
-            ? links
+            ? linksSection === "folders"
+              ? linkFolders
+              : links
             : [];
 
   const openInApp = () => {
@@ -349,6 +529,31 @@ export default function App() {
             ? "/contacts"
             : "/links";
     void chrome.tabs.create({ url: `${HELVETY_GATEWAY}${path}` });
+  };
+
+  const activeEntityKind =
+    screen.mode === "list"
+      ? tab === "links" && linksSection === "folders"
+        ? ("link_folder" as const)
+        : entityKindForTab(tab)
+      : screen.kind;
+
+  const handleAdd = () => {
+    if (tab === "links" && linksSection === "folders") {
+      openCreate("link_folder");
+      return;
+    }
+    const kind = entityKindForTab(tab);
+    if (kind) {
+      openCreate(kind);
+    }
+  };
+
+  const handleRowClick = (id: string) => {
+    if (!activeEntityKind) {
+      return;
+    }
+    openDetail(activeEntityKind, id);
   };
 
   if (!sessionEmail || !userId || !accessToken) {
@@ -392,21 +597,251 @@ export default function App() {
 
   return (
     <div className={shellClass}>
-      <DataTabsView
-        version={extensionVersion}
-        sessionEmail={sessionEmail}
-        tab={tab}
-        onTabChange={handleTabChange}
-        listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
-        listError={listError}
-        currentList={currentList}
-        themePreference={themePreference}
-        onSaveTheme={saveTheme}
-        paramsPreflight={paramsPreflight}
-        onOpenInApp={openInApp}
-        onLogout={() => void handleLogout()}
-        onRetryList={handleRetryList}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DataTabsView
+          version={extensionVersion}
+          sessionEmail={sessionEmail}
+          tab={tab}
+          onTabChange={handleTabChange}
+          linksSection={linksSection}
+          onLinksSectionChange={handleLinksSectionChange}
+          screen={screen}
+          listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
+          listError={listError}
+          currentList={currentList}
+          linkFolders={linkFolders}
+          detailRecord={detailRecord}
+          detailBusy={detailBusy}
+          detailError={detailError}
+          formDraft={formDraft}
+          onFormDraftChange={setFormDraft}
+          mutationBusy={mutationBusy}
+          mutationError={mutationError}
+          themePreference={themePreference}
+          onSaveTheme={saveTheme}
+          paramsPreflight={paramsPreflight}
+          onOpenInApp={openInApp}
+          onLogout={() => void handleLogout()}
+          onRetryList={handleRetryList}
+          onAdd={handleAdd}
+          onRowClick={handleRowClick}
+          onBack={goToList}
+          onRetryDetail={retryDetail}
+          onEdit={openEdit}
+          onDelete={requestDelete}
+          onOpenInAppDetail={openInApp}
+          onSave={() => void handleSave()}
+          onCancelForm={goToList}
+        />
+      </div>
+      <DeleteConfirmationDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete permanently?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.label}" will be removed. This cannot be undone.`
+            : ""
+        }
+        onConfirm={() => confirmDelete()}
+        isDeleting={mutationBusy}
       />
     </div>
   );
+}
+
+/**
+ *
+ */
+async function fetchEntity(
+  repo: EntityRepository,
+  kind: EntityKind,
+  id: string
+): Promise<EntityRecord> {
+  switch (kind) {
+    case "tasks":
+      return repo.getTask(id);
+    case "notes":
+      return repo.getNote(id);
+    case "contacts":
+      return repo.getContact(id);
+    case "links":
+      return repo.getLink(id);
+    case "link_folder":
+      return repo.getLinkFolder(id);
+  }
+}
+
+/**
+ *
+ */
+function draftForKind(kind: EntityKind): EntityFormDraft {
+  switch (kind) {
+    case "tasks":
+      return { kind: "tasks", value: emptyTaskInput() };
+    case "notes":
+      return { kind: "notes", value: emptyNoteInput() };
+    case "contacts":
+      return { kind: "contacts", value: emptyContactInput() };
+    case "links":
+      return { kind: "links", value: emptyLinkInput() };
+    case "link_folder":
+      return { kind: "link_folder", value: emptyLinkFolderInput() };
+  }
+}
+
+/**
+ *
+ */
+function draftFromRecord(
+  kind: EntityKind,
+  record: EntityRecord
+): EntityFormDraft {
+  switch (kind) {
+    case "tasks":
+      return { kind: "tasks", value: taskToInput(record as Task) };
+    case "notes":
+      return { kind: "notes", value: noteToInput(record as Note) };
+    case "contacts":
+      return { kind: "contacts", value: contactToInput(record as Contact) };
+    case "links":
+      return { kind: "links", value: linkToInput(record as Link) };
+    case "link_folder":
+      return {
+        kind: "link_folder",
+        value: linkFolderToInput(record as LinkFolder),
+      };
+  }
+}
+
+/**
+ *
+ */
+function validateDraft(draft: EntityFormDraft): string | null {
+  switch (draft.kind) {
+    case "tasks":
+      return draft.value.title.trim() ? null : "Title is required.";
+    case "notes":
+      return draft.value.title.trim() ? null : "Title is required.";
+    case "contacts":
+      return draft.value.first_name.trim() ? null : "First name is required.";
+    case "links":
+      if (!draft.value.name.trim()) {
+        return "Name is required.";
+      }
+      return draft.value.url.trim() ? null : "URL is required.";
+    case "link_folder":
+      return draft.value.name.trim() ? null : "Folder name is required.";
+  }
+}
+
+/**
+ *
+ */
+async function createEntity(
+  repo: EntityRepository,
+  draft: EntityFormDraft
+): Promise<string> {
+  switch (draft.kind) {
+    case "tasks":
+      return repo.createTask(draft.value);
+    case "notes":
+      return repo.createNote(draft.value);
+    case "contacts":
+      return repo.createContact(draft.value);
+    case "links":
+      return repo.createLink(draft.value);
+    case "link_folder":
+      return repo.createLinkFolder(draft.value);
+  }
+}
+
+/**
+ *
+ */
+async function updateEntity(
+  repo: EntityRepository,
+  kind: EntityKind,
+  id: string,
+  draft: EntityFormDraft
+): Promise<void> {
+  switch (kind) {
+    case "tasks":
+      if (draft.kind !== "tasks") {
+        throw new Error("Form data does not match entity type.");
+      }
+      await repo.updateTask(id, draft.value);
+      return;
+    case "notes":
+      if (draft.kind !== "notes") {
+        throw new Error("Form data does not match entity type.");
+      }
+      await repo.updateNote(id, draft.value);
+      return;
+    case "contacts":
+      if (draft.kind !== "contacts") {
+        throw new Error("Form data does not match entity type.");
+      }
+      await repo.updateContact(id, draft.value);
+      return;
+    case "links":
+      if (draft.kind !== "links") {
+        throw new Error("Form data does not match entity type.");
+      }
+      await repo.updateLink(id, draft.value);
+      return;
+    case "link_folder":
+      if (draft.kind !== "link_folder") {
+        throw new Error("Form data does not match entity type.");
+      }
+      await repo.updateLinkFolder(id, draft.value);
+      return;
+  }
+}
+
+/**
+ *
+ */
+async function deleteEntity(
+  repo: EntityRepository,
+  kind: EntityKind,
+  id: string
+): Promise<void> {
+  switch (kind) {
+    case "tasks":
+      await repo.deleteTask(id);
+      return;
+    case "notes":
+      await repo.deleteNote(id);
+      return;
+    case "contacts":
+      await repo.deleteContact(id);
+      return;
+    case "links":
+      await repo.deleteLink(id);
+      return;
+    case "link_folder":
+      await repo.deleteLinkFolder(id);
+      return;
+  }
+}
+
+/**
+ *
+ */
+function deleteLabel(kind: EntityKind, record: EntityRecord): string {
+  switch (kind) {
+    case "contacts": {
+      const c = record as Contact;
+      return `${c.first_name} ${c.last_name}`.trim();
+    }
+    case "notes":
+      return (record as Note).title;
+    case "tasks":
+      return (record as Task).title;
+    case "links":
+      return (record as Link).name;
+    case "link_folder":
+      return (record as LinkFolder).name;
+  }
 }

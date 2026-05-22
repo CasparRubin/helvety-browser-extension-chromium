@@ -1,69 +1,107 @@
-import {
-  POPUP_TAB_TRIGGER_ICON_CLASS,
-  TAB_PANEL_CLASS,
-} from "@helvety/extension-chrome/popup-shell";
+import { POPUP_TAB_TRIGGER_ICON_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { Button } from "@helvety/ui/button";
-import { Card, CardContent } from "@helvety/ui/card";
 import {
   ListEmptyState,
   ListErrorState,
   ListLoadingState,
 } from "@helvety/ui/list-states";
-import { ScrollArea } from "@helvety/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@helvety/ui/tabs";
 import {
   BadgeInfo,
   ExternalLink,
+  Folder,
   Link2,
   ListTodo,
   LogOut,
+  Plus,
   StickyNote,
   Users,
 } from "lucide-react";
 
+import { EntityScreenLayout } from "../components/EntityScreenLayout";
 import { PopupHeader } from "../components/PopupHeader";
 
 import { AboutTab } from "./AboutTab";
+import { EntityDetailView } from "./EntityDetailView";
+import { EntityFormView, type EntityFormDraft } from "./EntityFormView";
 
 import type { ParamsPreflight } from "./UnlockView";
+import type { EntityListItem, EntityRecord } from "../../lib/entity-types";
+import type { EntityScreen, LinksSection } from "../entity-navigation";
 import type { ThemePreference } from "@helvety/extension-chrome/theme-preference";
 
-/**
- *
- */
+/** Main entity tabs after unlock (tasks, notes, contacts, links, about). */
 export type EntityTabId = "tasks" | "notes" | "contacts" | "links" | "about";
 
-/**
- *
- */
+/** Tabbed shell: entity lists, detail, forms, and about/settings. */
 export function DataTabsView({
   version,
   sessionEmail,
   tab,
   onTabChange,
+  linksSection,
+  onLinksSectionChange,
+  screen,
   listBusy,
   listError,
   currentList,
+  linkFolders,
+  detailRecord,
+  detailBusy,
+  detailError,
+  formDraft,
+  onFormDraftChange,
+  mutationBusy,
+  mutationError,
   themePreference,
   onSaveTheme,
   paramsPreflight,
   onOpenInApp,
   onLogout,
   onRetryList,
+  onAdd,
+  onRowClick,
+  onBack,
+  onRetryDetail,
+  onEdit,
+  onDelete,
+  onOpenInAppDetail,
+  onSave,
+  onCancelForm,
 }: {
   version: string;
   sessionEmail: string;
   tab: EntityTabId;
   onTabChange: (tab: EntityTabId) => void;
+  linksSection: LinksSection;
+  onLinksSectionChange: (section: LinksSection) => void;
+  screen: EntityScreen;
   listBusy: boolean;
   listError: string | null;
-  currentList: { id: string; title: string }[];
+  currentList: EntityListItem[];
+  linkFolders: EntityListItem[];
+  detailRecord: EntityRecord | null;
+  detailBusy: boolean;
+  detailError: string | null;
+  formDraft: EntityFormDraft | null;
+  onFormDraftChange: (draft: EntityFormDraft) => void;
+  mutationBusy: boolean;
+  mutationError: string | null;
   themePreference: ThemePreference;
   onSaveTheme: (next: ThemePreference) => void;
   paramsPreflight: ParamsPreflight | null;
   onOpenInApp: () => void;
   onLogout: () => void;
   onRetryList: () => void;
+  onAdd: () => void;
+  onRowClick: (id: string) => void;
+  onBack: () => void;
+  onRetryDetail: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onOpenInAppDetail: () => void;
+  onSave: () => void;
+  onCancelForm: () => void;
 }): React.JSX.Element {
   const emptyTitle =
     tab === "tasks"
@@ -72,7 +110,98 @@ export function DataTabsView({
         ? "No notes yet"
         : tab === "contacts"
           ? "No contacts yet"
-          : "No links yet";
+          : tab === "links" && linksSection === "folders"
+            ? "No folders yet"
+            : "No links yet";
+
+  const emptyDescription = "Add one with the button below, or use the web app.";
+
+  const entityPanel = (entityTab: Exclude<EntityTabId, "about">) => {
+    const showDetail =
+      screen.mode === "detail" &&
+      tab === entityTab &&
+      (entityTab !== "links" ||
+        (screen.kind === "link_folder"
+          ? linksSection === "folders"
+          : linksSection === "links"));
+    const showForm =
+      screen.mode === "form" &&
+      tab === entityTab &&
+      (entityTab !== "links" ||
+        (screen.kind === "link_folder"
+          ? linksSection === "folders"
+          : linksSection === "links"));
+
+    if (showForm && formDraft) {
+      return (
+        <EntityFormView
+          kind={screen.kind}
+          formMode={screen.formMode}
+          draft={formDraft}
+          onDraftChange={onFormDraftChange}
+          linkFolders={linkFolders}
+          editingFolderId={
+            screen.kind === "link_folder" ? screen.id : undefined
+          }
+          mutationBusy={mutationBusy}
+          mutationError={mutationError}
+          onSave={onSave}
+          onCancel={onCancelForm}
+        />
+      );
+    }
+
+    if (showDetail) {
+      if (detailBusy || (!detailRecord && !detailError)) {
+        return (
+          <EntityScreenLayout>
+            <div aria-live="polite">
+              <ListLoadingState message="Loading…" />
+            </div>
+          </EntityScreenLayout>
+        );
+      }
+      if (detailError) {
+        return (
+          <EntityScreenLayout>
+            <ListErrorState message={detailError} onRetry={onRetryDetail} />
+          </EntityScreenLayout>
+        );
+      }
+      if (!detailRecord) {
+        return null;
+      }
+      return (
+        <EntityDetailView
+          kind={screen.kind}
+          record={detailRecord}
+          linkFolders={linkFolders}
+          mutationError={mutationError}
+          onBack={onBack}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onOpenInApp={onOpenInAppDetail}
+        />
+      );
+    }
+
+    return (
+      <EntityListPanel
+        listBusy={listBusy}
+        listError={listError}
+        currentList={currentList}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        onRetryList={onRetryList}
+        onAdd={onAdd}
+        onRowClick={onRowClick}
+        linksSection={entityTab === "links" ? linksSection : undefined}
+        onLinksSectionChange={
+          entityTab === "links" ? onLinksSectionChange : undefined
+        }
+      />
+    );
+  };
 
   return (
     <Tabs
@@ -88,7 +217,7 @@ export function DataTabsView({
           onTabChange(v);
         }
       }}
-      className="flex flex-col gap-0"
+      className="flex min-h-0 flex-1 flex-col gap-0"
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -98,7 +227,7 @@ export function DataTabsView({
           </p>
         </div>
         <div className="flex shrink-0 gap-1 pt-0.5">
-          {tab !== "about" ? (
+          {tab !== "about" && screen.mode === "list" ? (
             <Button
               variant="outline"
               size="sm"
@@ -159,41 +288,29 @@ export function DataTabsView({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="tasks" className="mt-2 outline-none">
-        <EntityListPanel
-          listBusy={listBusy}
-          listError={listError}
-          currentList={currentList}
-          emptyTitle={emptyTitle}
-          onRetryList={onRetryList}
-        />
+      <TabsContent
+        value="tasks"
+        className="mt-2 flex min-h-0 flex-1 flex-col outline-none"
+      >
+        {entityPanel("tasks")}
       </TabsContent>
-      <TabsContent value="notes" className="mt-2 outline-none">
-        <EntityListPanel
-          listBusy={listBusy}
-          listError={listError}
-          currentList={currentList}
-          emptyTitle={emptyTitle}
-          onRetryList={onRetryList}
-        />
+      <TabsContent
+        value="notes"
+        className="mt-2 flex min-h-0 flex-1 flex-col outline-none"
+      >
+        {entityPanel("notes")}
       </TabsContent>
-      <TabsContent value="contacts" className="mt-2 outline-none">
-        <EntityListPanel
-          listBusy={listBusy}
-          listError={listError}
-          currentList={currentList}
-          emptyTitle={emptyTitle}
-          onRetryList={onRetryList}
-        />
+      <TabsContent
+        value="contacts"
+        className="mt-2 flex min-h-0 flex-1 flex-col outline-none"
+      >
+        {entityPanel("contacts")}
       </TabsContent>
-      <TabsContent value="links" className="mt-2 outline-none">
-        <EntityListPanel
-          listBusy={listBusy}
-          listError={listError}
-          currentList={currentList}
-          emptyTitle={emptyTitle}
-          onRetryList={onRetryList}
-        />
+      <TabsContent
+        value="links"
+        className="mt-2 flex min-h-0 flex-1 flex-col outline-none"
+      >
+        {entityPanel("links")}
       </TabsContent>
       <TabsContent value="about" className="mt-2 outline-none">
         <AboutTab
@@ -206,51 +323,96 @@ export function DataTabsView({
   );
 }
 
-/**
- *
- */
+/** Scrollable list with optional links/folders toggle and Add action. */
 function EntityListPanel({
   listBusy,
   listError,
   currentList,
   emptyTitle,
+  emptyDescription,
   onRetryList,
+  onAdd,
+  onRowClick,
+  linksSection,
+  onLinksSectionChange,
 }: {
   listBusy: boolean;
   listError: string | null;
-  currentList: { id: string; title: string }[];
+  currentList: EntityListItem[];
   emptyTitle: string;
+  emptyDescription: string;
   onRetryList: () => void;
+  onAdd: () => void;
+  onRowClick: (id: string) => void;
+  linksSection?: LinksSection;
+  onLinksSectionChange?: (section: LinksSection) => void;
 }): React.JSX.Element {
+  const linksToggle =
+    linksSection !== undefined && onLinksSectionChange ? (
+      <div className="bg-muted flex gap-0.5 rounded-none p-0.5">
+        <Button
+          type="button"
+          size="sm"
+          variant={linksSection === "links" ? "default" : "ghost"}
+          className="h-7 flex-1 rounded-none text-xs"
+          aria-pressed={linksSection === "links"}
+          onClick={() => onLinksSectionChange("links")}
+        >
+          <Link2 className="size-3.5" />
+          Links
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={linksSection === "folders" ? "default" : "ghost"}
+          className="h-7 flex-1 rounded-none text-xs"
+          aria-pressed={linksSection === "folders"}
+          onClick={() => onLinksSectionChange("folders")}
+        >
+          <Folder className="size-3.5" />
+          Folders
+        </Button>
+      </div>
+    ) : null;
+
   return (
-    <div className={TAB_PANEL_CLASS}>
-      {listBusy ? (
-        <ListLoadingState message="Loading…" />
-      ) : listError ? (
-        <ListErrorState message={listError} onRetry={onRetryList} />
-      ) : currentList.length === 0 ? (
-        <ListEmptyState
-          title={emptyTitle}
-          description="Create records in the web app, then open this tab again."
-        />
-      ) : (
-        <ScrollArea className="h-full pr-1">
-          <ul className="flex flex-col gap-1 pb-2">
-            {currentList.map((row) => (
-              <li key={row.id}>
-                <Card className="border-0 shadow-none">
-                  <CardContent className="px-3 py-2">
-                    <p className="text-sm leading-snug">{row.title}</p>
-                    <p className="text-muted-foreground font-mono text-[10px]">
-                      {row.id}
-                    </p>
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </ScrollArea>
-      )}
-    </div>
+    <EntityScreenLayout
+      header={
+        linksToggle ? <div className="pb-2">{linksToggle}</div> : undefined
+      }
+      footer={
+        <Button type="button" size="sm" className="w-full" onClick={onAdd}>
+          <Plus className="size-4" />
+          Add
+        </Button>
+      }
+    >
+      <div aria-live="polite">
+        {listBusy ? (
+          <ListLoadingState message="Loading…" />
+        ) : listError ? (
+          <ListErrorState message={listError} onRetry={onRetryList} />
+        ) : currentList.length === 0 ? (
+          <ListEmptyState title={emptyTitle} description={emptyDescription} />
+        ) : (
+          <div className="border-border overflow-hidden rounded-none border">
+            <ul>
+              {currentList.map((row) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    className="hover:bg-muted/60 border-border w-full rounded-none border-b px-3 py-2.5 text-left transition-colors last:border-b-0"
+                    aria-label={row.title}
+                    onClick={() => onRowClick(row.id)}
+                  >
+                    <p className="truncate text-sm font-medium">{row.title}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </EntityScreenLayout>
   );
 }

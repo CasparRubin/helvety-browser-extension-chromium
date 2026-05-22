@@ -5,9 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import { PopupHeader } from "../components/PopupHeader";
 
-/**
- *
- */
+/** Email OTP sign-in (Supabase Auth); no entity data before unlock. */
 export function SignInView({
   version,
   emailInput,

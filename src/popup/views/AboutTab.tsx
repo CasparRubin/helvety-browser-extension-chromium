@@ -41,9 +41,7 @@ import {
 import type { ParamsPreflight } from "./UnlockView";
 import type { ThemePreference } from "@helvety/extension-chrome/theme-preference";
 
-/**
- *
- */
+/** About, theme, security doc links, and extension diagnostics (no secrets in DOM). */
 export function AboutTab({
   themePreference,
   onSaveTheme,
@@ -74,9 +72,9 @@ export function AboutTab({
           <CardHeader className="flex flex-col gap-1 p-3 pb-2">
             <CardTitle className="text-sm">{EXTENSION_DISPLAY_NAME}</CardTitle>
             <CardDescription className="text-xs leading-relaxed">
-              End-to-end encrypted tasks, contacts, notes, and links (read-only
-              in this extension). Decryption happens only in your browser after
-              passkey unlock.
+              End-to-end encrypted tasks, contacts, notes, links, and folders.
+              Create, view, edit, and delete from this popup after passkey
+              unlock; decryption happens only in your browser.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-muted-foreground flex flex-col gap-3 p-3 pt-0 text-xs leading-relaxed">
@@ -155,7 +153,8 @@ export function AboutTab({
                 extension only.
               </li>
               <li>
-                Browse read-only lists; open the web app for full editing.
+                Browse and edit encrypted records here, or open the web app for
+                advanced workflows.
               </li>
             </ul>
 

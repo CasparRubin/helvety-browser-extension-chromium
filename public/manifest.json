@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Helvety",
-  "description": "Helvety end-to-end encrypted tasks, contacts, notes, and links",
-  "version": "0.2.0",
+  "description": "Helvety E2EE tasks, notes, contacts, links, and folders — manage them in the popup after passkey unlock",
+  "version": "0.3.0",
   "homepage_url": "https://helvety.com",
   "icons": {
     "16": "icons/icon-16.png",

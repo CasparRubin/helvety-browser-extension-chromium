@@ -4,18 +4,14 @@ import { Loader2, Lock, LogOut } from "lucide-react";
 
 import { PopupHeader } from "../components/PopupHeader";
 
-/**
- *
- */
+/** Supabase `user_passkey_params` preflight shown on the unlock screen. */
 export type ParamsPreflight =
   | { status: "loading" }
   | { status: "ready" }
   | { status: "not_setup" }
   | { status: "error"; message: string };
 
-/**
- *
- */
+/** Passkey unlock screen after OTP sign-in (before decrypted data is available). */
 export function UnlockView({
   version,
   sessionEmail,
@@ -55,9 +51,9 @@ export function UnlockView({
         <CardHeader className="p-3 pb-2">
           <p className="text-sm font-medium">Unlock encryption</p>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Use your Helvety passkey to decrypt tasks, notes, contacts, and
-            links in this browser. See the About tab for E2EE and WebAuthn setup
-            details.
+            Use your Helvety passkey to decrypt and manage tasks, notes,
+            contacts, links, and folders in this browser. See the About tab for
+            E2EE and WebAuthn setup details.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 p-3 pt-0">

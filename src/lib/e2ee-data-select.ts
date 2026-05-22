@@ -1,14 +1,31 @@
 /**
- * E2EE-oriented list reads
+ * E2EE-oriented Supabase `.select(...)` projections.
  *
- * Keep Supabase `.select(...)` limited to ciphertext fields needed for the UI plus
- * stable row ids. Avoid widening to `*` on entity tables — schema changes could
- * add non-E2EE columns. Passkey params use `PASSKEY_PARAMS_SELECT` separately.
- *
- * List decryption runs in the extension (`decrypt-entities.ts`) after unlock.
+ * Entity content is only ever read from `encrypted_*` columns. Structural
+ * metadata (category, stage, folder, priority) is plaintext by design — see
+ * `e2ee-privacy.ts` and `docs/SECURITY-E2EE.md`.
+ * Avoid `*` on entity tables.
  */
+
 export const TASK_LIST_SELECT = "id, encrypted_title" as const;
 export const NOTE_LIST_SELECT = "id, encrypted_title" as const;
 export const CONTACT_LIST_SELECT =
   "id, encrypted_first_name, encrypted_last_name" as const;
 export const LINK_LIST_SELECT = "id, encrypted_name" as const;
+export const LINK_FOLDER_LIST_SELECT =
+  "id, encrypted_name, parent_folder_id" as const;
+
+export const TASK_DETAIL_SELECT =
+  "id, user_id, encrypted_title, encrypted_description, encrypted_start_date, encrypted_end_date, stage_id, label_id, priority, sort_order, created_at, updated_at" as const;
+
+export const NOTE_DETAIL_SELECT =
+  "id, user_id, encrypted_title, encrypted_description, category_id, sort_order, created_at, updated_at" as const;
+
+export const CONTACT_DETAIL_SELECT =
+  "id, user_id, encrypted_first_name, encrypted_last_name, encrypted_description, encrypted_email, encrypted_phone, encrypted_birthday, encrypted_notes, category_id, sort_order, created_at, updated_at" as const;
+
+export const LINK_DETAIL_SELECT =
+  "id, user_id, encrypted_name, encrypted_url, folder_id, sort_order, created_at, updated_at" as const;
+
+export const LINK_FOLDER_DETAIL_SELECT =
+  "id, user_id, encrypted_name, parent_folder_id, sort_order, created_at, updated_at" as const;

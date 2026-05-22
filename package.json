@@ -1,9 +1,9 @@
 {
   "name": "helvety-browser-extension-chromium",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Helvety Chromium extension — E2EE tasks, contacts, notes, and links",
+  "description": "Helvety Chromium extension — E2EE CRUD for tasks, notes, contacts, links, and link folders",
   "scripts": {
     "preinstall": "node scripts/ensure-helvety.mjs",
     "dev": "vite",

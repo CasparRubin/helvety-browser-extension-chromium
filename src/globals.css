@@ -45,3 +45,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Compact TipTap in the 320px extension popup */
+.entity-rich-text-editor .tiptap {
+  min-height: 6rem !important;
+  max-height: 8.75rem;
+  overflow-y: auto;
+}

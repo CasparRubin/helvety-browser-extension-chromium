@@ -1,6 +1,11 @@
 # Build
 dist/
 node_modules/
+
+# Secrets (extension uses public client config in src/lib/config.ts only)
+.env
+.env.*
+!.env.example
 *.zip
 
 # Fetched by scripts/ensure-helvety.mjs when ../helvety is not present

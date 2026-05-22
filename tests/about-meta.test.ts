@@ -8,6 +8,7 @@ import {
   DEVELOPER_NAME,
   DEVELOPER_URL,
   EXTENSION_DISPLAY_NAME,
+  EXTENSION_MANIFEST_DESCRIPTION,
 } from "../src/popup/about-meta";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,13 +17,25 @@ describe("about-meta", () => {
   it("EXTENSION_DISPLAY_NAME matches manifest.json name", () => {
     const manifest = JSON.parse(
       readFileSync(join(repoRoot, "public", "manifest.json"), "utf8")
-    ) as { name: string };
+    ) as { name: string; description: string };
     expect(EXTENSION_DISPLAY_NAME).toBe(manifest.name);
+    expect(EXTENSION_MANIFEST_DESCRIPTION).toBe(manifest.description);
   });
 
   it("developer constants match About tab copy", () => {
     expect(DEVELOPER_NAME).toBe("Helvety");
     expect(DEVELOPER_URL).toBe("https://helvety.com");
     expect(EXTENSION_DISPLAY_NAME).toBe("Helvety");
+  });
+
+  it("About tab describes CRUD and E2EE (not read-only)", () => {
+    const aboutSource = readFileSync(
+      join(repoRoot, "src/popup/views/AboutTab.tsx"),
+      "utf8"
+    );
+    expect(aboutSource).toMatch(/Create, view, edit, and delete/i);
+    expect(aboutSource).toMatch(/decryption happens only in your browser/i);
+    expect(aboutSource).not.toMatch(/read-only MVP/i);
+    expect(aboutSource).not.toMatch(/lists? only/i);
   });
 });
