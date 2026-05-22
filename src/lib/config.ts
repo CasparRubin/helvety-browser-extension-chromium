@@ -26,8 +26,29 @@
  * security if shipped inside an extension bundle.
  */
 
-/** Production auth zone (`basePath` /auth on helvety.com). Public URL. */
-export const HELVETY_AUTH_ORIGIN = "https://helvety.com/auth";
+/** Default production auth zone (`basePath` /auth on helvety.com). Public URL. */
+export const DEFAULT_HELVETY_AUTH_ORIGIN = "https://helvety.com/auth";
+
+/**
+ * Resolves auth API base from optional `VITE_HELVETY_AUTH_ORIGIN` (trailing slash stripped).
+ */
+export function resolveHelvetyAuthOrigin(
+  viteOrigin: string | undefined
+): string {
+  const trimmed = viteOrigin?.trim();
+  if (!trimmed) {
+    return DEFAULT_HELVETY_AUTH_ORIGIN;
+  }
+  return trimmed.replace(/\/$/, "");
+}
+
+/**
+ * Auth API base. Override at build time with `VITE_HELVETY_AUTH_ORIGIN`
+ * (e.g. `http://localhost:3001/auth` for local gateway testing).
+ */
+export const HELVETY_AUTH_ORIGIN = resolveHelvetyAuthOrigin(
+  import.meta.env.VITE_HELVETY_AUTH_ORIGIN as string | undefined
+);
 
 /** Production gateway for “Open in web” tab links. Public URL. */
 export const HELVETY_GATEWAY = "https://helvety.com";
@@ -47,18 +68,24 @@ export const HELVETY_SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_ka1d0vKVzXnRWFVIMVhVGQ_5nZiseNI";
 
 /**
- * Bearer JSON routes the extension expects on the deployed auth app (`HELVETY_AUTH_ORIGIN`).
- * Path constants only (not secrets). Passkey unlock fails until these exist on production (404 today).
+ * Legacy path constant (documented for auth deploy). PRF params are read via Supabase,
+ * not this route — see `extension-passkey-params.ts`.
  */
 export const EXTENSION_PASSKEY_PARAMS_PATH =
   "/api/extension/encryption/passkey-params" as const;
+
+/**
+ * Bearer JSON routes for WebAuthn unlock on `HELVETY_AUTH_ORIGIN`.
+ * Implemented in monorepo `apps/auth` on `main`; unlock shows a clear error until
+ * production auth is redeployed with these routes (404/HTML before deploy).
+ */
 export const EXTENSION_PASSKEY_OPTIONS_PATH =
   "/api/extension/passkey/options" as const;
 export const EXTENSION_PASSKEY_VERIFY_PATH =
   "/api/extension/passkey/verify" as const;
 
+/** Runtime auth HTTP routes used by passkey unlock (options + verify only). */
 export const EXTENSION_AUTH_API_PATHS = [
-  EXTENSION_PASSKEY_PARAMS_PATH,
   EXTENSION_PASSKEY_OPTIONS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
 ] as const;

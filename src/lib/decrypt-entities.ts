@@ -12,42 +12,32 @@ import {
  * PostgREST as plaintext — future writes should use ciphertext (or a reviewed API).
  */
 
-/**
- *
- */
+/** Task row fields returned by `TASK_LIST_SELECT`. */
 export interface TaskEncryptedRow {
   id: string;
   encrypted_title: string;
 }
 
-/**
- *
- */
+/** Note row fields returned by `NOTE_LIST_SELECT`. */
 export interface NoteEncryptedRow {
   id: string;
   encrypted_title: string;
 }
 
-/**
- *
- */
+/** Contact row fields returned by `CONTACT_LIST_SELECT`. */
 export interface ContactEncryptedRow {
   id: string;
   encrypted_first_name: string;
   encrypted_last_name: string;
 }
 
-/**
- *
- */
+/** Link row fields returned by `LINK_LIST_SELECT`. */
 export interface LinkEncryptedRow {
   id: string;
   encrypted_name: string;
 }
 
-/**
- *
- */
+/** Decrypts a task title using the `items` table AAD. */
 export async function decryptTaskTitle(
   row: TaskEncryptedRow,
   key: CryptoKey
@@ -56,9 +46,7 @@ export async function decryptTaskTitle(
   return decrypt(parseEncryptedData(row.encrypted_title), key, aad);
 }
 
-/**
- *
- */
+/** Decrypts a note title using the `notes` table AAD. */
 export async function decryptNoteTitle(
   row: NoteEncryptedRow,
   key: CryptoKey
@@ -67,9 +55,7 @@ export async function decryptNoteTitle(
   return decrypt(parseEncryptedData(row.encrypted_title), key, aad);
 }
 
-/**
- *
- */
+/** Decrypts contact first + last name and joins with a space. */
 export async function decryptContactLabel(
   row: ContactEncryptedRow,
   key: CryptoKey
@@ -88,9 +74,7 @@ export async function decryptContactLabel(
   return `${first} ${last}`.trim();
 }
 
-/**
- *
- */
+/** Decrypts a link display name using the `links` table AAD. */
 export async function decryptLinkName(
   row: LinkEncryptedRow,
   key: CryptoKey

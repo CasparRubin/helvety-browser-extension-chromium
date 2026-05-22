@@ -26,17 +26,21 @@ import {
   NOTE_LIST_SELECT,
   TASK_LIST_SELECT,
 } from "./lib/e2ee-data-select";
+import { fetchPasskeyParamsForUser } from "./lib/extension-passkey-params";
 import { createExtensionSupabaseClient } from "./lib/extension-supabase";
 import { unlockEncryptionWithPasskey } from "./lib/passkey-unlock";
 
-/**
- *
- */
+/** Popup list tabs (read-only MVP). */
 type TabId = "tasks" | "notes" | "contacts" | "links";
 
-/**
- *
- */
+/** Preflight status for encryption params before unlock (explains missing QR). */
+type ParamsPreflight =
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "not_setup" }
+  | { status: "error"; message: string };
+
+/** Root popup: OTP sign-in, passkey unlock, read-only E2EE lists. */
 function App() {
   const supabase = useMemo(() => createExtensionSupabaseClient(), []);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -51,6 +55,8 @@ function App() {
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
   const [cryptoBusy, setCryptoBusy] = useState(false);
   const [cryptoError, setCryptoError] = useState<string | null>(null);
+  const [paramsPreflight, setParamsPreflight] =
+    useState<ParamsPreflight | null>(null);
 
   const [tab, setTab] = useState<TabId>("tasks");
   const [listBusy, setListBusy] = useState(false);
@@ -96,6 +102,33 @@ function App() {
       setMasterKey(key);
     })();
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !accessToken || masterKey) {
+      setParamsPreflight(null);
+      return;
+    }
+    let cancelled = false;
+    setParamsPreflight({ status: "loading" });
+    void (async () => {
+      const result = await fetchPasskeyParamsForUser(supabase, userId);
+      if (cancelled) {
+        return;
+      }
+      if (!result.ok) {
+        setParamsPreflight({ status: "error", message: result.error });
+        return;
+      }
+      if (!result.params) {
+        setParamsPreflight({ status: "not_setup" });
+        return;
+      }
+      setParamsPreflight({ status: "ready" });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, accessToken, masterKey, supabase]);
 
   const handleSendOtp = async () => {
     setAuthError(null);
@@ -152,8 +185,26 @@ function App() {
     }
     setCryptoError(null);
     setCryptoBusy(true);
+    setParamsPreflight({ status: "loading" });
     try {
-      const result = await unlockEncryptionWithPasskey({ accessToken, userId });
+      const preflight = await fetchPasskeyParamsForUser(supabase, userId);
+      if (!preflight.ok) {
+        setParamsPreflight({ status: "error", message: preflight.error });
+        setCryptoError(preflight.error);
+        return;
+      }
+      if (!preflight.params) {
+        setParamsPreflight({ status: "not_setup" });
+        setCryptoError("Encryption is not set up for this account.");
+        return;
+      }
+      setParamsPreflight({ status: "ready" });
+
+      const result = await unlockEncryptionWithPasskey({
+        supabase,
+        accessToken,
+        userId,
+      });
       if (!result.ok) {
         setCryptoError(result.error);
         return;
@@ -286,9 +337,10 @@ function App() {
           <h1 className="text-lg font-semibold tracking-tight">Helvety</h1>
           <p className="text-muted-foreground text-sm">
             Sign in with email and a one-time code (Supabase Auth — same project
-            as helvety.com). After sign-in, unlock with your passkey via{" "}
+            as helvety.com). After sign-in, unlock encryption with your passkey;
+            PRF params load from Supabase, and WebAuthn options/verify use{" "}
             <span className="font-mono text-xs">{HELVETY_AUTH_ORIGIN}</span>{" "}
-            (requires extension API routes on that host).
+            when those routes are deployed.
           </p>
         </div>
         <Card>
@@ -380,11 +432,24 @@ function App() {
           <CardContent className="flex flex-col gap-3">
             <p className="text-muted-foreground text-sm">
               Use your Helvety passkey (PRF) to derive the master key—the same
-              E2EE pattern as the web apps. The auth server at{" "}
+              E2EE pattern as the web apps. A phone QR code appears only after
+              encryption params load from Supabase and the passkey API at{" "}
               <span className="font-mono text-xs">{HELVETY_AUTH_ORIGIN}</span>{" "}
-              must expose the extension passkey API; if those routes are
-              missing, unlock will fail.
+              returns WebAuthn options plus a signed challenge (requires auth
+              redeploy with extension routes on production).
             </p>
+            {paramsPreflight ? (
+              <p className="text-muted-foreground text-xs">
+                Encryption params:{" "}
+                {paramsPreflight.status === "loading"
+                  ? "checking…"
+                  : paramsPreflight.status === "ready"
+                    ? "ready"
+                    : paramsPreflight.status === "not_setup"
+                      ? "not set up on this account"
+                      : `cannot load: ${paramsPreflight.message}`}
+              </p>
+            ) : null}
             <Button disabled={cryptoBusy} onClick={() => void handleUnlock()}>
               {cryptoBusy ? (
                 <>

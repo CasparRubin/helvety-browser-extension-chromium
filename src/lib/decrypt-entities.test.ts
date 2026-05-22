@@ -17,9 +17,7 @@ const NOTE_ID = "22222222-2222-4222-8222-222222222222";
 const CONTACT_ID = "33333333-3333-4333-8333-333333333333";
 const LINK_ID = "44444444-4444-4444-8444-444444444444";
 
-/**
- *
- */
+/** AES-256-GCM test key for encrypt/decrypt roundtrips. */
 async function aes256GcmKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
     "encrypt",

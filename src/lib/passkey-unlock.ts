@@ -12,45 +12,42 @@ import { startAuthentication } from "@simplewebauthn/browser";
 
 import {
   EXTENSION_PASSKEY_OPTIONS_PATH,
-  EXTENSION_PASSKEY_PARAMS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
   getExtensionOrigin,
 } from "./config";
+import { fetchPasskeyParamsForUser } from "./extension-passkey-params";
 import { helvetyAuthFetch } from "./helvety-auth-api";
+import { logUnlockFailure } from "./unlock-dev-log";
 
-import type { UserPasskeyParams } from "@helvety/shared/types/entities";
+import type { ExtensionSupabaseClient } from "./extension-supabase";
 import type { PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
 
-/**
- *
- */
-type OptionsPayload = {
-  optionsJSON: PublicKeyCredentialRequestOptionsJSON;
+/** Auth options response: WebAuthn JSON plus signed server challenge envelope. */
+type ExtensionPasskeyOptionsPayload = {
+  options: PublicKeyCredentialRequestOptionsJSON;
   challengeEnvelope: string;
 };
 
 /**
- * WebAuthn + PRF unlock via `EXTENSION_*_PATH` on `HELVETY_AUTH_ORIGIN`.
- * Fails if those routes are not deployed (404 on production today).
- * Verify omits `clientExtensionResults`; PRF derives the master key locally (KCV when present).
+ * WebAuthn + PRF unlock: PRF params via Supabase (`fetchPasskeyParamsForUser`);
+ * options/verify via Bearer routes on `HELVETY_AUTH_ORIGIN` when deployed.
+ * Verify sends `challengeEnvelope` from options (no httpOnly cookie); PRF stays client-side.
  */
 export async function unlockEncryptionWithPasskey(input: {
+  supabase: ExtensionSupabaseClient;
   accessToken: string;
   userId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { accessToken, userId } = input;
+  const { supabase, accessToken, userId } = input;
   const origin = getExtensionOrigin();
 
-  const paramsResult = await helvetyAuthFetch<UserPasskeyParams | null>(
-    EXTENSION_PASSKEY_PARAMS_PATH,
-    { method: "GET", accessToken }
-  );
-  if (!paramsResult.success) {
+  const paramsResult = await fetchPasskeyParamsForUser(supabase, userId);
+  if (!paramsResult.ok) {
     return { ok: false, error: paramsResult.error };
   }
-  const passkeyParams = paramsResult.data;
+  const passkeyParams = paramsResult.params;
 
-  const optionsResult = await helvetyAuthFetch<OptionsPayload>(
+  const optionsResult = await helvetyAuthFetch<ExtensionPasskeyOptionsPayload>(
     EXTENSION_PASSKEY_OPTIONS_PATH,
     {
       method: "POST",
@@ -58,11 +55,28 @@ export async function unlockEncryptionWithPasskey(input: {
       body: JSON.stringify({
         origin,
         isMobile: false,
+        expectedUserId: userId,
       }),
     }
   );
   if (!optionsResult.success) {
+    logUnlockFailure("passkey_options", {
+      error: optionsResult.error,
+      path: EXTENSION_PASSKEY_OPTIONS_PATH,
+    });
     return { ok: false, error: optionsResult.error };
+  }
+
+  const { options: webAuthnOptions, challengeEnvelope } = optionsResult.data;
+  if (!webAuthnOptions?.challenge || !challengeEnvelope) {
+    logUnlockFailure("passkey_options", {
+      reason: "invalid_options_payload",
+      path: EXTENSION_PASSKEY_OPTIONS_PATH,
+    });
+    return {
+      ok: false,
+      error: "Invalid passkey options from the Helvety auth server.",
+    };
   }
 
   let bootstrapSalt = getCachedPRFSalt();
@@ -79,7 +93,7 @@ export async function unlockEncryptionWithPasskey(input: {
   }
 
   const authOptions: PublicKeyCredentialRequestOptionsJSON = {
-    ...optionsResult.data.optionsJSON,
+    ...webAuthnOptions,
   };
 
   if (bootstrapSalt) {
@@ -112,6 +126,10 @@ export async function unlockEncryptionWithPasskey(input: {
             ? "Authentication timed out"
             : "Failed to authenticate with passkey"
         : "Failed to authenticate with passkey";
+    logUnlockFailure("webauthn", {
+      error: msg,
+      name: err instanceof Error ? err.name : undefined,
+    });
     return { ok: false, error: msg };
   }
 
@@ -129,17 +147,25 @@ export async function unlockEncryptionWithPasskey(input: {
       accessToken,
       body: JSON.stringify({
         origin,
-        challengeEnvelope: optionsResult.data.challengeEnvelope,
         credential: authResponseForServer,
+        challengeEnvelope,
       }),
     }
   );
 
   if (!verifyResult.success) {
+    logUnlockFailure("passkey_verify", {
+      error: verifyResult.error,
+      path: EXTENSION_PASSKEY_VERIFY_PATH,
+    });
     return { ok: false, error: verifyResult.error };
   }
 
   if (!bootstrapSalt) {
+    logUnlockFailure("passkey_params", {
+      reason: "no_prf_salt",
+      userId,
+    });
     return {
       ok: false,
       error: "Encryption is not set up for this account.",
@@ -153,6 +179,7 @@ export async function unlockEncryptionWithPasskey(input: {
     const prfOutput = clientExtResults?.prf?.results?.first;
 
     if (!prfOutput) {
+      logUnlockFailure("prf_derive", { reason: "no_prf_output" });
       return {
         ok: false,
         error:
@@ -160,13 +187,10 @@ export async function unlockEncryptionWithPasskey(input: {
       };
     }
 
-    const paramsAgain = await helvetyAuthFetch<UserPasskeyParams | null>(
-      EXTENSION_PASSKEY_PARAMS_PATH,
-      { method: "GET", accessToken }
-    );
+    const paramsAgain = await fetchPasskeyParamsForUser(supabase, userId);
     const actualSalt =
-      paramsAgain.success && paramsAgain.data?.prf_salt
-        ? paramsAgain.data.prf_salt
+      paramsAgain.ok && paramsAgain.params?.prf_salt
+        ? paramsAgain.params.prf_salt
         : null;
 
     const saltMatches = actualSalt
@@ -174,6 +198,7 @@ export async function unlockEncryptionWithPasskey(input: {
       : bootstrapSaltFromServer;
 
     if (!saltMatches) {
+      logUnlockFailure("prf_derive", { reason: "salt_mismatch" });
       return {
         ok: false,
         error: "PRF salt mismatch. Please try again.",
@@ -187,13 +212,14 @@ export async function unlockEncryptionWithPasskey(input: {
     const masterKey = await deriveKeyFromPRF(prfOutput, prfKeyParams);
 
     const keyCheckValue =
-      paramsAgain.success && paramsAgain.data
-        ? paramsAgain.data.key_check_value
+      paramsAgain.ok && paramsAgain.params
+        ? paramsAgain.params.key_check_value
         : null;
 
     if (keyCheckValue) {
       const isValidKey = await verifyKeyCheckValue(masterKey, keyCheckValue);
       if (!isValidKey) {
+        logUnlockFailure("prf_derive", { reason: "kcv_mismatch" });
         return {
           ok: false,
           error: "This passkey does not match your encryption key.",
@@ -204,10 +230,15 @@ export async function unlockEncryptionWithPasskey(input: {
     await storeMasterKey(userId, masterKey);
     return { ok: true };
   } catch (e) {
+    const message =
+      e instanceof Error ? e.message : "Failed to derive encryption key.";
+    logUnlockFailure("prf_derive", {
+      message,
+      name: e instanceof Error ? e.name : undefined,
+    });
     return {
       ok: false,
-      error:
-        e instanceof Error ? e.message : "Failed to derive encryption key.",
+      error: message,
     };
   }
 }

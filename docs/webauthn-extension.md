@@ -1,40 +1,86 @@
 # WebAuthn from the Helvety Chromium extension
 
-Developer notes for passkey unlock. For encryption boundaries, see [SECURITY-E2EE.md](./SECURITY-E2EE.md).
+Developer notes for passkey unlock. For encryption boundaries and what is (not) plaintext on servers, see [SECURITY-E2EE.md](./SECURITY-E2EE.md).
+
+Monorepo references point at [CasparRubin/helvety on GitHub](https://github.com/CasparRubin/helvety) (`main`). With a sibling checkout (`../helvety`), the same paths apply locally.
 
 ## Production status
 
-The extension calls three JSON routes under **`https://helvety.com/auth`** (see `EXTENSION_*_PATH` in `src/lib/config.ts`). **Those URLs currently return 404** on production auth. Passkey unlock in the popup will fail until the **deployed** Helvety auth service implements them.
+| Step                               | Status                                                                                                                                                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PRF params (`user_passkey_params`) | **Works** when signed in — extension reads via Supabase JWT ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)). Preflight: `ready` / `not set up` / `cannot load: …`.                                                 |
+| WebAuthn options / verify          | **Implemented** in monorepo (`apps/auth/app/api/extension/passkey/*`). **Production** unlock works after redeploying auth; until then the UI shows “Passkey API is not deployed on the Helvety auth server yet.” (404 or HTML from Next.js). |
 
-This repository does **not** ship or deploy server routes. Enabling unlock is an **auth deployment** change, not an extension-only change.
+This repo ships the **extension client**. Full unlock needs the live auth app at `HELVETY_AUTH_ORIGIN` to include those routes (same contract as `main`).
 
 ## Relying party (RP ID)
 
-Credentials are scoped to RP ID **`helvety.com`**, matching the production web apps. The extension uses `@simplewebauthn/browser` with `getExtensionOrigin()` (`chrome-extension://<runtime-id>`) as the WebAuthn client origin.
+Credentials use RP ID **`helvety.com`**, matching the web apps. The extension passes `getExtensionOrigin()` (`chrome-extension://<runtime-id>`) as the WebAuthn client origin on options/verify requests.
 
-Whether a credential created in the **browser on helvety.com** can be asserted from **`chrome-extension://…`** depends on **browser policy and allowlists**, not only on client code here. Plan device QA when you change packaging or auth configuration.
+Whether a passkey registered on **helvety.com** can be asserted from **`chrome-extension://…`** also depends on **browser policy** — plan device QA when packaging or auth config changes.
 
-## Server requirements (when enabling unlock)
+## Auth server contract (monorepo `main`)
 
-1. **HTTP routes** on the auth app (same path constants as `config.ts`):
-   - `GET /api/extension/encryption/passkey-params`
-   - `POST /api/extension/passkey/options`
-   - `POST /api/extension/passkey/verify`
-   - Bearer-authenticated JSON (`ActionResponse` shape — parsed by `parse-helvety-action-json.ts`).
+Extension unlock mirrors web passkey semantics; do not reinvent verification rules.
 
-2. **WebAuthn origin allowlist** on verify: production auth must treat `chrome-extension://<your-extension-id>` as an expected origin alongside `https://helvety.com`. Unpacked dev builds and store builds usually have **different** extension IDs—allowlist each one you support.
+| Extension client step | Monorepo reference                                                                                                                             | Notes                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-in               | Supabase Auth OTP ([`extension-supabase.ts`](../src/lib/extension-supabase.ts))                                                                | Session in `chrome.storage.local`                                                                                                |
+| PRF params            | [`fetchUserPasskeyParamsForUser`](https://github.com/CasparRubin/helvety/blob/main/packages/shared/src/user-passkey-params-db.ts)              | PostgREST under RLS — **no** `GET …/encryption/passkey-params` at runtime                                                        |
+| WebAuthn options      | [`POST /api/extension/passkey/options`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/app/api/extension/passkey/options/route.ts) | Bearer + `{ origin, isMobile, expectedUserId }` → `data: { options, challengeEnvelope }` (HMAC-signed challenge, 3 min TTL)      |
+| WebAuthn verify       | [`POST /api/extension/passkey/verify`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/app/api/extension/passkey/verify/route.ts)   | Bearer + `{ origin, credential, challengeEnvelope }`; envelope must match assertion challenge; **does not** replace OTP session  |
+| PRF derive + KCV      | [`use-login-flow.ts`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/hooks/use-login-flow.ts) (PRF section)                        | Extension: [`passkey-unlock.ts`](../src/lib/passkey-unlock.ts) + `@helvety/shared` crypto — PRF output never in verify JSON body |
 
-3. **No monorepo checkout required** for extension users; operators configure the **running** auth deployment.
+### Deploy checklist (production auth)
+
+After merging/redeploying `apps/auth`:
+
+1. `POST /api/extension/passkey/options` returns JSON `ActionResponse` with `data.options` (WebAuthn) and `data.challengeEnvelope` (not flat options at the top level).
+2. `POST /api/extension/passkey/verify` accepts `challengeEnvelope` from step 1; uses [`extension-passkey-challenge.ts`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/lib/extension-passkey-challenge.ts) (same signing secret as web challenge cookies), not httpOnly cookies.
+3. `getExpectedOrigins(rpId, origin)` includes caller `chrome-extension://<id>` ([`auth-rp-config.ts`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/app/actions/auth-rp-config.ts)); unpacked vs store extension IDs differ.
+4. Desktop extension: `hints: ["hybrid"]` when `isMobile: false`.
+5. Local extension build: `VITE_HELVETY_AUTH_ORIGIN=http://localhost:3001/auth pnpm build`.
 
 ## Ceremony flow (client)
 
-Auth base: **`HELVETY_AUTH_ORIGIN`** (`https://helvety.com/auth`).
+Auth base: **`HELVETY_AUTH_ORIGIN`** (default `https://helvety.com/auth`; override with `VITE_HELVETY_AUTH_ORIGIN` at build time).
 
-1. User signs in with **Supabase Auth** (email OTP); session is stored in `chrome.storage.local` (`extension-supabase.ts`).
-2. `GET …/encryption/passkey-params` — PRF-related parameters for the user.
-3. `POST …/passkey/options` — WebAuthn request options and signed challenge envelope.
-4. Extension runs `startAuthentication` (PRF inputs merged like the web login flow when params exist).
-5. `POST …/passkey/verify` — assertion verification and counter update. Does **not** create a new Supabase session.
-6. Extension derives the master key from PRF output, checks KCV when present, caches via `@helvety/shared/crypto/key-storage` (IndexedDB in the extension context).
+1. Email OTP sign-in — session in `chrome.storage.local` ([`extension-supabase.ts`](../src/lib/extension-supabase.ts)).
+2. **Supabase** — `user_passkey_params` via `PASSKEY_PARAMS_SELECT` ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)); `auth.getSession()` before the query.
+3. `POST …/passkey/options` — receive `options` + `challengeEnvelope`; run `startAuthentication` with PRF extensions when params exist.
+4. `POST …/passkey/verify` — send assertion + `challengeEnvelope`; server verifies WebAuthn and updates counter only (no new Supabase session).
+5. Derive master key from PRF locally; verify KCV when present; cache via `@helvety/shared/crypto/key-storage` (IndexedDB in the extension origin).
 
-Bearer tokens are sent only to these auth routes over HTTPS.
+Bearer tokens go only to auth passkey routes over HTTPS. List rows use Supabase under RLS with ciphertext projections only.
+
+Dev builds log unlock/auth issues as `[helvety-unlock]` / `[helvety-auth]`; production builds do not.
+
+## Troubleshooting: params errors or no QR
+
+Unlock stops before the passkey UI (QR, phone, security key) when an earlier step fails. Preflight shows `Encryption params: ready | not set up | cannot load: …`.
+
+### Causal chain
+
+1. **Supabase** — `user_passkey_params` with the signed-in JWT.
+2. **Auth** — `POST …/api/extension/passkey/options` → JSON with `data.options` and `data.challengeEnvelope` (desktop: `hints: ["hybrid"]` when supported).
+3. **WebAuthn** — `startAuthentication` → OS/browser passkey UI.
+
+Step 1 failure → params error, no QR. Step 2 **404/HTML** or missing envelope → “Passkey API is not deployed…” or “Invalid passkey options…”, no QR. MSN/scorecard `ERR_BLOCKED_BY_CLIENT` on Edge new-tab pages is unrelated.
+
+### Manual check (popup DevTools → Network)
+
+On **Unlock with passkey**:
+
+- `…supabase.co/rest/v1/user_passkey_params` — 200 + row or empty (not set up).
+- `…helvety.com/auth/api/extension/passkey/options` — 200 JSON with `options` + `challengeEnvelope` after auth redeploy.
+
+| Symptom                                        | Likely cause                       | What to do                                                                 |
+| ---------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `cannot load:` + blocked network               | Ad blocker / privacy extension     | Allow `*.supabase.co`                                                      |
+| Session / JWT errors                           | Stale session                      | Sign out and sign in again                                                 |
+| `not readable for this session`                | RLS                                | Confirm `auth.uid() = user_id` (web works → data exists)                   |
+| `ready` + API not deployed                     | Auth not redeployed                | Redeploy `apps/auth` from `main`                                           |
+| `Invalid passkey options from the auth server` | Old auth build or wrong JSON shape | Redeploy auth; response must be `{ options, challengeEnvelope }`, not flat |
+| Params `ready`, options OK, still no QR        | WebAuthn / hybrid unsupported      | Check `hints`; dev console `[helvety-unlock]`                              |
+
+**Note:** E2EE on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per origin (`https://helvety.com` vs `chrome-extension://…`).
