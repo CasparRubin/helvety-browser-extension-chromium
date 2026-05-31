@@ -9,6 +9,7 @@ node_modules/
 *.zip
 
 # Fetched by scripts/ensure-helvety.mjs when ../helvety is not present
+.helvety
 .helvety/
 
 # OS

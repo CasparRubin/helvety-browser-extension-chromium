@@ -10,7 +10,7 @@ const SAFE_UNLOCK_LOG_KEYS = new Set([
 ]);
 
 /**
- * Logs unlock diagnostics in development builds only (popup DevTools → `[helvety-unlock]`).
+ * Logs unlock diagnostics in development builds only (side panel DevTools → `[helvety-unlock]`).
  * Production builds omit all console output from this helper.
  */
 export function logUnlockFailure(

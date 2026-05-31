@@ -4,7 +4,7 @@ import { EXTENSION_DISPLAY_NAME } from "../about-meta";
 
 import { EXTENSION_ICON_URL } from "./ExtensionMark";
 
-/** Shared popup chrome: extension icon, product name, optional version. */
+/** Shared side panel chrome: extension icon, product name, optional version. */
 export function PopupHeader({ version }: { version?: string }) {
   return (
     <PopupHeaderBase

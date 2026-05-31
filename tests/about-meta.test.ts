@@ -22,20 +22,27 @@ describe("about-meta", () => {
     expect(EXTENSION_MANIFEST_DESCRIPTION).toBe(manifest.description);
   });
 
+  it("manifest description references the side panel (not popup)", () => {
+    expect(EXTENSION_MANIFEST_DESCRIPTION).toMatch(/side panel/i);
+    expect(EXTENSION_MANIFEST_DESCRIPTION).not.toMatch(/\bpopup\b/i);
+  });
+
   it("developer constants match About tab copy", () => {
     expect(DEVELOPER_NAME).toBe("Helvety");
     expect(DEVELOPER_URL).toBe("https://helvety.com");
     expect(EXTENSION_DISPLAY_NAME).toBe("Helvety");
   });
 
-  it("About tab describes CRUD and E2EE (not read-only)", () => {
+  it("About tab describes CRUD, E2EE, and side panel (not read-only)", () => {
     const aboutSource = readFileSync(
       join(repoRoot, "src/popup/views/AboutTab.tsx"),
       "utf8"
     );
     expect(aboutSource).toMatch(/Create, view, edit, and delete/i);
     expect(aboutSource).toMatch(/decryption happens only in your browser/i);
+    expect(aboutSource).toMatch(/side panel/i);
     expect(aboutSource).not.toMatch(/read-only MVP/i);
     expect(aboutSource).not.toMatch(/lists? only/i);
+    expect(aboutSource).not.toMatch(/\bthis popup\b/i);
   });
 });

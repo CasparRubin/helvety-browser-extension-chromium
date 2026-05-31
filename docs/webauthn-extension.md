@@ -67,7 +67,7 @@ Unlock stops before the passkey UI (QR, phone, security key) when an earlier ste
 
 Step 1 failure → params error, no QR. Step 2 **404/HTML** or missing envelope → “Passkey API is not deployed…” or “Invalid passkey options…”, no QR. MSN/scorecard `ERR_BLOCKED_BY_CLIENT` on Edge new-tab pages is unrelated.
 
-### Manual check (popup DevTools → Network)
+### Manual check (side panel DevTools → Network)
 
 On **Unlock with passkey**:
 

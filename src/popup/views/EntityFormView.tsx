@@ -37,7 +37,7 @@ export type EntityFormDraft =
   | { kind: "link_folder"; value: LinkFolderInput };
 
 /**
- * Create / edit form for one entity kind inside the popup shell.
+ * Create / edit form for one entity kind inside the side panel shell.
  */
 export function EntityFormView({
   kind,

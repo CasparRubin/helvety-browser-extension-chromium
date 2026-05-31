@@ -5,7 +5,7 @@ What this extension is **designed** to do and what it **does not** guarantee. Sa
 Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
 URLs and API path constants: **`src/lib/config.ts`**.  
-Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body), **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP).
+Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body), **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel).
 
 ## Privacy summary
 
@@ -24,7 +24,7 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 ## Plaintext on servers (by design)
 
-**Entity content** (task/note/contact/link **text**) is **not** sent to Helvety or Supabase as plaintext by this extension. Reads use **ciphertext columns** from `e2ee-data-select.ts`; decryption runs in the popup.
+**Entity content** (task/note/contact/link **text**) is **not** sent to Helvety or Supabase as plaintext by this extension. Reads use **ciphertext columns** from `e2ee-data-select.ts`; decryption runs in the side panel.
 
 **Allowed on infrastructure** (aligned with helvety.com web apps):
 
@@ -62,7 +62,7 @@ Passkey unlock params: `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts` 
 
 ### Decrypt
 
-`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with per-table AAD (`items`, `notes`, `contacts`, `links`, `link_folders`). Plaintext exists in extension memory and React state while unlocked. Sign-out clears the cached master key (`deleteMasterKey`) and wipes decrypted list/detail/form state in the popup (`App.tsx` `clearDecryptedEntityState`). The same wipe runs when `user_id` changes so another account never sees the previous user’s in-memory rows before the next fetch.
+`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with per-table AAD (`items`, `notes`, `contacts`, `links`, `link_folders`). Plaintext exists in extension memory and React state while unlocked. Sign-out clears the cached master key (`deleteMasterKey`) and wipes decrypted list/detail/form state in the side panel (`App.tsx` `clearDecryptedEntityState`). The same wipe runs when `user_id` changes so another account never sees the previous user’s in-memory rows before the next fetch.
 
 **Limitation:** malware, a tampered build, or a debugger can read memory. “Client-side only” means **not sent as plaintext over the network by this code**, not “unextractable on a hostile machine.”
 
@@ -105,13 +105,14 @@ Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.
 
 ## Extension surface
 
-| Surface            | Data handling                                                           |
-| ------------------ | ----------------------------------------------------------------------- |
-| MV3 `permissions`  | `storage` only                                                          |
-| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                   |
-| `background.js`    | Empty service worker — no entity I/O                                    |
-| About tab          | Version, extension id, auth origin — **no** access tokens or OTP in DOM |
-| Production console | No unlock diagnostics (`import.meta.env.DEV` gates logging)             |
+| Surface            | Data handling                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| MV3 `permissions`  | `storage`, `sidePanel`                                                                         |
+| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                                          |
+| `side_panel`       | Global panel at `index.html`; toolbar icon opens it (`background.js` `openPanelOnActionClick`) |
+| `background.js`    | Side panel open behavior only — no entity I/O or auth ceremony                                 |
+| About tab          | Version, extension id, auth origin — **no** access tokens or OTP in DOM                        |
+| Production console | No unlock diagnostics (`import.meta.env.DEV` gates logging)                                    |
 
 ## Helvety vs infrastructure
 

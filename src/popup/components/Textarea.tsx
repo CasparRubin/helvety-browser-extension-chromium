@@ -1,7 +1,7 @@
 import { cn } from "@helvety/shared/utils";
 
 /**
- * Multi-line field styled like @helvety/ui Input for the narrow popup shell.
+ * Multi-line field styled like @helvety/ui Input for the side panel shell.
  */
 export function Textarea({
   className,

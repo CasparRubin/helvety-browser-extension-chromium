@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Helvety",
-  "description": "Helvety E2EE tasks, notes, contacts, links, and folders — manage them in the popup after passkey unlock",
-  "version": "0.3.0",
+  "description": "Helvety E2EE tasks, notes, contacts, links, and folders — manage them in the side panel after passkey unlock",
+  "version": "0.4.0",
+  "minimum_chrome_version": "114",
   "homepage_url": "https://helvety.com",
   "icons": {
     "16": "icons/icon-16.png",
@@ -10,15 +11,17 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "sidePanel"],
   "host_permissions": [
     "https://*.supabase.co/*",
     "https://helvety.com/*",
     "https://*.helvety.com/*"
   ],
   "action": {
-    "default_popup": "index.html",
     "default_title": "Helvety"
+  },
+  "side_panel": {
+    "default_path": "index.html"
   },
   "background": {
     "service_worker": "background.js",

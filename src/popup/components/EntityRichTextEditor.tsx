@@ -14,7 +14,7 @@ const TiptapEditor = lazy(() =>
 );
 
 /**
- * TipTap field for the extension popup (task/note description, contact notes).
+ * TipTap field for the extension side panel (task/note description, contact notes).
  */
 export function EntityRichTextEditor({
   value,

@@ -312,7 +312,10 @@ export function DataTabsView({
       >
         {entityPanel("links")}
       </TabsContent>
-      <TabsContent value="about" className="mt-2 outline-none">
+      <TabsContent
+        value="about"
+        className="mt-2 flex min-h-0 flex-1 flex-col outline-none"
+      >
         <AboutTab
           themePreference={themePreference}
           onSaveTheme={onSaveTheme}

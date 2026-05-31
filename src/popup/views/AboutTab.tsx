@@ -3,10 +3,7 @@ import {
   readExtensionVersion,
 } from "@helvety/extension-chrome/extension-version";
 import { HelvetyMark } from "@helvety/extension-chrome/helvety-mark";
-import {
-  popupChoiceRowClass,
-  TAB_PANEL_CLASS,
-} from "@helvety/extension-chrome/popup-shell";
+import { popupChoiceRowClass } from "@helvety/extension-chrome/popup-shell";
 import {
   Card,
   CardContent,
@@ -66,14 +63,14 @@ export function AboutTab({
             : "—";
 
   return (
-    <div className={TAB_PANEL_CLASS}>
+    <div className="popup-tab-scroll min-h-0 flex-1 [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto pr-1">
       <div className="pr-2">
         <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="flex flex-col gap-1 p-3 pb-2">
             <CardTitle className="text-sm">{EXTENSION_DISPLAY_NAME}</CardTitle>
             <CardDescription className="text-xs leading-relaxed">
               End-to-end encrypted tasks, contacts, notes, links, and folders.
-              Create, view, edit, and delete from this popup after passkey
+              Create, view, edit, and delete from this side panel after passkey
               unlock; decryption happens only in your browser.
             </CardDescription>
           </CardHeader>
@@ -239,8 +236,8 @@ export function AboutTab({
 
             {import.meta.env.DEV ? (
               <p className="text-muted-foreground text-[11px]">
-                Development build: unlock diagnostics log to the popup DevTools
-                console as{" "}
+                Development build: unlock diagnostics log to the side panel
+                DevTools console as{" "}
                 <code className="bg-muted rounded-none px-0.5 text-[10px]">
                   [helvety-unlock]
                 </code>

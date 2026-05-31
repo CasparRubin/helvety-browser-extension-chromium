@@ -1,4 +1,4 @@
-/** Fixed catalog entry for selects in the extension popup. */
+/** Fixed catalog entry for selects in the extension side panel. */
 export interface CatalogEntry {
   id: string;
   name: string;

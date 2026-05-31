@@ -62,6 +62,9 @@ export function SignInView({
             </Button>
           ) : (
             <>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Code sent to {emailInput}. Check your inbox (and spam folder).
+              </p>
               <Input
                 inputMode="numeric"
                 autoComplete="one-time-code"

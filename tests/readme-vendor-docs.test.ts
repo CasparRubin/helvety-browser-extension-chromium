@@ -6,26 +6,43 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-describe("README vendor and popup documentation", () => {
+describe("README vendor and side panel documentation", () => {
   const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
-  it("lists extension-chrome and documents popup structure", () => {
-    const popupSection = readme.slice(
-      readme.indexOf("## Popup UI (structure)")
+  it("lists extension-chrome and documents side panel structure", () => {
+    const panelSection = readme.slice(
+      readme.indexOf("## Side panel UI (structure)")
     );
-    expect(popupSection).toContain("@helvety/extension-chrome/theme-boot");
-    expect(popupSection).toContain("helvetyPopupThemePreference");
-    expect(popupSection).toMatch(/not `next-themes`/);
-    expect(popupSection).toContain("EntityScreenLayout");
-    expect(popupSection).toContain("EntityRichTextEditor");
-    expect(popupSection).toContain("entity-rich-text");
-    expect(popupSection).toContain("clears decrypted state");
-    expect(readme).toMatch(/800px|800×600|800x600/i);
+    expect(panelSection).toContain("@helvety/extension-chrome/theme-boot");
+    expect(panelSection).toContain("helvetyPopupThemePreference");
+    expect(panelSection).toMatch(/not `next-themes`/);
+    expect(panelSection).toContain("EntityScreenLayout");
+    expect(panelSection).toContain("EntityRichTextEditor");
+    expect(panelSection).toContain("entity-rich-text");
+    expect(panelSection).toContain("clears decrypted state");
+    expect(panelSection).toContain("openPanelOnActionClick");
+    expect(panelSection).toContain("pending-otp-storage.ts");
+    expect(readme).toContain("Chrome 114+");
+    expect(readme).not.toMatch(/800px|800×600|800x600/i);
+    expect(readme).not.toContain("default_popup");
+  });
+
+  it("does not describe the extension UX as an action popup", () => {
+    expect(readme).toMatch(/side panel extension|Side panel UI/i);
+    expect(readme).not.toMatch(/from the popup\b/i);
+    expect(readme).not.toMatch(/manage them in the popup/i);
+    expect(readme).not.toMatch(/default_popup/i);
   });
 
   it("documents tests/ layout contract suites", () => {
     expect(readme).toContain("tests/");
-    expect(readme).toContain("popup-chrome");
+    expect(readme).toContain("manifest-side-panel");
+    expect(readme).toContain("background-side-panel");
+    expect(readme).toContain("pending-otp-storage");
+    expect(readme).toContain("side-panel-chrome");
+    expect(readme).toContain("extension-chrome-shell");
+    expect(readme).toContain("security-e2ee-docs");
+    expect(readme).toContain("webauthn-docs");
   });
 
   it("describes CRUD and does not claim read-only MVP", () => {

@@ -1,6 +1,6 @@
 # Helvety Chromium extension
 
-Chromium MV3 extension for **Helvety** [helvety.com](https://helvety.com): email OTP sign-in (Supabase Auth), **passkey + PRF** unlock for E2EE, and **full CRUD** for tasks, notes, contacts, links, and link folders (decrypted only in the extension after unlock).
+Chromium MV3 **side panel** extension for **Helvety** [helvety.com](https://helvety.com): email OTP sign-in (Supabase Auth), **passkey + PRF** unlock for E2EE, and **full CRUD** for tasks, notes, contacts, links, and link folders (decrypted in the side panel after unlock).
 
 You do **not** need the Helvety monorepo or a local auth server to **build** this project. Public URLs and Supabase keys are hardcoded in **`src/lib/config.ts`**.
 
@@ -11,7 +11,7 @@ You do **not** need the Helvety monorepo or a local auth server to **build** thi
 | Build & load unpacked (`dist/`)                                 | Yes                                                                                                                                                                                    |
 | Email OTP sign-in                                               | Yes — production Supabase project in `config.ts`                                                                                                                                       |
 | PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                             |
-| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, view details, edit, delete from the popup                                                                                |
+| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, view details, edit, delete from the side panel                                                                           |
 | Passkey unlock (WebAuthn on auth)                               | **Yes** when `helvety.com/auth` serves JSON on `options` / `verify` and Vercel `HELVETY_CHROME_EXTENSION_ORIGINS` includes your runtime extension id (Edge/Chrome unpacked ids differ) |
 
 You can sign in and the extension will load PRF params when configured (preflight on the unlock screen). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: production auth must expose the passkey API routes and allowlist your extension id on `helvety-auth` (see monorepo [`apps/auth/docs/extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md)). Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
@@ -31,14 +31,14 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 ## Why `pnpm install` fetches the Helvety repo
 
-Workspace packages supply **popup chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
+Workspace packages supply **extension chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-| Package                     | Role in this extension                                                                                |
-| --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `@helvety/extension-chrome` | Popup shell (800px, Chrome max), theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
-| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                                           |
-| `@helvety/shared`           | E2EE crypto and shared utilities                                                                      |
-| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                       |
+| Package                     | Role in this extension                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
+| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                            |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                       |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                        |
 
 Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
 
@@ -47,16 +47,20 @@ Auth HTTP routes stay on the deployed auth service (not in these packages). `pre
 
 That vendor tree is **not** required to run the extension in Chrome—only to compile.
 
-## Popup UI (structure)
+## Side panel UI (structure)
 
-- Entry: `index.html` → `src/popup/main.tsx` (imports `@helvety/extension-chrome/theme-boot` before React).
+Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
+
+- Entry: `index.html` → `src/popup/main.tsx` (imports `@helvety/extension-chrome/theme-boot` before React). The `src/popup/` path is the React UI module (legacy folder name); the Chrome surface is the side panel, not an action popup.
+- Surface: global side panel (`manifest.json` `side_panel.default_path`); toolbar icon opens the panel via `background.ts` (`openPanelOnActionClick`).
 - Root: `src/popup/App.tsx` — sign-in, unlock, or data tabs after session + passkey unlock; clears decrypted state on sign-out and account switch.
 - Views: `src/popup/views/` — `SignInView`, `UnlockView`, `DataTabsView` (lists + navigation), `EntityDetailView`, `EntityFormView`, `AboutTab`.
-- Layout: `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
+- Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (TipTap) for task/note descriptions and contact notes; plain `Input`/`Textarea` for other fields.
 - E2EE data layer: `entity-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header + `assets/icon-48.png`).
 - Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
+- OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
 - About tab: version, extension ID, auth origin, security doc links; **no** session tokens or OTP in the DOM.
 
 ## Prerequisites
@@ -64,7 +68,7 @@ That vendor tree is **not** required to run the extension in Chrome—only to co
 - Node 22+ and **pnpm**
 - Git (for the shallow clone when `../helvety` is absent)
 
-When passkey unlock is enabled on production auth, operators set **`HELVETY_CHROME_EXTENSION_ORIGINS`** on Vercel (`helvety-auth`) to your runtime id (from `edge://extensions/?id=…` or `chrome://extensions`, or `chrome.runtime.id` in popup DevTools). See [docs/webauthn-extension.md](docs/webauthn-extension.md).
+When passkey unlock is enabled on production auth, operators set **`HELVETY_CHROME_EXTENSION_ORIGINS`** on Vercel (`helvety-auth`) to your runtime id (from `edge://extensions/?id=…` or `chrome://extensions`, or `chrome.runtime.id` in side panel DevTools). See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## Setup
 
@@ -75,7 +79,7 @@ pnpm install
 pnpm build
 ```
 
-Load **`dist/`** in a Chromium browser (Chrome, Edge, …): Extensions → Developer mode → **Load unpacked** → select the `dist` folder.
+Load **`dist/`** in a Chromium browser (Chrome 114+, Edge, …): Extensions → Developer mode → **Load unpacked** → select the `dist` folder. Click the Helvety toolbar icon to open the side panel.
 
 ## Configuration
 
@@ -93,7 +97,7 @@ The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvet
 ## Scripts
 
 ```bash
-pnpm test          # src/lib/*.test.ts + src/popup/*.test.ts + tests/*.test.ts
+pnpm test          # src/lib/*.test.ts + tests/*.test.ts
 pnpm type-check
 pnpm ci:check
 pnpm ci:release   # check + build → dist/
@@ -101,14 +105,14 @@ pnpm ci:release   # check + build → dist/
 
 ## Repository layout
 
-| Path                         | Purpose                                                                                                             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/`                   | Supabase auth, passkey unlock, encrypt/decrypt, repository CRUD, config (E2EE core)                                 |
-| `src/popup/`                 | React popup shell and views                                                                                         |
-| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`)                                        |
-| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `popup-chrome`, `popup-shell`, `theme-preference`) |
-| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                       |
-| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                             |
+| Path                         | Purpose                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/`                   | Supabase auth, passkey unlock, encrypt/decrypt, repository CRUD, config (E2EE core)                                                                                                                                                               |
+| `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                  |
+| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                           |
+| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`) |
+| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                     |
+| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                           |
 
 ## Docs
 
@@ -117,4 +121,4 @@ pnpm ci:release   # check + build → dist/
 
 ## E2EE writes (after unlock)
 
-Create, view full decrypted details, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the popup. Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
+Create, view full decrypted details, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the side panel. Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).

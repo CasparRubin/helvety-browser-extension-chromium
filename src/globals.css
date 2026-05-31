@@ -31,7 +31,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Tailwind v4: scan Helvety workspace packages used by the popup */
+/* Tailwind v4: scan Helvety workspace packages used by the side panel */
 @source "../node_modules/@helvety/ui/src";
 @source "../node_modules/@helvety/brand/src";
 @source "../node_modules/@helvety/extension-chrome/src";
@@ -41,14 +41,20 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body,
+  #root {
+    @apply h-full min-h-0;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* TipTap in the extension popup (800×600 max) */
+/* TipTap in the side panel (scroll within the editor when content grows) */
 .entity-rich-text-editor .tiptap {
   min-height: 6rem !important;
-  max-height: 14rem;
+  max-height: 20rem;
   overflow-y: auto;
 }

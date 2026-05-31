@@ -1,3 +1,5 @@
-void chrome.runtime.onInstalled.addListener(() => {
-  // MV3 requires a service worker; auth, E2EE, and UI run in the popup only.
+chrome.runtime.onInstalled.addListener(() => {
+  void chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch(console.error);
 });

@@ -30,4 +30,9 @@ describe("webauthn-extension.md", () => {
     expect(doc).not.toMatch(/VITE_HELVETY_AUTH_ORIGIN=http:\/\/localhost/);
     expect(doc).not.toMatch(/bun run dev.*auth/i);
   });
+
+  it("documents side panel DevTools for manual passkey checks", () => {
+    expect(doc).toContain("side panel DevTools");
+    expect(doc).not.toMatch(/popup DevTools/i);
+  });
 });

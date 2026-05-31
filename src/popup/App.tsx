@@ -1,8 +1,5 @@
 import { readExtensionVersion } from "@helvety/extension-chrome/extension-version";
-import {
-  POPUP_SHELL_CLASS,
-  POPUP_WIDTH_CLASS,
-} from "@helvety/extension-chrome/popup-shell";
+import { POPUP_SHELL_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { usePopupTheme } from "@helvety/extension-chrome/use-popup-theme";
 import {
   deleteMasterKey,
@@ -16,6 +13,11 @@ import { EntityRepository } from "../lib/entity-repository";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
+import {
+  clearPendingOtp,
+  readPendingOtp,
+  writePendingOtp,
+} from "../lib/pending-otp-storage";
 
 import { STORAGE_KEY_POPUP_THEME } from "./constants";
 import {
@@ -51,7 +53,7 @@ import type {
   EntityKind,
 } from "../lib/entity-types";
 
-/** Root popup: OTP sign-in, passkey unlock, E2EE CRUD for Helvety entities. */
+/** Root side panel: OTP sign-in, passkey unlock, E2EE CRUD for Helvety entities. */
 export default function App() {
   const supabase = useMemo(() => createExtensionSupabaseClient(), []);
   const { themePreference, saveTheme } = usePopupTheme(STORAGE_KEY_POPUP_THEME);
@@ -123,7 +125,7 @@ export default function App() {
     setScreen({ mode: "list" });
   }, []);
 
-  const shellClass = `flex h-[600px] max-h-[600px] min-h-[600px] flex-col ${POPUP_WIDTH_CLASS} ${POPUP_SHELL_CLASS} text-foreground`;
+  const shellClass = `flex h-full min-h-0 w-full flex-col ${POPUP_SHELL_CLASS} text-foreground`;
 
   const refreshSession = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -150,6 +152,25 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, [refreshSession, supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled || data.session?.user) {
+        return;
+      }
+      const record = await readPendingOtp();
+      if (cancelled || !record) {
+        return;
+      }
+      setEmailInput(record.email);
+      setOtpSent(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     setLoadedTabs(new Set());
@@ -289,6 +310,7 @@ export default function App() {
         return;
       }
       setOtpSent(true);
+      await writePendingOtp(emailInput.trim());
     } finally {
       setAuthBusy(false);
     }
@@ -309,6 +331,7 @@ export default function App() {
       }
       setOtpInput("");
       setOtpSent(false);
+      await clearPendingOtp();
       await refreshSession();
     } finally {
       setAuthBusy(false);
@@ -322,6 +345,11 @@ export default function App() {
     clearDecryptedEntityState();
     setMasterKey(null);
     setLoadedTabs(new Set());
+    setEmailInput("");
+    setOtpInput("");
+    setOtpSent(false);
+    setAuthError(null);
+    await clearPendingOtp();
     await supabase.auth.signOut();
     await refreshSession();
   };
@@ -573,6 +601,7 @@ export default function App() {
           onUseDifferentEmail={() => {
             setOtpSent(false);
             setOtpInput("");
+            void clearPendingOtp();
           }}
         />
       </div>

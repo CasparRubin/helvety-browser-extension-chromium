@@ -39,7 +39,7 @@ export function createExtensionSupabaseClient() {
   });
 }
 
-/** Supabase client type used by the popup and unlock flow. */
+/** Supabase client type used by the side panel and unlock flow. */
 export type ExtensionSupabaseClient = ReturnType<
   typeof createExtensionSupabaseClient
 >;
