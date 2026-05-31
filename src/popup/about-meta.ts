@@ -9,7 +9,7 @@ export const EXTENSION_DISPLAY_NAME = "Helvety" as const;
 
 /** Must match `description` in `public/manifest.json`. */
 export const EXTENSION_MANIFEST_DESCRIPTION =
-  "Helvety E2EE tasks, notes, contacts, links, and folders — manage them in the side panel after passkey unlock" as const;
+  "Helvety E2EE tasks, notes, contacts, links, and folders — create, edit, and delete in the side panel after passkey unlock" as const;
 
 /** Developer link label in the About tab **Developer** section. */
 export const DEVELOPER_NAME = "Helvety";

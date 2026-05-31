@@ -1,3 +1,7 @@
+/**
+ * E2EE data access: PostgREST reads use narrow selects; writes spread only
+ * `encrypt*` outputs plus `user_id` / structural metadata — never form plaintext.
+ */
 import {
   decryptContactRow,
   decryptLinkFolderRow,
@@ -6,14 +10,11 @@ import {
   decryptTaskRow,
   toContactListItem,
   toLinkFolderListItem,
+  toLinkFolderPickerItem,
   toLinkListItem,
   toNoteListItem,
   toTaskListItem,
 } from "./decrypt-entities";
-/**
- * E2EE data access: PostgREST reads use narrow selects; writes spread only
- * `encrypt*` outputs plus `user_id` / structural metadata — never form plaintext.
- */
 import {
   CONTACT_DETAIL_SELECT,
   CONTACT_LIST_SELECT,
@@ -42,15 +43,20 @@ import {
 import type {
   Contact,
   ContactInput,
+  ContactListRow,
   EntityListItem,
   Link,
   LinkFolder,
   LinkFolderInput,
+  LinkFolderListRow,
   LinkInput,
+  LinkListRow,
   Note,
   NoteInput,
+  NoteListRow,
   Task,
   TaskInput,
+  TaskListRow,
 } from "./entity-types";
 import type { ExtensionSupabaseClient } from "./extension-supabase";
 
@@ -73,7 +79,7 @@ export class EntityRepository {
     private readonly masterKey: CryptoKey
   ) {}
 
-  async listTasks(): Promise<EntityListItem[]> {
+  async listTasks(): Promise<TaskListRow[]> {
     const { data, error } = await this.supabase
       .from("items")
       .select(TASK_LIST_SELECT)
@@ -136,7 +142,29 @@ export class EntityRepository {
     }
   }
 
-  async listNotes(): Promise<EntityListItem[]> {
+  async reorderTasks(
+    updates: { id: string; sort_order: number; stage_id?: string }[]
+  ): Promise<void> {
+    for (const update of updates) {
+      const patch: Record<string, unknown> = {
+        sort_order: update.sort_order,
+        updated_at: nowIso(),
+      };
+      if (update.stage_id !== undefined) {
+        patch.stage_id = update.stage_id;
+      }
+      const { error } = await this.supabase
+        .from("items")
+        .update(patch)
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+  }
+
+  async listNotes(): Promise<NoteListRow[]> {
     const { data, error } = await this.supabase
       .from("notes")
       .select(NOTE_LIST_SELECT)
@@ -199,7 +227,29 @@ export class EntityRepository {
     }
   }
 
-  async listContacts(): Promise<EntityListItem[]> {
+  async reorderNotes(
+    updates: { id: string; sort_order: number; category_id?: string }[]
+  ): Promise<void> {
+    for (const update of updates) {
+      const patch: Record<string, unknown> = {
+        sort_order: update.sort_order,
+        updated_at: nowIso(),
+      };
+      if (update.category_id !== undefined) {
+        patch.category_id = update.category_id;
+      }
+      const { error } = await this.supabase
+        .from("notes")
+        .update(patch)
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+  }
+
+  async listContacts(): Promise<ContactListRow[]> {
     const { data, error } = await this.supabase
       .from("contacts")
       .select(CONTACT_LIST_SELECT)
@@ -262,7 +312,29 @@ export class EntityRepository {
     }
   }
 
-  async listLinks(): Promise<EntityListItem[]> {
+  async reorderContacts(
+    updates: { id: string; sort_order: number; category_id?: string }[]
+  ): Promise<void> {
+    for (const update of updates) {
+      const patch: Record<string, unknown> = {
+        sort_order: update.sort_order,
+        updated_at: nowIso(),
+      };
+      if (update.category_id !== undefined) {
+        patch.category_id = update.category_id;
+      }
+      const { error } = await this.supabase
+        .from("contacts")
+        .update(patch)
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+  }
+
+  async listLinks(): Promise<LinkListRow[]> {
     const { data, error } = await this.supabase
       .from("links")
       .select(LINK_LIST_SELECT)
@@ -331,7 +403,22 @@ export class EntityRepository {
     }
   }
 
-  async listLinkFolders(): Promise<EntityListItem[]> {
+  async reorderLinks(
+    updates: { id: string; sort_order: number }[]
+  ): Promise<void> {
+    for (const update of updates) {
+      const { error } = await this.supabase
+        .from("links")
+        .update({ sort_order: update.sort_order, updated_at: nowIso() })
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+  }
+
+  async listLinkFolders(): Promise<LinkFolderListRow[]> {
     const { data, error } = await this.supabase
       .from("link_folders")
       .select(LINK_FOLDER_LIST_SELECT)
@@ -344,6 +431,37 @@ export class EntityRepository {
     return Promise.all(
       (data ?? []).map((row) => toLinkFolderListItem(row, this.masterKey))
     );
+  }
+
+  /** Flat folder names for link form parent picker. */
+  async listLinkFolderPickerItems(): Promise<EntityListItem[]> {
+    const { data, error } = await this.supabase
+      .from("link_folders")
+      .select(LINK_FOLDER_LIST_SELECT)
+      .eq("user_id", this.userId)
+      .order("sort_order", { ascending: true })
+      .limit(LIST_LIMIT);
+    if (error) {
+      throw new Error(error.message);
+    }
+    return Promise.all(
+      (data ?? []).map((row) => toLinkFolderPickerItem(row, this.masterKey))
+    );
+  }
+
+  async reorderLinkFolders(
+    updates: { id: string; sort_order: number }[]
+  ): Promise<void> {
+    for (const update of updates) {
+      const { error } = await this.supabase
+        .from("link_folders")
+        .update({ sort_order: update.sort_order, updated_at: nowIso() })
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
   }
 
   async getLinkFolder(id: string): Promise<LinkFolder> {

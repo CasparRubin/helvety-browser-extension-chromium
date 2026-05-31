@@ -6,6 +6,7 @@ import {
   getMasterKey,
 } from "@helvety/shared/crypto/key-storage";
 import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog";
+import { TooltipProvider } from "@helvety/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HELVETY_GATEWAY } from "../lib/config";
@@ -32,11 +33,7 @@ import {
   noteToInput,
   taskToInput,
 } from "./entity-drafts";
-import {
-  entityKindForTab,
-  type EntityScreen,
-  type LinksSection,
-} from "./entity-navigation";
+import { entityKindForTab, type EntityScreen } from "./entity-navigation";
 import { DataTabsView, type EntityTabId } from "./views/DataTabsView";
 import { SignInView } from "./views/SignInView";
 import { UnlockView, type ParamsPreflight } from "./views/UnlockView";
@@ -44,12 +41,17 @@ import { UnlockView, type ParamsPreflight } from "./views/UnlockView";
 import type { EntityFormDraft } from "./views/EntityFormView";
 import type {
   Contact,
+  ContactListRow,
   EntityListItem,
   EntityRecord,
   Link,
   LinkFolder,
+  LinkFolderListRow,
+  LinkListRow,
   Note,
+  NoteListRow,
   Task,
+  TaskListRow,
   EntityKind,
 } from "../lib/entity-types";
 
@@ -75,21 +77,19 @@ export default function App() {
     useState<ParamsPreflight | null>(null);
 
   const [tab, setTab] = useState<EntityTabId>("tasks");
-  const [linksSection, setLinksSection] = useState<LinksSection>("links");
   const [screen, setScreen] = useState<EntityScreen>({ mode: "list" });
 
   const [listBusy, setListBusy] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<EntityListItem[]>([]);
-  const [notes, setNotes] = useState<EntityListItem[]>([]);
-  const [contacts, setContacts] = useState<EntityListItem[]>([]);
-  const [links, setLinks] = useState<EntityListItem[]>([]);
-  const [linkFolders, setLinkFolders] = useState<EntityListItem[]>([]);
+  const [tasks, setTasks] = useState<TaskListRow[]>([]);
+  const [notes, setNotes] = useState<NoteListRow[]>([]);
+  const [contacts, setContacts] = useState<ContactListRow[]>([]);
+  const [links, setLinks] = useState<LinkListRow[]>([]);
+  const [linkFolders, setLinkFolders] = useState<LinkFolderListRow[]>([]);
+  const [linkFolderPickerItems, setLinkFolderPickerItems] = useState<
+    EntityListItem[]
+  >([]);
   const [loadedTabs, setLoadedTabs] = useState<Set<EntityTabId>>(new Set());
-
-  const [detailRecord, setDetailRecord] = useState<EntityRecord | null>(null);
-  const [detailBusy, setDetailBusy] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
 
   const [formDraft, setFormDraft] = useState<EntityFormDraft | null>(null);
   const [mutationBusy, setMutationBusy] = useState(false);
@@ -116,8 +116,7 @@ export default function App() {
     setContacts([]);
     setLinks([]);
     setLinkFolders([]);
-    setDetailRecord(null);
-    setDetailError(null);
+    setLinkFolderPickerItems([]);
     setFormDraft(null);
     setListError(null);
     setDeleteOpen(false);
@@ -229,6 +228,7 @@ export default function App() {
         } else if (target === "links") {
           setLinks(await repo.listLinks());
           setLinkFolders(await repo.listLinkFolders());
+          setLinkFolderPickerItems(await repo.listLinkFolderPickerItems());
         }
         setLoadedTabs((prev) => new Set(prev).add(target));
       } catch (e) {
@@ -264,38 +264,6 @@ export default function App() {
       void loadTab(tab);
     }
   }, [loadTab, loadedTabs, repo, tab]);
-
-  useEffect(() => {
-    if (!repo || screen.mode !== "detail") {
-      setDetailRecord(null);
-      setDetailError(null);
-      return;
-    }
-    let cancelled = false;
-    setDetailBusy(true);
-    setDetailError(null);
-    void (async () => {
-      try {
-        const record = await fetchEntity(repo, screen.kind, screen.id);
-        if (!cancelled) {
-          setDetailRecord(record);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setDetailError(
-            e instanceof Error ? e.message : "Failed to load details"
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setDetailBusy(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [repo, screen]);
 
   const handleSendOtp = async () => {
     setAuthError(null);
@@ -400,17 +368,6 @@ export default function App() {
     setScreen({ mode: "list" });
     setMutationError(null);
     setFormDraft(null);
-    setDetailRecord(null);
-    setDetailError(null);
-  };
-
-  const handleLinksSectionChange = (section: LinksSection) => {
-    setLinksSection(section);
-    setScreen({ mode: "list" });
-    setMutationError(null);
-    setFormDraft(null);
-    setDetailRecord(null);
-    setDetailError(null);
   };
 
   const handleRetryList = () => {
@@ -425,33 +382,58 @@ export default function App() {
     setFormDraft(null);
   };
 
-  const openDetail = (kind: EntityKind, id: string) => {
-    setDetailRecord(null);
-    setDetailBusy(true);
-    setDetailError(null);
-    setScreen({ mode: "detail", kind, id });
-    setMutationError(null);
-  };
-
   const openCreate = (kind: EntityKind) => {
     setFormDraft(draftForKind(kind));
     setScreen({ mode: "form", kind, formMode: "create" });
     setMutationError(null);
   };
 
-  const openEdit = () => {
-    if (!repo || screen.mode !== "detail" || !detailRecord) {
+  const openEdit = useCallback(
+    async (kind: EntityKind, id: string) => {
+      if (!repo) {
+        return;
+      }
+      setScreen({
+        mode: "form",
+        kind,
+        formMode: "edit",
+        id,
+        loading: true,
+        loadError: null,
+      });
+      setFormDraft(null);
+      setMutationError(null);
+      try {
+        const record = await fetchEntity(repo, kind, id);
+        setFormDraft(draftFromRecord(kind, record));
+        setScreen({
+          mode: "form",
+          kind,
+          formMode: "edit",
+          id,
+          loading: false,
+        });
+      } catch (e) {
+        setScreen({
+          mode: "form",
+          kind,
+          formMode: "edit",
+          id,
+          loading: false,
+          loadError:
+            e instanceof Error ? e.message : "Failed to load for editing",
+        });
+      }
+    },
+    [repo]
+  );
+
+  const retryFormLoad = useCallback(() => {
+    if (screen.mode !== "form" || !screen.id || !repo) {
       return;
     }
-    setFormDraft(draftFromRecord(screen.kind, detailRecord));
-    setScreen({
-      mode: "form",
-      kind: screen.kind,
-      formMode: "edit",
-      id: screen.id,
-    });
-    setMutationError(null);
-  };
+    void openEdit(screen.kind, screen.id);
+  }, [openEdit, repo, screen]);
 
   const handleSave = async () => {
     if (!repo || screen.mode !== "form" || !formDraft) {
@@ -468,13 +450,19 @@ export default function App() {
       if (screen.formMode === "create") {
         const id = await createEntity(repo, formDraft);
         await reloadCurrentTab();
-        setScreen({ mode: "detail", kind: screen.kind, id });
+        await openEdit(screen.kind, id);
       } else if (screen.id) {
         await updateEntity(repo, screen.kind, screen.id, formDraft);
         await reloadCurrentTab();
-        setScreen({ mode: "detail", kind: screen.kind, id: screen.id });
+        const record = await fetchEntity(repo, screen.kind, screen.id);
+        setFormDraft(draftFromRecord(screen.kind, record));
+        setScreen({
+          mode: "form",
+          kind: screen.kind,
+          formMode: "edit",
+          id: screen.id,
+        });
       }
-      setFormDraft(null);
     } catch (e) {
       setMutationError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -482,15 +470,8 @@ export default function App() {
     }
   };
 
-  const requestDelete = () => {
-    if (screen.mode !== "detail" || !detailRecord) {
-      return;
-    }
-    setDeleteTarget({
-      kind: screen.kind,
-      id: screen.id,
-      label: deleteLabel(screen.kind, detailRecord),
-    });
+  const requestDelete = (kind: EntityKind, id: string, label: string) => {
+    setDeleteTarget({ kind, id, label });
     setDeleteOpen(true);
   };
 
@@ -513,40 +494,6 @@ export default function App() {
     }
   };
 
-  const retryDetail = useCallback(() => {
-    if (!repo || screen.mode !== "detail") {
-      return;
-    }
-    setDetailRecord(null);
-    setDetailError(null);
-    setDetailBusy(true);
-    void fetchEntity(repo, screen.kind, screen.id)
-      .then((record) => {
-        setDetailRecord(record);
-      })
-      .catch((e) => {
-        setDetailError(
-          e instanceof Error ? e.message : "Failed to load details"
-        );
-      })
-      .finally(() => {
-        setDetailBusy(false);
-      });
-  }, [repo, screen]);
-
-  const currentList =
-    tab === "tasks"
-      ? tasks
-      : tab === "notes"
-        ? notes
-        : tab === "contacts"
-          ? contacts
-          : tab === "links"
-            ? linksSection === "folders"
-              ? linkFolders
-              : links
-            : [];
-
   const openInApp = () => {
     const path =
       tab === "tasks"
@@ -559,16 +506,9 @@ export default function App() {
     void chrome.tabs.create({ url: `${HELVETY_GATEWAY}${path}` });
   };
 
-  const activeEntityKind =
-    screen.mode === "list"
-      ? tab === "links" && linksSection === "folders"
-        ? ("link_folder" as const)
-        : entityKindForTab(tab)
-      : screen.kind;
-
   const handleAdd = () => {
-    if (tab === "links" && linksSection === "folders") {
-      openCreate("link_folder");
+    if (tab === "links") {
+      openCreate("links");
       return;
     }
     const kind = entityKindForTab(tab);
@@ -577,12 +517,64 @@ export default function App() {
     }
   };
 
-  const handleRowClick = (id: string) => {
-    if (!activeEntityKind) {
+  const handleAddFolder = () => {
+    openCreate("link_folder");
+  };
+
+  const handleReorderTasks = async (
+    updates: { id: string; sort_order: number; stage_id?: string }[]
+  ) => {
+    if (!repo || updates.length === 0) {
       return;
     }
-    openDetail(activeEntityKind, id);
+    try {
+      await repo.reorderTasks(updates);
+      setTasks(await repo.listTasks());
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Failed to reorder tasks");
+    }
   };
+
+  const handleReorderNotes = async (
+    updates: { id: string; sort_order: number; category_id?: string }[]
+  ) => {
+    if (!repo || updates.length === 0) {
+      return;
+    }
+    try {
+      await repo.reorderNotes(updates);
+      setNotes(await repo.listNotes());
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Failed to reorder notes");
+    }
+  };
+
+  const handleReorderContacts = async (
+    updates: { id: string; sort_order: number; category_id?: string }[]
+  ) => {
+    if (!repo || updates.length === 0) {
+      return;
+    }
+    try {
+      await repo.reorderContacts(updates);
+      setContacts(await repo.listContacts());
+    } catch (e) {
+      setListError(
+        e instanceof Error ? e.message : "Failed to reorder contacts"
+      );
+    }
+  };
+
+  const requestDeleteFromForm = useCallback(() => {
+    if (screen.mode !== "form" || screen.formMode !== "edit" || !screen.id) {
+      return;
+    }
+    const label = deleteLabelFromDraft(screen.kind, formDraft);
+    if (!label) {
+      return;
+    }
+    requestDelete(screen.kind, screen.id, label);
+  }, [formDraft, screen]);
 
   if (!sessionEmail || !userId || !accessToken) {
     return (
@@ -610,72 +602,89 @@ export default function App() {
 
   if (!masterKey) {
     return (
-      <div className={shellClass}>
-        <UnlockView
-          version={extensionVersion}
-          sessionEmail={sessionEmail}
-          paramsPreflight={paramsPreflight}
-          cryptoBusy={cryptoBusy}
-          cryptoError={cryptoError}
-          onUnlock={() => void handleUnlock()}
-          onLogout={() => void handleLogout()}
-        />
-      </div>
+      <TooltipProvider delayDuration={300}>
+        <div className={shellClass}>
+          <UnlockView
+            version={extensionVersion}
+            sessionEmail={sessionEmail}
+            paramsPreflight={paramsPreflight}
+            cryptoBusy={cryptoBusy}
+            cryptoError={cryptoError}
+            onUnlock={() => void handleUnlock()}
+            onLogout={() => void handleLogout()}
+          />
+        </div>
+      </TooltipProvider>
     );
   }
 
   return (
-    <div className={shellClass}>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <DataTabsView
-          version={extensionVersion}
-          sessionEmail={sessionEmail}
-          tab={tab}
-          onTabChange={handleTabChange}
-          linksSection={linksSection}
-          onLinksSectionChange={handleLinksSectionChange}
-          screen={screen}
-          listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
-          listError={listError}
-          currentList={currentList}
-          linkFolders={linkFolders}
-          detailRecord={detailRecord}
-          detailBusy={detailBusy}
-          detailError={detailError}
-          formDraft={formDraft}
-          onFormDraftChange={setFormDraft}
-          mutationBusy={mutationBusy}
-          mutationError={mutationError}
-          themePreference={themePreference}
-          onSaveTheme={saveTheme}
-          paramsPreflight={paramsPreflight}
-          onOpenInApp={openInApp}
-          onLogout={() => void handleLogout()}
-          onRetryList={handleRetryList}
-          onAdd={handleAdd}
-          onRowClick={handleRowClick}
-          onBack={goToList}
-          onRetryDetail={retryDetail}
-          onEdit={openEdit}
-          onDelete={requestDelete}
-          onOpenInAppDetail={openInApp}
-          onSave={() => void handleSave()}
-          onCancelForm={goToList}
+    <TooltipProvider delayDuration={300}>
+      <div className={shellClass}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <DataTabsView
+            version={extensionVersion}
+            sessionEmail={sessionEmail}
+            tab={tab}
+            onTabChange={handleTabChange}
+            screen={screen}
+            listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
+            listError={listError}
+            tasks={tasks}
+            notes={notes}
+            contacts={contacts}
+            links={links}
+            linkFolders={linkFolders}
+            linkFolderPickerItems={linkFolderPickerItems}
+            formDraft={formDraft}
+            onFormDraftChange={setFormDraft}
+            mutationBusy={mutationBusy}
+            mutationError={mutationError}
+            themePreference={themePreference}
+            onSaveTheme={saveTheme}
+            paramsPreflight={paramsPreflight}
+            onOpenInApp={openInApp}
+            onLogout={() => void handleLogout()}
+            onRetryList={handleRetryList}
+            onAdd={handleAdd}
+            onAddFolder={handleAddFolder}
+            onCancelForm={goToList}
+            onSave={() => void handleSave()}
+            onTaskClick={(task) => void openEdit("tasks", task.id)}
+            onNoteClick={(note) => void openEdit("notes", note.id)}
+            onContactClick={(contact) => void openEdit("contacts", contact.id)}
+            onLinkEdit={(link) => void openEdit("links", link.id)}
+            onFolderEdit={(folder) => void openEdit("link_folder", folder.id)}
+            onTaskDelete={(task) => requestDelete("tasks", task.id, task.title)}
+            onNoteDelete={(note) => requestDelete("notes", note.id, note.title)}
+            onContactDelete={(contact) =>
+              requestDelete(
+                "contacts",
+                contact.id,
+                `${contact.first_name} ${contact.last_name}`.trim()
+              )
+            }
+            onReorderTasks={handleReorderTasks}
+            onReorderNotes={handleReorderNotes}
+            onReorderContacts={handleReorderContacts}
+            onRetryFormLoad={retryFormLoad}
+            onDeleteForm={requestDeleteFromForm}
+          />
+        </div>
+        <DeleteConfirmationDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Delete permanently?"
+          description={
+            deleteTarget
+              ? `"${deleteTarget.label}" will be removed. This cannot be undone.`
+              : ""
+          }
+          onConfirm={() => confirmDelete()}
+          isDeleting={mutationBusy}
         />
       </div>
-      <DeleteConfirmationDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete permanently?"
-        description={
-          deleteTarget
-            ? `"${deleteTarget.label}" will be removed. This cannot be undone.`
-            : ""
-        }
-        onConfirm={() => confirmDelete()}
-        isDeleting={mutationBusy}
-      />
-    </div>
+    </TooltipProvider>
   );
 }
 
@@ -858,19 +867,25 @@ async function deleteEntity(
 /**
  *
  */
-function deleteLabel(kind: EntityKind, record: EntityRecord): string {
-  switch (kind) {
-    case "contacts": {
-      const c = record as Contact;
-      return `${c.first_name} ${c.last_name}`.trim();
-    }
-    case "notes":
-      return (record as Note).title;
+function deleteLabelFromDraft(
+  kind: EntityKind,
+  draft: EntityFormDraft | null
+): string | null {
+  if (draft?.kind !== kind) {
+    return null;
+  }
+  switch (draft.kind) {
     case "tasks":
-      return (record as Task).title;
+      return draft.value.title.trim() || "Task";
+    case "notes":
+      return draft.value.title.trim() || "Note";
+    case "contacts":
+      return (
+        `${draft.value.first_name} ${draft.value.last_name}`.trim() || "Contact"
+      );
     case "links":
-      return (record as Link).name;
+      return draft.value.name.trim() || "Link";
     case "link_folder":
-      return (record as LinkFolder).name;
+      return draft.value.name.trim() || "Folder";
   }
 }

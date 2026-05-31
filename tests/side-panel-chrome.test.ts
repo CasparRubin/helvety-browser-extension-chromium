@@ -130,4 +130,112 @@ describe("side panel chrome", () => {
     const signIn = readSource("src/popup/views/SignInView.tsx");
     expect(signIn).toContain("Code sent to");
   });
+
+  it("DataTabsView uses NotebookPen for Notes and shows section title", () => {
+    const dataTabs = readSource("src/popup/views/DataTabsView.tsx");
+    expect(dataTabs).toContain("NotebookPen");
+    expect(dataTabs).not.toContain("StickyNote");
+    expect(dataTabs).toContain("sectionTitle");
+  });
+
+  it("DataTabsView does not render session email as always-visible text", () => {
+    const dataTabs = readSource("src/popup/views/DataTabsView.tsx");
+    expect(dataTabs).not.toMatch(/<p[^>]*>[\s\S]*\{sessionEmail\}[\s\S]*<\/p>/);
+    expect(dataTabs).toContain("tooltip=");
+    expect(dataTabs).toContain("{sessionEmail}");
+  });
+
+  it("App mounts TooltipProvider for icon-only actions", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain("TooltipProvider");
+    expect(app).toContain("@helvety/ui/tooltip");
+  });
+
+  it("list rows use IconTooltipButton for reorder and delete actions", () => {
+    const entityRow = readSource("src/popup/components/lists/entity-row.tsx");
+    expect(entityRow).toContain("IconTooltipButton");
+    expect(entityRow).toContain('label="Move up"');
+    expect(entityRow).toContain('label="Delete"');
+  });
+
+  it("EntityDetailView is removed (edit-first navigation)", () => {
+    expect(
+      existsSync(join(repoRoot, "src/popup/views/EntityDetailView.tsx"))
+    ).toBe(false);
+    const nav = readSource("src/popup/entity-navigation.ts");
+    expect(nav).not.toContain('"detail"');
+  });
+
+  it("EntityFormView exposes delete in edit mode", () => {
+    const form = readSource("src/popup/views/EntityFormView.tsx");
+    expect(form).toContain("onDelete");
+    expect(form).toContain('formMode === "edit"');
+    expect(form).toContain("Delete");
+  });
+
+  it("UnlockView hides session email except in sign-out tooltip", () => {
+    const unlock = readSource("src/popup/views/UnlockView.tsx");
+    expect(unlock).not.toMatch(/<p[^>]*>[\s\S]*\{sessionEmail\}[\s\S]*<\/p>/);
+    expect(unlock).toContain("IconTooltipButton");
+    expect(unlock).toContain("{sessionEmail}");
+  });
+
+  it("App uses edit-first openEdit flow (no detail screen)", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain("openEdit");
+    expect(app).not.toContain("EntityDetailView");
+    expect(app).not.toContain('mode: "detail"');
+    expect(app).toContain("onDeleteForm");
+  });
+
+  it("EntityFormView uses catalog pickers for task metadata", () => {
+    const form = readSource("src/popup/views/EntityFormView.tsx");
+    expect(form).toContain("TaskStagePicker");
+    expect(form).toContain("TaskLabelPicker");
+    expect(form).toContain("CategoryPicker");
+    expect(form).toContain("PriorityPicker");
+    const tasksBlock = form.slice(
+      form.indexOf('case "tasks"'),
+      form.indexOf('case "links"')
+    );
+    expect(tasksBlock).toContain("TaskStagePicker");
+    expect(tasksBlock).not.toContain("<NativeSelect");
+  });
+
+  it("EntityFormView keeps NativeSelect only for link folder hierarchy", () => {
+    const form = readSource("src/popup/views/EntityFormView.tsx");
+    const nativeSelectCount = (form.match(/<NativeSelect/g) ?? []).length;
+    expect(nativeSelectCount).toBe(2);
+  });
+
+  it("DataTabsView wires grouped list components", () => {
+    const dataTabs = readSource("src/popup/views/DataTabsView.tsx");
+    expect(dataTabs).toContain("TaskEntityList");
+    expect(dataTabs).toContain("NoteEntityList");
+    expect(dataTabs).toContain("ContactEntityList");
+    expect(dataTabs).toContain("LinksTreeList");
+    expect(dataTabs).toContain("onReorderTasks");
+  });
+
+  it("LinksTreeList opens URLs in a new browser tab", () => {
+    const tree = readSource("src/popup/components/lists/links-tree-list.tsx");
+    expect(tree).toContain("chrome.tabs.create");
+    expect(tree).toContain('label="Open link"');
+    expect(tree).toContain('label="Edit link"');
+    expect(tree).toContain('label="Edit folder"');
+  });
+
+  it("list component files exist under src/popup/components/lists", () => {
+    const listDir = join(repoRoot, "src/popup/components/lists");
+    expect(existsSync(join(listDir, "entity-row.tsx"))).toBe(true);
+    expect(existsSync(join(listDir, "contact-row.tsx"))).toBe(true);
+    expect(existsSync(join(listDir, "group-headers.tsx"))).toBe(true);
+    expect(existsSync(join(listDir, "links-tree-list.tsx"))).toBe(true);
+    expect(existsSync(join(listDir, "list-group-utils.ts"))).toBe(true);
+  });
+
+  it("App wraps unlock screen in TooltipProvider", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toMatch(/!masterKey[\s\S]*TooltipProvider[\s\S]*UnlockView/);
+  });
 });

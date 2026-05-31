@@ -24,6 +24,7 @@ describe("about-meta", () => {
 
   it("manifest description references the side panel (not popup)", () => {
     expect(EXTENSION_MANIFEST_DESCRIPTION).toMatch(/side panel/i);
+    expect(EXTENSION_MANIFEST_DESCRIPTION).toMatch(/create, edit, and delete/i);
     expect(EXTENSION_MANIFEST_DESCRIPTION).not.toMatch(/\bpopup\b/i);
   });
 
@@ -38,7 +39,8 @@ describe("about-meta", () => {
       join(repoRoot, "src/popup/views/AboutTab.tsx"),
       "utf8"
     );
-    expect(aboutSource).toMatch(/Create, view, edit, and delete/i);
+    expect(aboutSource).toMatch(/Create, edit, and delete/i);
+    expect(aboutSource).toMatch(/edit-first|straight into the editor/i);
     expect(aboutSource).toMatch(/decryption happens only in your browser/i);
     expect(aboutSource).toMatch(/side panel/i);
     expect(aboutSource).not.toMatch(/read-only MVP/i);

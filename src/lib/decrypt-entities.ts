@@ -8,11 +8,16 @@ import { DEFAULT_CONTACT_CATEGORY_ID } from "./entity-defaults";
 
 import type {
   Contact,
+  ContactListRow,
   EntityListItem,
   Link,
   LinkFolder,
+  LinkFolderListRow,
+  LinkListRow,
   Note,
+  NoteListRow,
   Task,
+  TaskListRow,
 } from "./entity-types";
 
 /**
@@ -26,6 +31,9 @@ import type {
 export interface TaskEncryptedRow {
   id: string;
   encrypted_title: string;
+  stage_id: string;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
@@ -50,6 +58,9 @@ export interface TaskDetailRow extends TaskEncryptedRow {
 export interface NoteEncryptedRow {
   id: string;
   encrypted_title: string;
+  category_id: string;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
@@ -71,6 +82,9 @@ export interface ContactEncryptedRow {
   id: string;
   encrypted_first_name: string;
   encrypted_last_name: string;
+  category_id: string;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
@@ -95,6 +109,10 @@ export interface ContactDetailRow extends ContactEncryptedRow {
 export interface LinkEncryptedRow {
   id: string;
   encrypted_name: string;
+  encrypted_url: string;
+  folder_id: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
@@ -116,6 +134,8 @@ export interface LinkFolderEncryptedRow {
   id: string;
   encrypted_name: string;
   parent_folder_id: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
@@ -341,8 +361,14 @@ export async function decryptLinkFolderRow(
 export async function toTaskListItem(
   row: TaskEncryptedRow,
   key: CryptoKey
-): Promise<EntityListItem> {
-  return { id: row.id, title: await decryptTaskTitle(row, key) };
+): Promise<TaskListRow> {
+  return {
+    id: row.id,
+    title: await decryptTaskTitle(row, key),
+    stage_id: row.stage_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+  };
 }
 
 /**
@@ -351,8 +377,14 @@ export async function toTaskListItem(
 export async function toNoteListItem(
   row: NoteEncryptedRow,
   key: CryptoKey
-): Promise<EntityListItem> {
-  return { id: row.id, title: await decryptNoteTitle(row, key) };
+): Promise<NoteListRow> {
+  return {
+    id: row.id,
+    title: await decryptNoteTitle(row, key),
+    category_id: row.category_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+  };
 }
 
 /**
@@ -361,8 +393,26 @@ export async function toNoteListItem(
 export async function toContactListItem(
   row: ContactEncryptedRow,
   key: CryptoKey
-): Promise<EntityListItem> {
-  return { id: row.id, title: await decryptContactLabel(row, key) };
+): Promise<ContactListRow> {
+  const aad = buildAAD("contacts", row.id);
+  const first = await decrypt(
+    parseEncryptedData(row.encrypted_first_name),
+    key,
+    aad
+  );
+  const last = await decrypt(
+    parseEncryptedData(row.encrypted_last_name),
+    key,
+    aad
+  );
+  return {
+    id: row.id,
+    first_name: first,
+    last_name: last,
+    category_id: row.category_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+  };
 }
 
 /**
@@ -371,8 +421,16 @@ export async function toContactListItem(
 export async function toLinkListItem(
   row: LinkEncryptedRow,
   key: CryptoKey
-): Promise<EntityListItem> {
-  return { id: row.id, title: await decryptLinkName(row, key) };
+): Promise<LinkListRow> {
+  const aad = buildAAD("links", row.id);
+  return {
+    id: row.id,
+    name: await decrypt(parseEncryptedData(row.encrypted_name), key, aad),
+    url: await decrypt(parseEncryptedData(row.encrypted_url), key, aad),
+    folder_id: row.folder_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+  };
 }
 
 /**
@@ -381,6 +439,23 @@ export async function toLinkListItem(
 export async function toLinkFolderListItem(
   row: LinkFolderEncryptedRow,
   key: CryptoKey
+): Promise<LinkFolderListRow> {
+  return {
+    id: row.id,
+    name: await decryptLinkFolderName(row, key),
+    parent_folder_id: row.parent_folder_id,
+    sort_order: row.sort_order,
+    created_at: row.created_at,
+  };
+}
+
+/** Folder picker label ({ id, title }). */
+export async function toLinkFolderPickerItem(
+  row: LinkFolderEncryptedRow,
+  key: CryptoKey
 ): Promise<EntityListItem> {
-  return { id: row.id, title: await decryptLinkFolderName(row, key) };
+  return {
+    id: row.id,
+    title: await decryptLinkFolderName(row, key),
+  };
 }

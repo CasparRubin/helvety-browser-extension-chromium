@@ -21,7 +21,7 @@ export function isRichTextField(
   return field === "notes" && kind === "contacts";
 }
 
-/** Human-readable text for detail views and list previews. */
+/** Human-readable plain text from stored TipTap JSON. */
 export function formatStoredRichText(value: string | null): string | null {
   return getRichTextPlainText(value);
 }

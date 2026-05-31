@@ -7,14 +7,22 @@
  * Avoid `*` on entity tables.
  */
 
-export const TASK_LIST_SELECT = "id, encrypted_title" as const;
-export const NOTE_LIST_SELECT = "id, encrypted_title" as const;
-export const CONTACT_LIST_SELECT =
-  "id, encrypted_first_name, encrypted_last_name" as const;
-export const LINK_LIST_SELECT = "id, encrypted_name" as const;
-export const LINK_FOLDER_LIST_SELECT =
-  "id, encrypted_name, parent_folder_id" as const;
+export const TASK_LIST_SELECT =
+  "id, encrypted_title, stage_id, sort_order, created_at" as const;
 
+export const NOTE_LIST_SELECT =
+  "id, encrypted_title, category_id, sort_order, created_at" as const;
+
+export const CONTACT_LIST_SELECT =
+  "id, encrypted_first_name, encrypted_last_name, category_id, sort_order, created_at" as const;
+
+export const LINK_LIST_SELECT =
+  "id, encrypted_name, encrypted_url, folder_id, sort_order, created_at" as const;
+
+export const LINK_FOLDER_LIST_SELECT =
+  "id, encrypted_name, parent_folder_id, sort_order, created_at" as const;
+
+/** Full-record selects for the edit form (not a separate read-only detail screen). */
 export const TASK_DETAIL_SELECT =
   "id, user_id, encrypted_title, encrypted_description, encrypted_start_date, encrypted_end_date, stage_id, label_id, priority, sort_order, created_at, updated_at" as const;
 

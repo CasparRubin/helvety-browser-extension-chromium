@@ -2,17 +2,23 @@ import { Button } from "@helvety/ui/button";
 import { Input } from "@helvety/ui/input";
 import { Label } from "@helvety/ui/label";
 import { NativeSelect } from "@helvety/ui/native-select";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 
 import {
   CONTACT_CATEGORIES,
   NOTE_CATEGORIES,
   TASK_LABELS,
-  TASK_PRIORITIES,
   TASK_STAGES,
 } from "../../lib/entity-catalogs";
+import {
+  CategoryPicker,
+  PriorityPicker,
+  TaskLabelPicker,
+  TaskStagePicker,
+} from "../components/catalog-picker";
 import { EntityRichTextEditor } from "../components/EntityRichTextEditor";
 import { EntityScreenLayout } from "../components/EntityScreenLayout";
+import { IconTooltipButton } from "../components/IconTooltipButton";
 import { Textarea } from "../components/Textarea";
 import { emptyContactInput } from "../entity-drafts";
 
@@ -50,6 +56,7 @@ export function EntityFormView({
   mutationError,
   onSave,
   onCancel,
+  onDelete,
 }: {
   kind: EntityKind;
   formMode: "create" | "edit";
@@ -61,14 +68,8 @@ export function EntityFormView({
   mutationError: string | null;
   onSave: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }): React.JSX.Element {
-  const heading =
-    formMode === "create"
-      ? kind === "link_folder"
-        ? "New folder"
-        : `New ${kind === "tasks" ? "task" : kind.slice(0, -1)}`
-      : "Edit";
-
   const parentFolderOptions = linkFolders.filter(
     (f) => f.id !== editingFolderId
   );
@@ -128,18 +129,11 @@ export function EntityFormView({
                 onChange={(notes) => set({ notes })}
               />
             </Field>
-            <Field label="Category">
-              <NativeSelect
-                value={value.category_id ?? CONTACT_CATEGORIES[0].id}
-                onChange={(e) => set({ category_id: e.target.value })}
-              >
-                {CONTACT_CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
+            <CategoryPicker
+              entries={CONTACT_CATEGORIES}
+              value={value.category_id ?? CONTACT_CATEGORIES[0].id}
+              onChange={(id) => set({ category_id: id })}
+            />
           </>
         );
       }
@@ -163,18 +157,11 @@ export function EntityFormView({
                 onChange={(description) => set({ description })}
               />
             </Field>
-            <Field label="Category">
-              <NativeSelect
-                value={value.category_id ?? NOTE_CATEGORIES[0].id}
-                onChange={(e) => set({ category_id: e.target.value })}
-              >
-                {NOTE_CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
+            <CategoryPicker
+              entries={NOTE_CATEGORIES}
+              value={value.category_id ?? NOTE_CATEGORIES[0].id}
+              onChange={(id) => set({ category_id: id })}
+            />
           </>
         );
       }
@@ -212,44 +199,18 @@ export function EntityFormView({
                 onChange={(e) => set({ end_date: e.target.value || null })}
               />
             </Field>
-            <Field label="Stage">
-              <NativeSelect
-                value={value.stage_id ?? TASK_STAGES[0].id}
-                onChange={(e) => set({ stage_id: e.target.value })}
-              >
-                {TASK_STAGES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="Label">
-              <NativeSelect
-                value={value.label_id ?? TASK_LABELS[0].id}
-                onChange={(e) => set({ label_id: e.target.value })}
-              >
-                {TASK_LABELS.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="Priority">
-              <NativeSelect
-                value={String(value.priority ?? 0)}
-                onChange={(e) =>
-                  set({ priority: Number.parseInt(e.target.value, 10) })
-                }
-              >
-                {TASK_PRIORITIES.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
+            <TaskStagePicker
+              value={value.stage_id ?? TASK_STAGES[0].id}
+              onChange={(stageId) => set({ stage_id: stageId })}
+            />
+            <TaskLabelPicker
+              value={value.label_id ?? TASK_LABELS[0].id}
+              onChange={(labelId) => set({ label_id: labelId })}
+            />
+            <PriorityPicker
+              value={value.priority ?? 1}
+              onChange={(priority) => set({ priority })}
+            />
           </>
         );
       }
@@ -339,7 +300,8 @@ export function EntityFormView({
     <EntityScreenLayout
       header={
         <div className="flex items-center gap-1 pb-2">
-          <Button
+          <IconTooltipButton
+            label="Back"
             variant="ghost"
             size="sm"
             type="button"
@@ -347,11 +309,8 @@ export function EntityFormView({
             disabled={mutationBusy}
           >
             <ArrowLeft className="size-4" />
-            <span className="sr-only">Cancel</span>
-          </Button>
-          <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
-            {heading}
-          </h2>
+          </IconTooltipButton>
+          <span className="min-w-0 flex-1" />
         </div>
       }
       footer={
@@ -360,6 +319,19 @@ export function EntityFormView({
             <p className="text-destructive mb-2 text-xs" role="alert">
               {mutationError}
             </p>
+          ) : null}
+          {formMode === "edit" && onDelete ? (
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              className="text-destructive hover:text-destructive mb-2 w-full"
+              onClick={onDelete}
+              disabled={mutationBusy}
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           ) : null}
           <div className="flex gap-2">
             <Button

@@ -2,6 +2,7 @@ import { Button } from "@helvety/ui/button";
 import { Card, CardContent, CardHeader } from "@helvety/ui/card";
 import { Loader2, Lock, LogOut } from "lucide-react";
 
+import { IconTooltipButton } from "../components/IconTooltipButton";
 import { PopupHeader } from "../components/PopupHeader";
 
 /** Supabase `user_passkey_params` preflight shown on the unlock screen. */
@@ -33,7 +34,16 @@ export function UnlockView({
     <>
       <div className="relative mb-2">
         <PopupHeader version={version} />
-        <Button
+        <IconTooltipButton
+          label="Sign out"
+          tooltip={
+            <span className="block text-center">
+              Sign out
+              <span className="text-muted-foreground block text-xs">
+                {sessionEmail}
+              </span>
+            </span>
+          }
           variant="outline"
           size="sm"
           type="button"
@@ -41,12 +51,8 @@ export function UnlockView({
           onClick={onLogout}
         >
           <LogOut className="size-4" />
-          <span className="sr-only">Sign out</span>
-        </Button>
+        </IconTooltipButton>
       </div>
-      <p className="text-muted-foreground -mt-1 mb-1 truncate text-xs">
-        {sessionEmail}
-      </p>
       <Card className="border-0 shadow-none">
         <CardHeader className="p-3 pb-2">
           <p className="text-sm font-medium">Unlock encryption</p>

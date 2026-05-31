@@ -6,18 +6,14 @@ import type { EntityTabId } from "./views/DataTabsView";
  */
 export type EntityScreen =
   | { mode: "list" }
-  | { mode: "detail"; kind: EntityKind; id: string }
   | {
       mode: "form";
       kind: EntityKind;
       formMode: "create" | "edit";
       id?: string;
+      loading?: boolean;
+      loadError?: string | null;
     };
-
-/**
- *
- */
-export type LinksSection = "links" | "folders";
 
 /**
  *
@@ -30,7 +26,3 @@ export function entityKindForTab(
   }
   return tab;
 }
-
-/**
- *
- */

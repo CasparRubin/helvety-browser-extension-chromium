@@ -74,7 +74,7 @@ export function AboutTab({
             <CardTitle className="text-sm">{EXTENSION_DISPLAY_NAME}</CardTitle>
             <CardDescription className="text-xs leading-relaxed">
               End-to-end encrypted tasks, contacts, notes, links, and folders.
-              Create, view, edit, and delete from this side panel after passkey
+              Create, edit, and delete from this side panel after passkey
               unlock; decryption happens only in your browser.
             </CardDescription>
           </CardHeader>
@@ -154,8 +154,8 @@ export function AboutTab({
                 extension only.
               </li>
               <li>
-                Browse and edit encrypted records here, or open the web app for
-                advanced workflows.
+                Grouped lists open straight into the editor; links open in your
+                browser on tap. Use the web app for advanced workflows.
               </li>
             </ul>
 

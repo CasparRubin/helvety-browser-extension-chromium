@@ -19,6 +19,9 @@ describe("README vendor and side panel documentation", () => {
     expect(panelSection).toContain("EntityScreenLayout");
     expect(panelSection).toContain("EntityRichTextEditor");
     expect(panelSection).toContain("entity-rich-text");
+    expect(panelSection).toContain("edit-first");
+    expect(panelSection).toContain("IconTooltipButton");
+    expect(panelSection).toContain("components/lists/");
     expect(panelSection).toContain("clears decrypted state");
     expect(panelSection).toContain("openPanelOnActionClick");
     expect(panelSection).toContain("pending-otp-storage.ts");
@@ -43,6 +46,23 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("extension-chrome-shell");
     expect(readme).toContain("security-e2ee-docs");
     expect(readme).toContain("webauthn-docs");
+    expect(readme).toContain("src/**/*.test.ts");
+    expect(readme).toContain("entity-catalogs");
+    expect(readme).toContain("list-group-utils");
+  });
+
+  it("does not describe a separate read-only detail step", () => {
+    expect(readme).not.toMatch(/view details/i);
+    expect(readme).not.toMatch(/view full decrypted/i);
+    expect(readme).not.toContain("EntityDetailView");
+    expect(readme).toMatch(/edit-first/i);
+  });
+
+  it("E2EE writes section matches edit-first side panel UX", () => {
+    const e2eeSection = readme.slice(readme.indexOf("## E2EE writes"));
+    expect(e2eeSection).toMatch(/Create, edit, and delete/i);
+    expect(e2eeSection).toMatch(/edit-first/i);
+    expect(e2eeSection).toMatch(/links open the URL on tap/i);
   });
 
   it("describes CRUD and does not claim read-only MVP", () => {

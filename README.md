@@ -11,21 +11,21 @@ You do **not** need the Helvety monorepo or a local auth server to **build** thi
 | Build & load unpacked (`dist/`)                                 | Yes                                                                                                                                                                                    |
 | Email OTP sign-in                                               | Yes — production Supabase project in `config.ts`                                                                                                                                       |
 | PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                             |
-| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, view details, edit, delete from the side panel                                                                           |
+| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, edit, and delete from the side panel (edit-first lists; links open URL on tap)                                           |
 | Passkey unlock (WebAuthn on auth)                               | **Yes** when `helvety.com/auth` serves JSON on `options` / `verify` and Vercel `HELVETY_CHROME_EXTENSION_ORIGINS` includes your runtime extension id (Edge/Chrome unpacked ids differ) |
 
 You can sign in and the extension will load PRF params when configured (preflight on the unlock screen). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: production auth must expose the passkey API routes and allowlist your extension id on `helvety-auth` (see monorepo [`apps/auth/docs/extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md)). Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## What talks to what
 
-| Piece                         | Runs where                                                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Email OTP sign-in             | **Supabase Auth** (`HELVETY_SUPABASE_*` in `config.ts`)                                                    |
-| PRF params (salt, KCV)        | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                          |
-| Passkey options / verify      | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only      |
-| Encrypted list/detail rows    | **Supabase** PostgREST — projections in `e2ee-data-select.ts`                                              |
-| Decryption                    | **This extension** — `decrypt-entities.ts` and `@helvety/shared` crypto (client-side only)                 |
-| Writes (insert/update/delete) | **Supabase** PostgREST — `encrypt-entities.ts` + `entity-repository.ts` (ciphertext only in `encrypted_*`) |
+| Piece                             | Runs where                                                                                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email OTP sign-in                 | **Supabase Auth** (`HELVETY_SUPABASE_*` in `config.ts`)                                                                                      |
+| PRF params (salt, KCV)            | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                                                            |
+| Passkey options / verify          | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only                                        |
+| Encrypted list and edit-form rows | **Supabase** PostgREST — projections in `e2ee-data-select.ts` (`*_LIST_SELECT` for grouped lists; `*_DETAIL_SELECT` when opening the editor) |
+| Decryption                        | **This extension** — `decrypt-entities.ts` and `@helvety/shared` crypto (client-side only)                                                   |
+| Writes (insert/update/delete)     | **Supabase** PostgREST — `encrypt-entities.ts` + `entity-repository.ts` (ciphertext only in `encrypted_*`)                                   |
 
 The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth deploy**; the extension does **not** call that URL at runtime.
 
@@ -54,7 +54,10 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Entry: `index.html` → `src/popup/main.tsx` (imports `@helvety/extension-chrome/theme-boot` before React). The `src/popup/` path is the React UI module (legacy folder name); the Chrome surface is the side panel, not an action popup.
 - Surface: global side panel (`manifest.json` `side_panel.default_path`); toolbar icon opens the panel via `background.ts` (`openPanelOnActionClick`).
 - Root: `src/popup/App.tsx` — sign-in, unlock, or data tabs after session + passkey unlock; clears decrypted state on sign-out and account switch.
-- Views: `src/popup/views/` — `SignInView`, `UnlockView`, `DataTabsView` (lists + navigation), `EntityDetailView`, `EntityFormView`, `AboutTab`.
+- Views: `src/popup/views/` — `SignInView`, `UnlockView`, `DataTabsView` (grouped lists + edit-first navigation), `EntityFormView`, `AboutTab`.
+- Lists: `src/popup/components/lists/` — stage/category groups and links tree (mobile-style rows); row tap opens the edit form (links: tap opens URL, pencil opens edit).
+- Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles aligned with web apps.
+- Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text).
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (TipTap) for task/note descriptions and contact notes; plain `Input`/`Textarea` for other fields.
 - E2EE data layer: `entity-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
@@ -111,6 +114,7 @@ pnpm ci:release   # check + build → dist/
 | `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                  |
 | `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                           |
 | `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`) |
+| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                                                  |
 | `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                     |
 | `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                           |
 
@@ -121,4 +125,4 @@ pnpm ci:release   # check + build → dist/
 
 ## E2EE writes (after unlock)
 
-Create, view full decrypted details, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the side panel. Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
+Create, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the side panel. Lists are **edit-first**: tapping a row opens the editor (links open the URL on tap; use the pencil to edit). Deletes are available from list rows (tasks, notes, contacts) or the edit form (including links and folders). Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).

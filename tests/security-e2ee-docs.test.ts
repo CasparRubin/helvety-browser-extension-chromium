@@ -33,4 +33,11 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toMatch(/passkey auth HTTP failures|\[helvety-unlock\]/i);
     expect(doc).not.toMatch(/No unlock diagnostics/i);
   });
+
+  it("describes edit-first side panel UX (not a read-only detail view)", () => {
+    expect(doc).toMatch(/edit-first|Edit-first/i);
+    expect(doc).toMatch(/\*_DETAIL_SELECT.*edit/i);
+    expect(doc).not.toMatch(/read-only detail/i);
+    expect(doc).not.toMatch(/list\/detail\/form state/i);
+  });
 });

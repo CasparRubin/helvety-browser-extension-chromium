@@ -1,7 +1,64 @@
-/** Decrypted summary row for list UI (title/name only; full fields on detail). */
+/** Decrypted summary row for simple dropdowns (folder parent pickers). */
 export interface EntityListItem {
   id: string;
   title: string;
+}
+
+/**
+ *
+ */
+export interface TaskListRow {
+  id: string;
+  title: string;
+  stage_id: string;
+  sort_order: number;
+  created_at: string;
+}
+
+/**
+ *
+ */
+export interface NoteListRow {
+  id: string;
+  title: string;
+  category_id: string;
+  sort_order: number;
+  created_at: string;
+}
+
+/**
+ *
+ */
+export interface ContactListRow {
+  id: string;
+  first_name: string;
+  last_name: string;
+  category_id: string;
+  sort_order: number;
+  created_at: string;
+}
+
+/**
+ *
+ */
+export interface LinkListRow {
+  id: string;
+  name: string;
+  url: string;
+  folder_id: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+/**
+ *
+ */
+export interface LinkFolderListRow {
+  id: string;
+  name: string;
+  parent_folder_id: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 /**
