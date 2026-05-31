@@ -9,14 +9,14 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 ## Privacy summary
 
-| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?    | Plaintext in extension before unlock?          |
-| ----------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------- | ---------------------------------------------- |
-| **Identity**            | Email, OTP                                                                                       | Email via Supabase Auth only             | Email in UI when signed in                     |
-| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                      | Yes after fetch (not secret)                   |
-| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)      | Yes when unlocked                              |
-| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only              | **Only after passkey unlock** (memory / UI)    |
-| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                       | Master key in extension IndexedDB after unlock |
-| **Session**             | Supabase JWT / refresh                                                                           | In `chrome.storage.local` (auth adapter) | Not shown in About UI                          |
+| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?                                      | Plaintext in extension before unlock?          |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Identity**            | Email, OTP                                                                                       | Email via Supabase Auth only                                               | Email in UI when signed in                     |
+| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                                                        | Yes after fetch (not secret)                   |
+| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)                                        | Yes when unlocked                              |
+| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only                                                | **Only after passkey unlock** (memory / UI)    |
+| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                                                         | Master key in extension IndexedDB after unlock |
+| **Session**             | Supabase JWT / refresh, weekly email-proof anchor                                                | In `chrome.storage.local` (auth + `helvety_extension_last_email_verified`) | Not shown in About UI                          |
 
 **“100% client-side” for user content** means: this extension **never** sends decrypted titles, notes, contact details, or URLs to Helvety app APIs or PostgREST. Encryption and decryption run in the extension via Web Crypto (`encrypt-entities.ts` / `decrypt-entities.ts`). That matches helvety.com.
 
@@ -51,6 +51,8 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 - **Never** add server secrets (`SUPABASE_SECRET_KEY`, `sb_secret_*`, etc.).
 
 User **access tokens** after OTP sign-in live in `chrome.storage.local` via the Supabase auth adapter. Sensitive at runtime; not entity plaintext.
+
+**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively.
 
 ## Entity content (tasks, notes, contacts, links)
 

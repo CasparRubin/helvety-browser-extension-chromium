@@ -3,14 +3,22 @@ import { POPUP_SHELL_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { usePopupTheme } from "@helvety/extension-chrome/use-popup-theme";
 import {
   deleteMasterKey,
+  getCachedMasterKey,
   getMasterKey,
+  touchVaultSessionInStorage,
 } from "@helvety/shared/crypto/key-storage";
+import { useVaultIdleLock } from "@helvety/shared/crypto/use-vault-idle-lock";
 import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog";
 import { TooltipProvider } from "@helvety/ui/tooltip";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { HELVETY_GATEWAY } from "../lib/config";
 import { EntityRepository } from "../lib/entity-repository";
+import {
+  clearExtensionEmailProof,
+  hasValidExtensionEmailProof,
+  writeExtensionEmailProof,
+} from "../lib/extension-email-proof";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
@@ -71,6 +79,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
+  const [vaultUnlockedAt, setVaultUnlockedAt] = useState<number | null>(null);
   const [cryptoBusy, setCryptoBusy] = useState(false);
   const [cryptoError, setCryptoError] = useState<string | null>(null);
   const [paramsPreflight, setParamsPreflight] =
@@ -135,10 +144,45 @@ export default function App() {
       setAccessToken(null);
       return;
     }
+    const emailProofValid = await hasValidExtensionEmailProof(session.user.id);
+    if (!emailProofValid) {
+      await supabase.auth.signOut();
+      setSessionEmail(null);
+      setUserId(null);
+      setAccessToken(null);
+      return;
+    }
     setSessionEmail(session.user.email ?? null);
     setUserId(session.user.id);
     setAccessToken(session.access_token);
   }, [supabase]);
+
+  const touchVaultActivity = useCallback(async () => {
+    if (!userId || !masterKey) {
+      return;
+    }
+    await touchVaultSessionInStorage(userId);
+  }, [masterKey, userId]);
+
+  const handleVaultLock = useCallback(
+    async (activeUserId: string) => {
+      await deleteMasterKey(activeUserId);
+      clearDecryptedEntityState();
+      setMasterKey(null);
+      setVaultUnlockedAt(null);
+      setLoadedTabs(new Set());
+      setParamsPreflight(null);
+      setScreen({ mode: "list" });
+    },
+    [clearDecryptedEntityState]
+  );
+
+  useVaultIdleLock({
+    userId,
+    isUnlocked: masterKey !== null,
+    vaultUnlockedAt,
+    onLock: handleVaultLock,
+  });
 
   useEffect(() => {
     void refreshSession();
@@ -175,12 +219,14 @@ export default function App() {
     setLoadedTabs(new Set());
     clearDecryptedEntityState();
     setMasterKey(null);
+    setVaultUnlockedAt(null);
     if (!userId) {
       return;
     }
     void (async () => {
-      const key = await getMasterKey(userId);
-      setMasterKey(key);
+      const cached = await getCachedMasterKey(userId);
+      setMasterKey(cached?.key ?? null);
+      setVaultUnlockedAt(cached?.unlockedAt ?? null);
     })();
   }, [userId, clearDecryptedEntityState]);
 
@@ -219,6 +265,7 @@ export default function App() {
       setListBusy(true);
       setListError(null);
       try {
+        await touchVaultActivity();
         if (target === "tasks") {
           setTasks(await repo.listTasks());
         } else if (target === "notes") {
@@ -237,7 +284,7 @@ export default function App() {
         setListBusy(false);
       }
     },
-    [repo]
+    [repo, touchVaultActivity]
   );
 
   const invalidateTab = useCallback((target: EntityTabId) => {
@@ -300,6 +347,10 @@ export default function App() {
       setOtpInput("");
       setOtpSent(false);
       await clearPendingOtp();
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        await writeExtensionEmailProof(data.session.user.id);
+      }
       await refreshSession();
     } finally {
       setAuthBusy(false);
@@ -312,12 +363,14 @@ export default function App() {
     }
     clearDecryptedEntityState();
     setMasterKey(null);
+    setVaultUnlockedAt(null);
     setLoadedTabs(new Set());
     setEmailInput("");
     setOtpInput("");
     setOtpSent(false);
     setAuthError(null);
     await clearPendingOtp();
+    await clearExtensionEmailProof();
     await supabase.auth.signOut();
     await refreshSession();
   };
@@ -325,6 +378,12 @@ export default function App() {
   const handleUnlock = async () => {
     if (!accessToken || !userId) {
       setCryptoError("Not signed in.");
+      return;
+    }
+    const emailProofValid = await hasValidExtensionEmailProof(userId);
+    if (!emailProofValid) {
+      await handleLogout();
+      setAuthError("Your session expired. Sign in again.");
       return;
     }
     setCryptoError(null);
@@ -354,7 +413,9 @@ export default function App() {
         return;
       }
       const key = await getMasterKey(userId);
+      const cached = await getCachedMasterKey(userId);
       setMasterKey(key);
+      setVaultUnlockedAt(cached?.unlockedAt ?? null);
       setLoadedTabs(new Set());
       setScreen({ mode: "list" });
     } finally {
@@ -363,6 +424,7 @@ export default function App() {
   };
 
   const handleTabChange = (next: EntityTabId) => {
+    void touchVaultActivity();
     setTab(next);
     setListError(null);
     setScreen({ mode: "list" });
@@ -447,6 +509,7 @@ export default function App() {
     setMutationBusy(true);
     setMutationError(null);
     try {
+      await touchVaultActivity();
       if (screen.formMode === "create") {
         const id = await createEntity(repo, formDraft);
         await reloadCurrentTab();
@@ -481,6 +544,7 @@ export default function App() {
     }
     setMutationBusy(true);
     try {
+      await touchVaultActivity();
       await deleteEntity(repo, deleteTarget.kind, deleteTarget.id);
       await reloadCurrentTab();
       setDeleteOpen(false);

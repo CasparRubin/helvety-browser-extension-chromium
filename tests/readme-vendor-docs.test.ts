@@ -91,6 +91,18 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toMatch(/passkey API URL/i);
   });
 
+  it("documents session and vault policy aligned with helvety.com", () => {
+    const policySection = readme.slice(
+      readme.indexOf("## Session and vault policy")
+    );
+    expect(policySection).toContain("auth-session-policy");
+    expect(policySection).toContain("helvety_extension_last_email_verified");
+    expect(policySection).toMatch(/24h sliding idle/i);
+    expect(policySection).toMatch(/7d absolute max/i);
+    expect(policySection).toContain("useVaultIdleLock");
+    expect(policySection).toContain("touchVaultSessionInStorage");
+  });
+
   it("does not imply lists-only or pre-CRUD behavior", () => {
     expect(readme).not.toMatch(/read-only MVP/i);
     expect(readme).not.toMatch(/\blists? only\b/i);

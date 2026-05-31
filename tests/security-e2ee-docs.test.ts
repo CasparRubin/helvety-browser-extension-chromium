@@ -34,6 +34,14 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).not.toMatch(/No unlock diagnostics/i);
   });
 
+  it("documents unified session and vault TTL policy", () => {
+    expect(doc).toContain("auth-session-policy");
+    expect(doc).toMatch(/@helvety\/shared\/crypto/i);
+    expect(doc).toMatch(/24h sliding idle/i);
+    expect(doc).toMatch(/7d absolute max/i);
+    expect(doc).toContain("helvety_extension_last_email_verified");
+  });
+
   it("describes edit-first side panel UX (not a read-only detail view)", () => {
     expect(doc).toMatch(/edit-first|Edit-first/i);
     expect(doc).toMatch(/\*_DETAIL_SELECT.*edit/i);

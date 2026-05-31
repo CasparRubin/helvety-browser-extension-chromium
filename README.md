@@ -66,6 +66,15 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
 - About tab: version, extension ID, auth origin, passkey API URL, security doc links; **no** session tokens or OTP in the DOM.
 
+## Session and vault policy
+
+Aligned with helvety.com (`@helvety/shared/auth-session-policy.ts`; no extension env vars):
+
+- **Weekly email proof** — after OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records the proof window (**7d**). Expired proof signs the user out.
+- **Vault idle lock** — IndexedDB master keys follow **24h sliding idle** and **7d absolute max**; `useVaultIdleLock` and `touchVaultSessionInStorage` on entity CRUD renew activity.
+
+See [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
+
 ## Prerequisites
 
 - Node 22+ and **pnpm**
@@ -108,15 +117,15 @@ pnpm ci:release   # check + build → dist/
 
 ## Repository layout
 
-| Path                         | Purpose                                                                                                                                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/`                   | Supabase auth, passkey unlock, encrypt/decrypt, repository CRUD, config (E2EE core)                                                                                                                                                               |
-| `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                  |
-| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                           |
-| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`) |
-| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                                                  |
-| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                     |
-| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                           |
+| Path                         | Purpose                                                                                                                                                                                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/`                   | Supabase auth, passkey unlock, encrypt/decrypt, repository CRUD, config (E2EE core)                                                                                                                                                                                             |
+| `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                                                |
+| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                                                         |
+| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `auth-session-policy-wiring`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`) |
+| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                                                                                |
+| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                                                   |
+| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                                                         |
 
 ## Docs
 
