@@ -33,10 +33,16 @@ describe("logUnlockFailure", () => {
     });
   });
 
-  it("does not log outside development", () => {
+  it("does not log outside development except passkey auth fetch failures", () => {
     vi.stubEnv("DEV", false);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     logUnlockFailure("passkey_params", { code: "PGRST301" });
     expect(warn).not.toHaveBeenCalled();
+    logUnlockFailure("passkey_auth_fetch", {
+      path: "https://helvety.com/auth/api/extension/passkey/options",
+      error: "Request to Helvety auth failed",
+      hint: "status=500",
+    });
+    expect(warn).toHaveBeenCalledOnce();
   });
 });

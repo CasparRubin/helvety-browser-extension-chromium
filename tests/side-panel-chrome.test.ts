@@ -117,6 +117,15 @@ describe("side panel chrome", () => {
     expect(about).toContain(EXTENSION_DISPLAY_NAME);
   });
 
+  it("About tab shows auth origin and passkey API URL for operator checks", () => {
+    const about = readSource("src/popup/views/AboutTab.tsx");
+    expect(about).toContain("HELVETY_AUTH_ORIGIN");
+    expect(about).toContain("buildHelvetyAuthApiUrl");
+    expect(about).toContain("EXTENSION_PASSKEY_OPTIONS_PATH");
+    expect(about).toContain("Passkey API:");
+    expect(about).toContain('aria-label="Side panel color theme"');
+  });
+
   it("SignInView shows code-sent helper when otpSent", () => {
     const signIn = readSource("src/popup/views/SignInView.tsx");
     expect(signIn).toContain("Code sent to");

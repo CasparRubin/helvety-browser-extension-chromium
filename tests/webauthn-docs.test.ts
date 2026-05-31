@@ -35,4 +35,9 @@ describe("webauthn-extension.md", () => {
     expect(doc).toContain("side panel DevTools");
     expect(doc).not.toMatch(/popup DevTools/i);
   });
+
+  it("documents production passkey auth fetch logging", () => {
+    expect(doc).toMatch(/passkey auth HTTP failures|\[helvety-unlock\]/i);
+    expect(doc).toMatch(/production builds also log passkey/i);
+  });
 });

@@ -68,6 +68,7 @@ describe("README vendor and side panel documentation", () => {
   it("documents HELVETY_CHROME_EXTENSION_ORIGINS for operators", () => {
     expect(readme).toContain("HELVETY_CHROME_EXTENSION_ORIGINS");
     expect(readme).toMatch(/edge:\/\/extensions|runtime id/i);
+    expect(readme).toMatch(/passkey API URL/i);
   });
 
   it("does not imply lists-only or pre-CRUD behavior", () => {

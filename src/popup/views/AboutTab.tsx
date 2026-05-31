@@ -25,7 +25,11 @@ import {
   Sun,
 } from "lucide-react";
 
-import { HELVETY_AUTH_ORIGIN } from "../../lib/config";
+import {
+  buildHelvetyAuthApiUrl,
+  EXTENSION_PASSKEY_OPTIONS_PATH,
+  HELVETY_AUTH_ORIGIN,
+} from "../../lib/config";
 import {
   DEVELOPER_NAME,
   DEVELOPER_URL,
@@ -85,7 +89,7 @@ export function AboutTab({
               </p>
               <RadioGroup
                 className="flex flex-col gap-1.5"
-                aria-label="Popup color theme"
+                aria-label="Side panel color theme"
                 value={themePreference}
                 onValueChange={(v) => {
                   if (v === "light" || v === "dark") {
@@ -228,6 +232,10 @@ export function AboutTab({
 
             <p className="text-muted-foreground font-mono text-[10px] leading-relaxed break-all">
               Auth origin: {HELVETY_AUTH_ORIGIN}
+            </p>
+            <p className="text-muted-foreground font-mono text-[10px] leading-relaxed break-all">
+              Passkey API:{" "}
+              {buildHelvetyAuthApiUrl(EXTENSION_PASSKEY_OPTIONS_PATH)}
             </p>
             <p className="text-[11px]">
               Encryption preflight:{" "}

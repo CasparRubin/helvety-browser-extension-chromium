@@ -30,7 +30,7 @@ type ExtensionPasskeyOptionsPayload = {
 
 /**
  * WebAuthn + PRF unlock: PRF params via Supabase (`fetchPasskeyParamsForUser`);
- * options/verify via Bearer routes on `HELVETY_AUTH_ORIGIN` when deployed.
+ * options/verify via Bearer routes on `HELVETY_AUTH_ORIGIN` (JSON `ActionResponse`; 404/HTML → not-deployed error).
  * Verify sends `challengeEnvelope` from options (no httpOnly cookie); PRF stays client-side.
  */
 export async function unlockEncryptionWithPasskey(input: {

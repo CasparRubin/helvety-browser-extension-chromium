@@ -182,6 +182,74 @@ describe("helvetyAuthFetch", () => {
     });
   });
 
+  it("passes through JSON 500 errors on passkey routes (not not-deployed)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: false,
+          error: "Request to Helvety auth failed",
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
+      method: "POST",
+      accessToken: "token",
+      body: JSON.stringify({ origin: "chrome-extension://x" }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Request to Helvety auth failed",
+    });
+  });
+
+  it("passes through allowlist errors from the auth server on passkey routes", async () => {
+    const allowlistError =
+      "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS). Add the id from About → Extension ID on Vercel, then redeploy.";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: false, error: allowlistError }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
+      method: "POST",
+      accessToken: "token",
+      body: JSON.stringify({ origin: "chrome-extension://x" }),
+    });
+
+    expect(result).toEqual({ success: false, error: allowlistError });
+  });
+
+  it("maps 401 HTML on passkey routes to not deployed (gateway HTML)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("<!DOCTYPE html><html>401</html>", {
+        status: 401,
+        headers: { "Content-Type": "text/html" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
+      method: "POST",
+      accessToken: "token",
+      body: JSON.stringify({ origin: "chrome-extension://x" }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: PASSKEY_API_NOT_DEPLOYED_MESSAGE,
+    });
+  });
+
   it("includes status in non-401 failure when body has no ActionResponse error", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response("{}", {

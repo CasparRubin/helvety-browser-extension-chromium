@@ -90,7 +90,7 @@ Create, update, and delete use **direct Supabase PostgREST** (`entity-repository
 | `prf_salt`, `version`, `credential_id`   | **Supabase**              | `user_passkey_params` under RLS           |
 | Ciphertext + structural metadata         | **Supabase**              | Operators/backups see ciphertext/metadata |
 
-Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.ts`. Dev-only logs omit user ids and tokens (`unlock-dev-log.ts`).
+Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.ts`. Unlock logs omit user ids and tokens; passkey auth HTTP failures log URL/status as `[helvety-unlock]` in production (other unlock steps are dev-only).
 
 ## PRF output in verify requests
 
@@ -105,14 +105,14 @@ Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.
 
 ## Extension surface
 
-| Surface            | Data handling                                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------------------- |
-| MV3 `permissions`  | `storage`, `sidePanel`                                                                         |
-| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                                          |
-| `side_panel`       | Global panel at `index.html`; toolbar icon opens it (`background.js` `openPanelOnActionClick`) |
-| `background.js`    | Side panel open behavior only — no entity I/O or auth ceremony                                 |
-| About tab          | Version, extension id, auth origin — **no** access tokens or OTP in DOM                        |
-| Production console | No unlock diagnostics (`import.meta.env.DEV` gates logging)                                    |
+| Surface            | Data handling                                                                                            |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
+| MV3 `permissions`  | `storage`, `sidePanel`                                                                                   |
+| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                                                    |
+| `side_panel`       | Global panel at `index.html`; toolbar icon opens it (`background.js` `openPanelOnActionClick`)           |
+| `background.js`    | Side panel open behavior only — no entity I/O or auth ceremony                                           |
+| About tab          | Version, extension id, auth origin, passkey API URL — **no** access tokens or OTP in DOM                 |
+| Production console | Passkey auth fetch failures log as `[helvety-unlock]` (URL/status only); other unlock steps are dev-only |
 
 ## Helvety vs infrastructure
 

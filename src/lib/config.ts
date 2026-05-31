@@ -78,6 +78,7 @@ export const EXTENSION_PASSKEY_PARAMS_PATH =
  * Bearer JSON routes for WebAuthn unlock on `HELVETY_AUTH_ORIGIN`.
  * Implemented in monorepo `apps/auth`. If these URLs return 404 or HTML instead of
  * JSON `ActionResponse`, the extension shows “Passkey API is not deployed…”.
+ * JSON errors (allowlist, auth, server) from a live deploy show the server message instead.
  */
 export const EXTENSION_PASSKEY_OPTIONS_PATH =
   "/api/extension/passkey/options" as const;

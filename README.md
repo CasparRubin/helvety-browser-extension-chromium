@@ -61,7 +61,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header + `assets/icon-48.png`).
 - Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
 - OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
-- About tab: version, extension ID, auth origin, security doc links; **no** session tokens or OTP in the DOM.
+- About tab: version, extension ID, auth origin, passkey API URL, security doc links; **no** session tokens or OTP in the DOM.
 
 ## Prerequisites
 

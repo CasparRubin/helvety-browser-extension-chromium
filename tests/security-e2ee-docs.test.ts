@@ -27,4 +27,10 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("clearDecryptedEntityState");
     expect(doc).toContain("tests/security-e2ee-docs.test.ts");
   });
+
+  it("documents About passkey API URL and production passkey fetch logging", () => {
+    expect(doc).toMatch(/passkey API URL/i);
+    expect(doc).toMatch(/passkey auth HTTP failures|\[helvety-unlock\]/i);
+    expect(doc).not.toMatch(/No unlock diagnostics/i);
+  });
 });

@@ -294,6 +294,24 @@ describe("unlockEncryptionWithPasskey", () => {
     expect(startAuthentication).not.toHaveBeenCalled();
   });
 
+  it("passes through allowlist errors from the auth server", async () => {
+    const allowlistError =
+      "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS). Add the id from About → Extension ID on Vercel, then redeploy.";
+    helvetyAuthFetch.mockResolvedValueOnce({
+      success: false,
+      error: allowlistError,
+    });
+
+    const result = await unlockEncryptionWithPasskey({
+      supabase: SUPABASE,
+      accessToken: ACCESS_TOKEN,
+      userId: USER_ID,
+    });
+
+    expect(result).toEqual({ ok: false, error: allowlistError });
+    expect(startAuthentication).not.toHaveBeenCalled();
+  });
+
   it("maps canceled WebAuthn to a friendly error", async () => {
     startAuthentication.mockRejectedValue(
       Object.assign(new Error("cancelled"), { name: "NotAllowedError" })

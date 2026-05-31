@@ -10,14 +10,15 @@ const SAFE_UNLOCK_LOG_KEYS = new Set([
 ]);
 
 /**
- * Logs unlock diagnostics in development builds only (side panel DevTools → `[helvety-unlock]`).
- * Production builds omit all console output from this helper.
+ * Logs unlock diagnostics to the side panel console (`[helvety-unlock]`).
+ * Passkey auth fetch failures are logged in production too (URL/status only, no secrets).
  */
 export function logUnlockFailure(
   step: string,
   detail: Record<string, unknown>
 ): void {
-  if (!import.meta.env.DEV) {
+  const logInProduction = step === "passkey_auth_fetch";
+  if (!import.meta.env.DEV && !logInProduction) {
     return;
   }
   const safe: Record<string, unknown> = { step };
