@@ -59,7 +59,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles aligned with web apps.
 - Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text).
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
-- Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (TipTap) for task/note descriptions and contact notes; plain `Input`/`Textarea` for other fields.
+- Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (TipTap) for task/note descriptions and contact notes; remount key is `entityFormSessionKey` (record identity), not serialized draft text — same idea as web `E2eeRichTextItemEditorShell`; plain `Input`/`Textarea` for other fields.
 - E2EE data layer: `entity-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header + `assets/icon-48.png`).
 - Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
@@ -123,7 +123,7 @@ pnpm ci:release   # check + build → dist/
 | `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                                                |
 | `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                                                         |
 | `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `auth-session-policy-wiring`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`) |
-| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                                                                                |
+| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation` + `entityFormSessionKey`, `entity-rich-text-editor`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                            |
 | `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                                                   |
 | `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                                                         |
 

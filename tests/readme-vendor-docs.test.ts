@@ -18,7 +18,10 @@ describe("README vendor and side panel documentation", () => {
     expect(panelSection).toMatch(/not `next-themes`/);
     expect(panelSection).toContain("EntityScreenLayout");
     expect(panelSection).toContain("EntityRichTextEditor");
+    expect(panelSection).toContain("entityFormSessionKey");
+    expect(panelSection).toContain("E2eeRichTextItemEditorShell");
     expect(panelSection).toContain("entity-rich-text");
+    expect(panelSection).not.toMatch(/key=\{value/);
     expect(panelSection).toContain("edit-first");
     expect(panelSection).toContain("IconTooltipButton");
     expect(panelSection).toContain("components/lists/");

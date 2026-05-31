@@ -48,4 +48,10 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).not.toMatch(/read-only detail/i);
     expect(doc).not.toMatch(/list\/detail\/form state/i);
   });
+
+  it("documents TipTap rich text and entityFormSessionKey remount pattern", () => {
+    expect(doc).toContain("entityFormSessionKey");
+    expect(doc).toContain("EntityRichTextEditor");
+    expect(doc).toContain("entity-rich-text-editor.test.ts");
+  });
 });

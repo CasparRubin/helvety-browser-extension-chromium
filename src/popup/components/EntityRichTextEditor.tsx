@@ -15,13 +15,20 @@ const TiptapEditor = lazy(() =>
 
 /**
  * TipTap field for the extension side panel (task/note description, contact notes).
+ *
+ * Remount via `sessionKey` only when switching create/edit records — never on serialized
+ * `value` (that remounts on every keystroke and steals focus). Web apps use the same idea
+ * in `E2eeRichTextItemEditorShell` (editor ref + draft baseline, no value-based key).
  */
 export function EntityRichTextEditor({
+  sessionKey,
   value,
   onChange,
   placeholder = "Add a description…",
   disabled = false,
 }: {
+  /** Stable for one form session; changes when opening a different entity. */
+  sessionKey: string;
   value: string | null;
   onChange: (value: string | null) => void;
   placeholder?: string;
@@ -39,7 +46,7 @@ export function EntityRichTextEditor({
         }
       >
         <TiptapEditor
-          key={value ?? "__empty__"}
+          key={sessionKey}
           content={initial}
           placeholder={placeholder}
           disabled={disabled}

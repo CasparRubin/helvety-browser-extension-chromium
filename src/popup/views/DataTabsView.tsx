@@ -22,6 +22,7 @@ import { LinksTreeList } from "../components/lists/links-tree-list";
 import { NoteEntityList } from "../components/lists/note-entity-list";
 import { TaskEntityList } from "../components/lists/task-entity-list";
 import { PopupHeader } from "../components/PopupHeader";
+import { entityFormSessionKey, type EntityScreen } from "../entity-navigation";
 import { sectionTitle } from "../section-title";
 
 import { AboutTab } from "./AboutTab";
@@ -36,7 +37,6 @@ import type {
   NoteListRow,
   TaskListRow,
 } from "../../lib/entity-types";
-import type { EntityScreen } from "../entity-navigation";
 import type { ThemePreference } from "@helvety/extension-chrome/theme-preference";
 
 /** Main entity tabs after unlock (tasks, notes, contacts, links, about). */
@@ -196,6 +196,7 @@ export function DataTabsView({
         <EntityFormView
           kind={screen.kind}
           formMode={screen.formMode}
+          formSessionKey={entityFormSessionKey(screen)}
           draft={formDraft}
           onDraftChange={onFormDraftChange}
           linkFolders={linkFolderPickerItems}

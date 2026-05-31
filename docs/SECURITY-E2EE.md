@@ -5,7 +5,7 @@ What this extension is **designed** to do and what it **does not** guarantee. Sa
 Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
 URLs and API path constants: **`src/lib/config.ts`**.  
-Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body), **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), plus co-located UI/data tests under **`src/**/\*.test.ts`\*\* (catalogs, navigation, list grouping, link tree).
+Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body), **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap must not use a value-based React `key` — focus regression; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`\*\* (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree).
 
 ## Privacy summary
 
@@ -107,15 +107,15 @@ Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.
 
 ## Extension surface
 
-| Surface            | Data handling                                                                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MV3 `permissions`  | `storage`, `sidePanel`                                                                                                                                            |
-| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                                                                                                             |
-| `side_panel`       | Global panel at `index.html`; toolbar icon opens it (`background.js` `openPanelOnActionClick`)                                                                    |
-| `background.js`    | Side panel open behavior only — no entity I/O or auth ceremony                                                                                                    |
-| Side panel UI      | Edit-first lists (grouped tasks/notes/contacts, links tree); row tap opens the editor except links (tap opens URL). Session email shown on sign-out tooltip only. |
-| About tab          | Version, extension id, auth origin, passkey API URL — **no** access tokens or OTP in DOM                                                                          |
-| Production console | Passkey auth fetch failures log as `[helvety-unlock]` (URL/status only); other unlock steps are dev-only                                                          |
+| Surface            | Data handling                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MV3 `permissions`  | `storage`, `sidePanel`                                                                                                                                                                                                                                                                                                              |
+| `host_permissions` | `*.supabase.co`, `helvety.com` (auth + gateway links)                                                                                                                                                                                                                                                                               |
+| `side_panel`       | Global panel at `index.html`; toolbar icon opens it (`background.js` `openPanelOnActionClick`)                                                                                                                                                                                                                                      |
+| `background.js`    | Side panel open behavior only — no entity I/O or auth ceremony                                                                                                                                                                                                                                                                      |
+| Side panel UI      | Edit-first lists (grouped tasks/notes/contacts, links tree); row tap opens the editor except links (tap opens URL). Task/note **descriptions** and contact **notes** use TipTap (`EntityRichTextEditor`); React remount key is **`entityFormSessionKey`** (record id), not live draft text. Session email on sign-out tooltip only. |
+| About tab          | Version, extension id, auth origin, passkey API URL — **no** access tokens or OTP in DOM                                                                                                                                                                                                                                            |
+| Production console | Passkey auth fetch failures log as `[helvety-unlock]` (URL/status only); other unlock steps are dev-only                                                                                                                                                                                                                            |
 
 ## Helvety vs infrastructure
 

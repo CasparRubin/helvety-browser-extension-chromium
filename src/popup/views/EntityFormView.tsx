@@ -48,6 +48,7 @@ export type EntityFormDraft =
 export function EntityFormView({
   kind,
   formMode,
+  formSessionKey,
   draft,
   onDraftChange,
   linkFolders,
@@ -60,6 +61,8 @@ export function EntityFormView({
 }: {
   kind: EntityKind;
   formMode: "create" | "edit";
+  /** Passed to TipTap as `sessionKey` — stable while editing one record (`entityFormSessionKey`). */
+  formSessionKey: string;
   draft: EntityFormDraft;
   onDraftChange: (draft: EntityFormDraft) => void;
   linkFolders: EntityListItem[];
@@ -123,6 +126,7 @@ export function EntityFormView({
             </Field>
             <Field label="Notes">
               <EntityRichTextEditor
+                sessionKey={formSessionKey}
                 value={value.notes ?? null}
                 placeholder="Add notes…"
                 disabled={mutationBusy}
@@ -151,6 +155,7 @@ export function EntityFormView({
             </Field>
             <Field label="Description">
               <EntityRichTextEditor
+                sessionKey={formSessionKey}
                 value={value.description ?? null}
                 placeholder="Add a description…"
                 disabled={mutationBusy}
@@ -179,6 +184,7 @@ export function EntityFormView({
             </Field>
             <Field label="Description">
               <EntityRichTextEditor
+                sessionKey={formSessionKey}
                 value={value.description ?? null}
                 placeholder="Add a description…"
                 disabled={mutationBusy}
