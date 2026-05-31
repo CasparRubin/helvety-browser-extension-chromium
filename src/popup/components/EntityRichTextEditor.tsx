@@ -14,7 +14,7 @@ const TiptapEditor = lazy(() =>
 );
 
 /**
- * Compact TipTap field for the 320px popup (task/note description, contact notes).
+ * TipTap field for the extension popup (task/note description, contact notes).
  */
 export function EntityRichTextEditor({
   value,

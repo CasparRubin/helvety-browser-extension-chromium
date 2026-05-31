@@ -38,6 +38,17 @@ describe("popup chrome", () => {
     expect(app).toContain("DataTabsView");
   });
 
+  it("popup uses Chrome max action-popup dimensions (800×600)", () => {
+    const indexHtml = readSource("index.html");
+    expect(indexHtml).toContain("min-w-[800px]");
+    expect(indexHtml).toContain("min-h-[600px]");
+
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain("min-h-[600px]");
+    expect(app).toContain("h-[600px]");
+    expect(app).toContain("max-h-[600px]");
+  });
+
   it("does not keep local popup theme modules (shared package owns them)", () => {
     expect(existsSync(join(repoRoot, "src/popup/theme-preference.ts"))).toBe(
       false

@@ -20,6 +20,7 @@ describe("README vendor and popup documentation", () => {
     expect(popupSection).toContain("EntityRichTextEditor");
     expect(popupSection).toContain("entity-rich-text");
     expect(popupSection).toContain("clears decrypted state");
+    expect(readme).toMatch(/800px|800×600|800x600/i);
   });
 
   it("documents tests/ layout contract suites", () => {
@@ -39,6 +40,17 @@ describe("README vendor and popup documentation", () => {
     expect(readme).toContain("docs/SECURITY-E2EE.md");
     expect(readme).toContain("structural metadata");
     expect(readme).toContain("docs/webauthn-extension.md");
+    expect(readme).toContain("extension-passkey-production.md");
+  });
+
+  it("does not claim passkey unlock is blocked until a future auth redeploy", () => {
+    expect(readme).not.toMatch(/404\/HTML until then/i);
+    expect(readme).not.toMatch(/needs auth redeploy.*until then/i);
+  });
+
+  it("documents HELVETY_CHROME_EXTENSION_ORIGINS for operators", () => {
+    expect(readme).toContain("HELVETY_CHROME_EXTENSION_ORIGINS");
+    expect(readme).toMatch(/edge:\/\/extensions|runtime id/i);
   });
 
   it("does not imply lists-only or pre-CRUD behavior", () => {

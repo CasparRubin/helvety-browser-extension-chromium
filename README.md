@@ -6,15 +6,15 @@ You do **not** need the Helvety monorepo or a local auth server to **build** thi
 
 ## What works today (production)
 
-| Feature                                                         | Status                                                                                                                                                                      |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build & load unpacked (`dist/`)                                 | Yes                                                                                                                                                                         |
-| Email OTP sign-in                                               | Yes — production Supabase project in `config.ts`                                                                                                                            |
-| PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                  |
-| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, view details, edit, delete from the popup                                                                     |
-| Passkey unlock (WebAuthn on auth)                               | **Client + monorepo ready** — calls `options` / `verify` with signed `challengeEnvelope`; **production** needs auth redeploy at `HELVETY_AUTH_ORIGIN` (404/HTML until then) |
+| Feature                                                         | Status                                                                                                                                                                                 |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build & load unpacked (`dist/`)                                 | Yes                                                                                                                                                                                    |
+| Email OTP sign-in                                               | Yes — production Supabase project in `config.ts`                                                                                                                                       |
+| PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                             |
+| Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, view details, edit, delete from the popup                                                                                |
+| Passkey unlock (WebAuthn on auth)                               | **Yes** when `helvety.com/auth` serves JSON on `options` / `verify` and Vercel `HELVETY_CHROME_EXTENSION_ORIGINS` includes your runtime extension id (Edge/Chrome unpacked ids differ) |
 
-You can sign in and the extension will load PRF params when configured (preflight on the unlock screen). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: auth must serve extension routes and allow `chrome-extension://<id>`. Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
+You can sign in and the extension will load PRF params when configured (preflight on the unlock screen). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: production auth must expose the passkey API routes and allowlist your extension id on `helvety-auth` (see monorepo [`apps/auth/docs/extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md)). Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## What talks to what
 
@@ -33,12 +33,12 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 Workspace packages supply **popup chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-| Package                     | Role in this extension                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------- |
-| `@helvety/extension-chrome` | Popup shell (320px), theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
-| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                               |
-| `@helvety/shared`           | E2EE crypto and shared utilities                                                          |
-| `@helvety/brand`            | Helvety mark in the About **Developer** section                                           |
+| Package                     | Role in this extension                                                                                |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `@helvety/extension-chrome` | Popup shell (800px, Chrome max), theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
+| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                                           |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                                      |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                       |
 
 Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
 
@@ -64,7 +64,7 @@ That vendor tree is **not** required to run the extension in Chrome—only to co
 - Node 22+ and **pnpm**
 - Git (for the shallow clone when `../helvety` is absent)
 
-When passkey unlock is enabled on production auth, operators must allow your extension origin in WebAuthn configuration (`chrome-extension://<id>` from Chrome → Extensions → Details). See [docs/webauthn-extension.md](docs/webauthn-extension.md).
+When passkey unlock is enabled on production auth, operators set **`HELVETY_CHROME_EXTENSION_ORIGINS`** on Vercel (`helvety-auth`) to your runtime id (from `edge://extensions/?id=…` or `chrome://extensions`, or `chrome.runtime.id` in popup DevTools). See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## Setup
 
@@ -75,7 +75,7 @@ pnpm install
 pnpm build
 ```
 
-Load **`dist/`** in Chrome: Extensions → Developer mode → **Load unpacked** → select the `dist` folder.
+Load **`dist/`** in a Chromium browser (Chrome, Edge, …): Extensions → Developer mode → **Load unpacked** → select the `dist` folder.
 
 ## Configuration
 
@@ -83,12 +83,12 @@ Edit **`src/lib/config.ts`** and rebuild to change production URLs or Supabase k
 
 The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvety.com): project URL, publishable/anon key, and HTTPS app URLs. They are **intentionally not secret** — RLS and user sessions protect data, not hiding those strings. **Never** put server secrets (`SUPABASE_SECRET_KEY`, `sb_secret_*`, etc.) in the extension. See the comment block at the top of `config.ts`.
 
-| Setting             | Constant / location                                              |
-| ------------------- | ---------------------------------------------------------------- |
-| Auth zone (default) | `HELVETY_AUTH_ORIGIN` → `https://helvety.com/auth`               |
-| Auth zone (local)   | Build with `VITE_HELVETY_AUTH_ORIGIN=http://localhost:3001/auth` |
-| Web deep links      | `HELVETY_GATEWAY` → `https://helvety.com`                        |
-| Supabase (public)   | `HELVETY_SUPABASE_URL`, `HELVETY_SUPABASE_PUBLISHABLE_KEY`       |
+| Setting              | Constant / location                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| Auth zone (default)  | `HELVETY_AUTH_ORIGIN` → `https://helvety.com/auth`                                          |
+| Auth zone (override) | Optional build-time `VITE_HELVETY_AUTH_ORIGIN` (non-production only; default is production) |
+| Web deep links       | `HELVETY_GATEWAY` → `https://helvety.com`                                                   |
+| Supabase (public)    | `HELVETY_SUPABASE_URL`, `HELVETY_SUPABASE_PUBLISHABLE_KEY`                                  |
 
 ## Scripts
 

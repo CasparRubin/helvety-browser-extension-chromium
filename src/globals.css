@@ -46,9 +46,9 @@
   }
 }
 
-/* Compact TipTap in the 320px extension popup */
+/* TipTap in the extension popup (800×600 max) */
 .entity-rich-text-editor .tiptap {
   min-height: 6rem !important;
-  max-height: 8.75rem;
+  max-height: 14rem;
   overflow-y: auto;
 }

@@ -123,7 +123,7 @@ export default function App() {
     setScreen({ mode: "list" });
   }, []);
 
-  const shellClass = `flex min-h-[520px] h-[600px] max-h-[600px] flex-col ${POPUP_WIDTH_CLASS} ${POPUP_SHELL_CLASS} text-foreground`;
+  const shellClass = `flex h-[600px] max-h-[600px] min-h-[600px] flex-col ${POPUP_WIDTH_CLASS} ${POPUP_SHELL_CLASS} text-foreground`;
 
   const refreshSession = useCallback(async () => {
     const { data } = await supabase.auth.getSession();

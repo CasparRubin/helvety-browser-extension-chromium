@@ -23,7 +23,7 @@ export type HelvetyJsonResponse<T> = ActionResponse<T>;
 
 const DEFAULT_AUTH_ERROR = "Request to Helvety auth failed";
 
-/** Shown when production auth has not been redeployed with extension passkey routes. */
+/** Shown when `HELVETY_AUTH_ORIGIN` passkey routes return 404 or HTML instead of JSON. */
 export const PASSKEY_API_NOT_DEPLOYED_MESSAGE =
   "Passkey API is not deployed on the Helvety auth server yet.";
 

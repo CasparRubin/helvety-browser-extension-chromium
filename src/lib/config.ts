@@ -44,7 +44,7 @@ export function resolveHelvetyAuthOrigin(
 
 /**
  * Auth API base. Override at build time with `VITE_HELVETY_AUTH_ORIGIN`
- * (e.g. `http://localhost:3001/auth` for local gateway testing).
+ * (only when intentionally targeting a non-production auth host).
  */
 export const HELVETY_AUTH_ORIGIN = resolveHelvetyAuthOrigin(
   import.meta.env.VITE_HELVETY_AUTH_ORIGIN as string | undefined
@@ -76,8 +76,8 @@ export const EXTENSION_PASSKEY_PARAMS_PATH =
 
 /**
  * Bearer JSON routes for WebAuthn unlock on `HELVETY_AUTH_ORIGIN`.
- * Implemented in monorepo `apps/auth` on `main`; unlock shows a clear error until
- * production auth is redeployed with these routes (404/HTML before deploy).
+ * Implemented in monorepo `apps/auth`. If these URLs return 404 or HTML instead of
+ * JSON `ActionResponse`, the extension shows “Passkey API is not deployed…”.
  */
 export const EXTENSION_PASSKEY_OPTIONS_PATH =
   "/api/extension/passkey/options" as const;

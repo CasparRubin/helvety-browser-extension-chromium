@@ -38,11 +38,11 @@ describe("entity-rich-text", () => {
     expect(serializeStoredRichText(parseStoredRichText(""))).toBeNull();
   });
 
-  it("keeps legacy plain text readable when re-serialized", () => {
-    const doc = parseStoredRichText("Hello legacy");
-    const stored = serializeStoredRichText(doc);
-    expect(stored).not.toBeNull();
-    expect(formatStoredRichText(stored)).toBe("Hello legacy");
-    expect(stored).toContain('"type":"doc"');
+  it("does not treat legacy plain text as ProseMirror JSON", () => {
+    expect(parseStoredRichText("Hello legacy")).toBeNull();
+    expect(
+      serializeStoredRichText(parseStoredRichText("Hello legacy"))
+    ).toBeNull();
+    expect(formatStoredRichText("Hello legacy")).toBeNull();
   });
 });
