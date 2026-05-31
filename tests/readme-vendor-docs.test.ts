@@ -49,6 +49,7 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("extension-chrome-shell");
     expect(readme).toContain("security-e2ee-docs");
     expect(readme).toContain("webauthn-docs");
+    expect(readme).toContain("tsconfig-build");
     expect(readme).toContain("src/**/*.test.ts");
     expect(readme).toContain("entity-catalogs");
     expect(readme).toContain("list-group-utils");
