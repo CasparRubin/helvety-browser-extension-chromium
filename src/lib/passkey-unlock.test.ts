@@ -14,8 +14,15 @@ const startAuthentication = vi.hoisted(() => vi.fn());
 const deriveKeyFromPRF = vi.hoisted(() => vi.fn());
 const storeMasterKey = vi.hoisted(() => vi.fn());
 const verifyKeyCheckValue = vi.hoisted(() => vi.fn());
+const generateKeyCheckValue = vi.hoisted(() => vi.fn());
 const getCachedPRFSalt = vi.hoisted(() => vi.fn());
 const cachePRFSalt = vi.hoisted(() => vi.fn());
+const kcvUpdateEq = vi.hoisted(() => vi.fn());
+
+vi.mock("@helvety/shared/crypto/key-check", () => ({
+  verifyKeyCheckValue,
+  generateKeyCheckValue,
+}));
 
 vi.mock("./extension-passkey-params", () => ({
   fetchPasskeyParamsForUser,
@@ -37,10 +44,6 @@ vi.mock("@helvety/shared/crypto/key-storage", () => ({
   storeMasterKey,
 }));
 
-vi.mock("@helvety/shared/crypto/key-check", () => ({
-  verifyKeyCheckValue,
-}));
-
 vi.mock("@helvety/shared/crypto/prf-salt-cache", () => ({
   getCachedPRFSalt,
   cachePRFSalt,
@@ -56,9 +59,18 @@ vi.mock("./config", async (importOriginal) => {
 
 const USER_ID = "00000000-0000-4000-8000-000000000099";
 const ACCESS_TOKEN = "test-access-token";
-const SUPABASE = {} as Parameters<
-  typeof unlockEncryptionWithPasskey
->[0]["supabase"];
+
+/** Supabase stub with `user_passkey_params` KCV update chain. */
+function createSupabaseMock() {
+  kcvUpdateEq.mockResolvedValue({ error: null });
+  const update = vi.fn().mockReturnValue({ eq: kcvUpdateEq });
+  const from = vi.fn().mockReturnValue({ update });
+  return { from } as unknown as Parameters<
+    typeof unlockEncryptionWithPasskey
+  >[0]["supabase"];
+}
+
+let supabase: ReturnType<typeof createSupabaseMock>;
 
 const PRF_SALT_B64 = btoa("test-prf-salt-bytes-32chars!!");
 
@@ -92,6 +104,7 @@ function prfAuthResponse() {
 
 describe("unlockEncryptionWithPasskey", () => {
   beforeEach(() => {
+    supabase = createSupabaseMock();
     getCachedPRFSalt.mockReturnValue(null);
     fetchPasskeyParamsForUser.mockResolvedValue({
       ok: true,
@@ -115,6 +128,9 @@ describe("unlockEncryptionWithPasskey", () => {
     deriveKeyFromPRF.mockResolvedValue({});
     storeMasterKey.mockResolvedValue(undefined);
     verifyKeyCheckValue.mockResolvedValue(true);
+    generateKeyCheckValue.mockResolvedValue(
+      '{"iv":"x","ciphertext":"y","version":1}'
+    );
   });
 
   afterEach(() => {
@@ -123,12 +139,12 @@ describe("unlockEncryptionWithPasskey", () => {
 
   it("loads PRF params from Supabase before calling auth options", async () => {
     await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
 
-    expect(fetchPasskeyParamsForUser).toHaveBeenCalledWith(SUPABASE, USER_ID);
+    expect(fetchPasskeyParamsForUser).toHaveBeenCalledWith(supabase, USER_ID);
     expect(helvetyAuthFetch).toHaveBeenCalled();
     const firstAuthCall = helvetyAuthFetch.mock.calls[0]?.[0];
     expect(firstAuthCall).toBe(EXTENSION_PASSKEY_OPTIONS_PATH);
@@ -136,7 +152,7 @@ describe("unlockEncryptionWithPasskey", () => {
 
   it("posts account-bound options request (response carries options + challengeEnvelope)", async () => {
     await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -157,7 +173,7 @@ describe("unlockEncryptionWithPasskey", () => {
 
   it("uses options data directly for startAuthentication", async () => {
     await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -178,7 +194,7 @@ describe("unlockEncryptionWithPasskey", () => {
 
   it("verify POST sends credential and challengeEnvelope (no PRF in body)", async () => {
     await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -207,7 +223,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -226,7 +242,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -243,7 +259,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -263,7 +279,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -282,7 +298,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -303,7 +319,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -318,7 +334,7 @@ describe("unlockEncryptionWithPasskey", () => {
     );
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -335,7 +351,7 @@ describe("unlockEncryptionWithPasskey", () => {
     );
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -355,7 +371,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -371,7 +387,7 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -397,7 +413,7 @@ describe("unlockEncryptionWithPasskey", () => {
     verifyKeyCheckValue.mockResolvedValue(false);
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -415,7 +431,7 @@ describe("unlockEncryptionWithPasskey", () => {
     startAuthentication.mockResolvedValue(prfAuthResponse());
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -432,7 +448,7 @@ describe("unlockEncryptionWithPasskey", () => {
     deriveKeyFromPRF.mockResolvedValue(masterKey);
 
     const result = await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
@@ -444,11 +460,28 @@ describe("unlockEncryptionWithPasskey", () => {
 
   it("re-fetches passkey params after verify for salt and KCV checks", async () => {
     await unlockEncryptionWithPasskey({
-      supabase: SUPABASE,
+      supabase,
       accessToken: ACCESS_TOKEN,
       userId: USER_ID,
     });
 
     expect(fetchPasskeyParamsForUser).toHaveBeenCalledTimes(2);
+  });
+
+  it("backfills key_check_value via Supabase when missing after successful unlock", async () => {
+    const masterKey = {} as CryptoKey;
+    deriveKeyFromPRF.mockResolvedValue(masterKey);
+
+    const result = await unlockEncryptionWithPasskey({
+      supabase,
+      accessToken: ACCESS_TOKEN,
+      userId: USER_ID,
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(generateKeyCheckValue).toHaveBeenCalledWith(masterKey);
+    expect(supabase.from).toHaveBeenCalledWith("user_passkey_params");
+    expect(kcvUpdateEq).toHaveBeenCalledWith("user_id", USER_ID);
+    expect(verifyKeyCheckValue).not.toHaveBeenCalled();
   });
 });

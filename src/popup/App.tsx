@@ -1,7 +1,6 @@
 import { readExtensionVersion } from "@helvety/extension-chrome/extension-version";
 import { POPUP_SHELL_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { usePopupTheme } from "@helvety/extension-chrome/use-popup-theme";
-import { shouldForceHardLogout } from "@helvety/shared/auth-errors";
 import { resolveRateLimitedAuthError } from "@helvety/shared/auth-flow-errors";
 import {
   deleteMasterKey,
@@ -26,6 +25,10 @@ import {
 } from "../lib/extension-email-proof";
 import { ExtensionLinksProvider } from "../lib/extension-entity-links-hooks";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
+import {
+  hasNoAuthenticatedUser,
+  resolveVerifiedExtensionSession,
+} from "../lib/extension-session";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 import { sendExtensionOtp, verifyExtensionOtp } from "../lib/helvety-auth-api";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
@@ -153,32 +156,16 @@ export default function App() {
   const shellClass = `flex h-full min-h-0 w-full flex-col ${POPUP_SHELL_CLASS} text-foreground`;
 
   const refreshSession = useCallback(async () => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error && shouldForceHardLogout(error.message)) {
-      await supabase.auth.signOut();
+    const result = await resolveVerifiedExtensionSession(supabase);
+    if (!result.ok) {
       setSessionEmail(null);
       setUserId(null);
       setAccessToken(null);
       return;
     }
-    const session = data.session;
-    if (!session?.user) {
-      setSessionEmail(null);
-      setUserId(null);
-      setAccessToken(null);
-      return;
-    }
-    const emailProofValid = await hasValidExtensionEmailProof(session.user.id);
-    if (!emailProofValid) {
-      await supabase.auth.signOut();
-      setSessionEmail(null);
-      setUserId(null);
-      setAccessToken(null);
-      return;
-    }
-    setSessionEmail(session.user.email ?? null);
-    setUserId(session.user.id);
-    setAccessToken(session.access_token);
+    setSessionEmail(result.session.email);
+    setUserId(result.session.userId);
+    setAccessToken(result.session.accessToken);
   }, [supabase]);
 
   const touchVaultActivity = useCallback(async () => {
@@ -223,8 +210,8 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (cancelled || data.session?.user) {
+      const noUser = await hasNoAuthenticatedUser(supabase);
+      if (cancelled || !noUser) {
         return;
       }
       const record = await readPendingOtp();

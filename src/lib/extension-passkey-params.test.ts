@@ -21,7 +21,7 @@ type MockSupabaseOptions = {
   sessionError?: Error | null;
 };
 
-/** Minimal Supabase client stub for `from().select().eq().single()` + `auth.getSession()`. */
+/** Minimal Supabase client stub for `from().select().eq().single()` + `auth.getUser()`. */
 function mockSupabase(options: MockSupabaseOptions): SupabaseClient {
   const single = vi.fn().mockResolvedValue(options.single);
   const eq = vi.fn().mockReturnValue({ single });
@@ -60,7 +60,7 @@ describe("PASSKEY_PARAMS_SELECT", () => {
   it("uses a narrow projection (no star select)", () => {
     expect(PASSKEY_PARAMS_SELECT).not.toMatch(/\*/);
     expect(PASSKEY_PARAMS_SELECT).toContain("prf_salt");
-    expect(PASSKEY_PARAMS_SELECT).not.toContain("key_check_value");
+    expect(PASSKEY_PARAMS_SELECT).toContain("key_check_value");
     expect(PASSKEY_PARAMS_SELECT).not.toContain("user_id");
   });
 });
@@ -113,7 +113,10 @@ describe("fetchPasskeyParamsForUser", () => {
 
     const result = await fetchPasskeyParamsForUser(supabase, "u1");
 
-    expect(result).toEqual({ ok: false, error: "Sign in again." });
+    expect(result).toEqual({
+      ok: false,
+      error: "Session expired. Sign out and sign in again.",
+    });
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
@@ -129,11 +132,8 @@ describe("fetchPasskeyParamsForUser", () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it("calls getSession before querying user_passkey_params", async () => {
-    const getSession = vi.fn().mockResolvedValue({
-      data: { session: { user: { id: "u1" } } },
-      error: null,
-    });
+  it("calls getUser before querying user_passkey_params", async () => {
+    const getSession = vi.fn();
     const single = vi.fn().mockResolvedValue({
       data: null,
       error: { code: "PGRST116", message: "not found" },
@@ -153,7 +153,7 @@ describe("fetchPasskeyParamsForUser", () => {
 
     await fetchPasskeyParamsForUser(supabase, "u1");
 
-    expect(getSession).toHaveBeenCalled();
+    expect(getSession).not.toHaveBeenCalled();
     expect(getUser).toHaveBeenCalled();
     expect(from).toHaveBeenCalledWith("user_passkey_params");
   });

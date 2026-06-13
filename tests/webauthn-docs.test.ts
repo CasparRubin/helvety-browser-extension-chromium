@@ -46,4 +46,11 @@ describe("webauthn-extension.md", () => {
     expect(doc).toContain("helvety-auth-api.ts");
     expect(doc).not.toMatch(/Supabase Auth OTP/i);
   });
+
+  it("documents getUser-first passkey params and KCV backfill", () => {
+    expect(doc).toContain("extension-session.ts");
+    expect(doc).toMatch(/auth\.getUser\(\)/);
+    expect(doc).toMatch(/verify KCV/i);
+    expect(doc).toContain("passkey-unlock.ts");
+  });
 });

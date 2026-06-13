@@ -46,7 +46,7 @@ On Vercel **`helvety-auth`** (`apps/auth` on `main`):
 Auth base: **`HELVETY_AUTH_ORIGIN`** (default `https://helvety.com/auth`; only change with `VITE_HELVETY_AUTH_ORIGIN` if you intentionally target a non-production auth host).
 
 1. Email OTP sign-in via Helvety auth API routes — session stored in `chrome.storage.local` ([`helvety-auth-api.ts`](../src/lib/helvety-auth-api.ts), [`extension-supabase.ts`](../src/lib/extension-supabase.ts)).
-2. **Supabase** — `user_passkey_params` via `PASSKEY_PARAMS_SELECT` ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)); `auth.getSession()` before the query.
+2. **Supabase** — `user_passkey_params` via `PASSKEY_PARAMS_SELECT` ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)); `auth.getUser()` before the query ([`extension-session.ts`](../src/lib/extension-session.ts)).
 3. `POST …/passkey/options` — receive `options` + `challengeEnvelope`; run `startAuthentication` with PRF extensions when params exist.
 4. `POST …/passkey/verify` — send assertion + `challengeEnvelope`; server verifies WebAuthn and updates counter only (no new Supabase session).
 5. Derive master key from PRF locally; verify KCV when present; cache via `@helvety/shared/crypto/key-storage` (IndexedDB in the extension origin).

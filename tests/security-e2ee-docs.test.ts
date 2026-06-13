@@ -40,6 +40,20 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toMatch(/24h sliding idle/i);
     expect(doc).toMatch(/7d absolute max/i);
     expect(doc).toContain("helvety_extension_last_email_verified");
+    expect(doc).toContain("extension-session.ts");
+    expect(doc).toContain("helvety_device_trust");
+    expect(doc).toContain("getUser()");
+  });
+
+  it("documents KCV metadata and extension backfill on unlock", () => {
+    expect(doc).toContain("key_check_value");
+    expect(doc).toMatch(/backfills it via PostgREST/i);
+    expect(doc).toContain("passkey-unlock");
+  });
+
+  it("documents extension vs web device-trust threat model", () => {
+    expect(doc).toMatch(/Weekly email proof vs web device trust/i);
+    expect(doc).toMatch(/client-only|Client \(`extension-session/i);
   });
 
   it("documents server-enforced OTP and cross-app entity links", () => {

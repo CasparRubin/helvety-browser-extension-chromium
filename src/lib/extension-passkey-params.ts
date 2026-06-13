@@ -1,3 +1,4 @@
+import { ensureExtensionAuthReady } from "./extension-session";
 import { logUnlockFailure } from "./unlock-dev-log";
 
 import type { UserPasskeyParams } from "@helvety/shared/types/entities";
@@ -5,11 +6,10 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Ciphertext/crypto metadata only — no `select('*')` (see `e2ee-data-select.ts`).
- * Omits `key_check_value` until that column exists on production Postgres (42703 otherwise).
- * KCV verification in `passkey-unlock.ts` runs only when the field is present on the row.
+ * Includes `key_check_value` for wrong-passkey detection on unlock.
  */
 export const PASSKEY_PARAMS_SELECT =
-  "prf_salt, version, credential_id" as const;
+  "prf_salt, version, credential_id, key_check_value" as const;
 
 /** Result of loading `user_passkey_params` for unlock. */
 export type PasskeyParamsResult =
@@ -64,44 +64,14 @@ async function ensureAuthReady(
   supabase: SupabaseClient,
   userId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data: sessionData, error: sessionError } =
-    await supabase.auth.getSession();
-
-  if (sessionError || !sessionData.session) {
+  const authReady = await ensureExtensionAuthReady(supabase, userId);
+  if (!authReady.ok) {
     logUnlockFailure("passkey_params", {
-      code: "no_session",
-      message: sessionError?.message,
+      code: "jwt_invalid",
+      message: authReady.error,
     });
-    return { ok: false, error: "Sign in again." };
+    return authReady;
   }
-
-  if (sessionData.session.user.id !== userId) {
-    logUnlockFailure("passkey_params", {
-      code: "session_user_mismatch",
-      expectedUserId: userId,
-      sessionUserId: sessionData.session.user.id,
-    });
-    return { ok: false, error: "Sign in again." };
-  }
-
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
-    const refresh = await supabase.auth.refreshSession();
-    if (refresh.error || !refresh.data.session) {
-      logUnlockFailure("passkey_params", {
-        code: "jwt_invalid",
-        message: userError?.message ?? refresh.error?.message,
-      });
-      return {
-        ok: false,
-        error: "Session expired. Sign out and sign in again.",
-      };
-    }
-    if (refresh.data.session.user.id !== userId) {
-      return { ok: false, error: "Sign in again." };
-    }
-  }
-
   return { ok: true };
 }
 

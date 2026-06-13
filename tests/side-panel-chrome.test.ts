@@ -43,10 +43,10 @@ describe("side panel chrome", () => {
     expect(app).toContain("DataTabsView");
   });
 
-  it("App hydrates pending OTP only when no session is present", () => {
+  it("App hydrates pending OTP only when no authenticated user is present", () => {
     const app = readSource("src/popup/App.tsx");
-    expect(app).toContain("supabase.auth.getSession()");
-    expect(app).toMatch(/data\.session\?\.user[\s\S]*readPendingOtp/);
+    expect(app).toContain("hasNoAuthenticatedUser");
+    expect(app).toMatch(/readPendingOtp/);
   });
 
   it("App wires pending OTP storage into OTP handlers", () => {

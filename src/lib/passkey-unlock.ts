@@ -1,5 +1,8 @@
 import { mapPasskeyWebAuthnError } from "@helvety/shared/auth-flow-errors";
-import { verifyKeyCheckValue } from "@helvety/shared/crypto/key-check";
+import {
+  generateKeyCheckValue,
+  verifyKeyCheckValue,
+} from "@helvety/shared/crypto/key-check";
 import { storeMasterKey } from "@helvety/shared/crypto/key-storage";
 import {
   deriveKeyFromPRF,
@@ -218,6 +221,26 @@ export async function unlockEncryptionWithPasskey(input: {
           ok: false,
           error: "This passkey does not match your encryption key.",
         };
+      }
+    } else {
+      try {
+        const newKeyCheckValue = await generateKeyCheckValue(masterKey);
+        const { error: kcvError } = await supabase
+          .from("user_passkey_params")
+          .update({ key_check_value: newKeyCheckValue })
+          .eq("user_id", userId);
+        if (kcvError) {
+          logUnlockFailure("prf_derive", {
+            reason: "kcv_backfill_failed",
+            message: kcvError.message,
+          });
+        }
+      } catch (kcvError) {
+        logUnlockFailure("prf_derive", {
+          reason: "kcv_backfill_failed",
+          message:
+            kcvError instanceof Error ? kcvError.message : "unknown error",
+        });
       }
     }
 

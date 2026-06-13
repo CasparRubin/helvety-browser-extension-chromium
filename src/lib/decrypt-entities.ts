@@ -236,13 +236,11 @@ export async function decryptNoteRow(
   };
 }
 
-/**
- *
- */
-export async function decryptContactLabel(
+/** Decrypts contact first and last names for list rows and labels. */
+async function decryptContactNames(
   row: ContactEncryptedRow,
   key: CryptoKey
-): Promise<string> {
+): Promise<{ first: string; last: string }> {
   const aad = buildAAD("contacts", row.id);
   const first = await decrypt(
     parseEncryptedData(row.encrypted_first_name),
@@ -254,6 +252,17 @@ export async function decryptContactLabel(
     key,
     aad
   );
+  return { first, last };
+}
+
+/**
+ *
+ */
+export async function decryptContactLabel(
+  row: ContactEncryptedRow,
+  key: CryptoKey
+): Promise<string> {
+  const { first, last } = await decryptContactNames(row, key);
   return `${first} ${last}`.trim();
 }
 
@@ -394,17 +403,7 @@ export async function toContactListItem(
   row: ContactEncryptedRow,
   key: CryptoKey
 ): Promise<ContactListRow> {
-  const aad = buildAAD("contacts", row.id);
-  const first = await decrypt(
-    parseEncryptedData(row.encrypted_first_name),
-    key,
-    aad
-  );
-  const last = await decrypt(
-    parseEncryptedData(row.encrypted_last_name),
-    key,
-    aad
-  );
+  const { first, last } = await decryptContactNames(row, key);
   return {
     id: row.id,
     first_name: first,
@@ -425,7 +424,7 @@ export async function toLinkListItem(
   const aad = buildAAD("links", row.id);
   return {
     id: row.id,
-    name: await decrypt(parseEncryptedData(row.encrypted_name), key, aad),
+    name: await decryptLinkName(row, key),
     url: await decrypt(parseEncryptedData(row.encrypted_url), key, aad),
     folder_id: row.folder_id,
     sort_order: row.sort_order,

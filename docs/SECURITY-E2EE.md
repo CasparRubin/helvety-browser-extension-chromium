@@ -5,7 +5,7 @@ What this extension is **designed** to do and what it **does not** guarantee. Sa
 Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
 URLs and API path constants: **`src/lib/config.ts`**.  
-Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body), **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap must not use a value-based React `key` — focus regression; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`\*\* (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree).
+Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body; KCV backfill), **`tests/supabase-auth-patterns.test.ts`** (`getUser()`-first session), **`tests/copy-accuracy.test.ts`**, **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap must not use a value-based React `key` — focus regression; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`** (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree).
 
 ## Privacy summary
 
@@ -36,11 +36,11 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 | `encrypted_*` columns                                                                            | Supabase                              | No — AES-256-GCM ciphertext                 |
 | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Supabase                              | No — structural metadata                    |
 | `user_id`                                                                                        | Supabase                              | Account linkage (RLS)                       |
-| `prf_salt`, `credential_id`, `version` (and `key_check_value` when deployed)                     | `user_passkey_params`                 | Crypto metadata, not task/note text         |
+| `prf_salt`, `credential_id`, `version`, `key_check_value`                                        | `user_passkey_params`                 | Crypto metadata, not task/note text         |
 | WebAuthn assertion                                                                               | Helvety auth (when deployed)          | Signatures / authenticator bytes            |
 | Access token (Bearer)                                                                            | Auth passkey routes + Supabase client | Session material                            |
 
-**PRF salt** is a public HKDF parameter; security comes from the passkey private key. **Key check value (KCV)** is an encrypted blob to detect a wrong derived key — not human-readable content.
+**PRF salt** is a public HKDF parameter; security comes from the passkey private key. **Key check value (KCV)** is an encrypted blob to detect a wrong derived key — not human-readable content. On first successful unlock when no KCV exists yet, the extension backfills it via PostgREST (`user_passkey_params.key_check_value`), matching the web auth app.
 
 ## Hardcoded “public” config (not a leak)
 
@@ -53,7 +53,21 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 User **access tokens** after OTP sign-in live in `chrome.storage.local` via the Supabase auth adapter. Sensitive at runtime; not entity plaintext.
 
-**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). OTP sign-in uses server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively.
+**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). OTP sign-in uses server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively. Session bootstrap uses **`getUser()` for authorization** (`extension-session.ts`); `getSession()` is only used after JWT validation to read the access token.
+
+### Weekly email proof vs web device trust (threat model)
+
+Helvety web apps mint an **HttpOnly HMAC-signed** `helvety_device_trust` cookie after email verification. E2EE server pages and mutations enforce it via `requireDeviceTrust` — tampering without the signing secret fails server-side.
+
+The extension **cannot** set helvety.com cookies. Extension OTP verify intentionally **does not** mint device-trust cookies ([`apps/auth/README.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/README.md)). Instead, the side panel stores `helvety_extension_last_email_verified` in `chrome.storage.local` and `resolveVerifiedExtensionSession` signs the user out when proof is missing or expired.
+
+| Mechanism         | Web (helvety.com)             | Extension                                  |
+| ----------------- | ----------------------------- | ------------------------------------------ |
+| Storage           | HttpOnly signed cookie        | `chrome.storage.local` timestamp           |
+| Enforcement       | Server (`requireDeviceTrust`) | Client (`extension-session.ts`, `App.tsx`) |
+| Tamper resistance | HMAC + server verify          | Same-origin extension code only            |
+
+**Implication:** A modified extension build could skip email-proof checks locally. **RLS and JWT validity still gate PostgREST**; vault content still requires passkey + PRF. Email re-proof is defense-in-depth for stolen refresh tokens on a shared machine, not the primary E2EE boundary.
 
 **Cross-app entity links:** edit forms include shared `EntityLinksPanel` sections (tasks ↔ notes ↔ contacts ↔ links). Link rows are stored in Supabase `entity_links` (structural metadata only); linked record titles are decrypted client-side for display.
 
@@ -89,13 +103,13 @@ Create, update, and delete entity **content** use **direct Supabase PostgREST** 
 
 ## What is sent where (by design)
 
-| Data                                     | Where                     | Notes                                        |
-| ---------------------------------------- | ------------------------- | -------------------------------------------- |
-| Email + OTP send/verify                  | **`HELVETY_AUTH_ORIGIN`** | EU/EEA attestation; session via `setSession` |
-| `Authorization: Bearer`                  | **`HELVETY_AUTH_ORIGIN`** | Passkey options/verify only                  |
-| WebAuthn assertion + `challengeEnvelope` | **Helvety auth**          | No entity plaintext; no PRF in body          |
-| `prf_salt`, `version`, `credential_id`   | **Supabase**              | `user_passkey_params` under RLS              |
-| Ciphertext + structural metadata         | **Supabase**              | Operators/backups see ciphertext/metadata    |
+| Data                                                      | Where                     | Notes                                        |
+| --------------------------------------------------------- | ------------------------- | -------------------------------------------- |
+| Email + OTP send/verify                                   | **`HELVETY_AUTH_ORIGIN`** | EU/EEA attestation; session via `setSession` |
+| `Authorization: Bearer`                                   | **`HELVETY_AUTH_ORIGIN`** | Passkey options/verify only                  |
+| WebAuthn assertion + `challengeEnvelope`                  | **Helvety auth**          | No entity plaintext; no PRF in body          |
+| `prf_salt`, `version`, `credential_id`, `key_check_value` | **Supabase**              | `user_passkey_params` under RLS              |
+| Ciphertext + structural metadata                          | **Supabase**              | Operators/backups see ciphertext/metadata    |
 
 Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.ts`. Unlock logs omit user ids and tokens; passkey auth HTTP failures log URL/status as `[helvety-unlock]` in production (other unlock steps are dev-only).
 
