@@ -1,6 +1,6 @@
 # Helvety Chromium extension
 
-Chromium MV3 **side panel** extension for **Helvety** [helvety.com](https://helvety.com): email OTP sign-in (Supabase Auth), **passkey + PRF** unlock for E2EE, and **full CRUD** for tasks, notes, contacts, links, and link folders (decrypted in the side panel after unlock).
+Chromium MV3 **side panel** extension for **Helvety** [helvety.com](https://helvety.com): email OTP sign-in via the Helvety auth API, **passkey + PRF** unlock for E2EE, and **full CRUD** for tasks, notes, contacts, links, and link folders (decrypted in the side panel after unlock).
 
 You do **not** need the Helvety monorepo or a local auth server to **build** this project. Public URLs and Supabase keys are hardcoded in **`src/lib/config.ts`**.
 
@@ -9,7 +9,8 @@ You do **not** need the Helvety monorepo or a local auth server to **build** thi
 | Feature                                                         | Status                                                                                                                                                                                 |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Build & load unpacked (`dist/`)                                 | Yes                                                                                                                                                                                    |
-| Email OTP sign-in                                               | Yes — production Supabase project in `config.ts`                                                                                                                                       |
+| Email OTP sign-in                                               | Yes — server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client)                                                        |
+| Cross-app entity links                                          | Yes — link/unlink tasks, notes, contacts, and links in edit forms (`EntityLinksPanel`)                                                                                                 |
 | PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                             |
 | Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, edit, and delete from the side panel (edit-first lists; links open URL on tap)                                           |
 | Passkey unlock (WebAuthn on auth)                               | **Yes** when `helvety.com/auth` serves JSON on `options` / `verify` and Vercel `HELVETY_CHROME_EXTENSION_ORIGINS` includes your runtime extension id (Edge/Chrome unpacked ids differ) |
@@ -18,14 +19,15 @@ You can sign in and the extension will load PRF params when configured (prefligh
 
 ## What talks to what
 
-| Piece                             | Runs where                                                                                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email OTP sign-in                 | **Supabase Auth** (`HELVETY_SUPABASE_*` in `config.ts`)                                                                                      |
-| PRF params (salt, KCV)            | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                                                            |
-| Passkey options / verify          | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only                                        |
-| Encrypted list and edit-form rows | **Supabase** PostgREST — projections in `e2ee-data-select.ts` (`*_LIST_SELECT` for grouped lists; `*_DETAIL_SELECT` when opening the editor) |
-| Decryption                        | **This extension** — `decrypt-entities.ts` and `@helvety/shared` crypto (client-side only)                                                   |
-| Writes (insert/update/delete)     | **Supabase** PostgREST — `encrypt-entities.ts` + `entity-repository.ts` (ciphertext only in `encrypted_*`)                                   |
+| Piece                             | Runs where                                                                                                                                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Email OTP send / verify           | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_OTP_SEND_PATH` and `EXTENSION_OTP_VERIFY_PATH` (EU/EEA attestation; session tokens via `setSession` into Supabase client storage)                         |
+| PRF params (salt, KCV)            | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                                                                                                                |
+| OTP session storage               | **Supabase client** (`extension-supabase.ts`) — `chrome.storage.local`, not website cookies                                                                                                      |
+| Passkey options / verify          | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only                                                                                            |
+| Encrypted list and edit-form rows | **Supabase** PostgREST — projections in `e2ee-data-select.ts` (`*_LIST_SELECT` for grouped lists; `*_DETAIL_SELECT` when opening the editor)                                                     |
+| Decryption                        | **This extension** — `decrypt-entities.ts` and `@helvety/shared` crypto (client-side only)                                                                                                       |
+| Writes (entity content + links)   | **Supabase** PostgREST — `encrypt-entities.ts` + `entity-repository.ts` (ciphertext in `encrypted_*`); cross-app links via `entity-link-repository.ts` + `entity-links-client` on `entity_links` |
 
 The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth deploy**; the extension does **not** call that URL at runtime.
 
@@ -60,7 +62,8 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text).
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (TipTap) for task/note descriptions and contact notes; remount key is `entityFormSessionKey` (record identity), not serialized draft text — same idea as web `E2eeRichTextItemEditorShell`; plain `Input`/`Textarea` for other fields.
-- E2EE data layer: `entity-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
+- E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
+- Entity links UI: `extension-entity-links-hooks.tsx`, `ExtensionEntityLinkPanels.tsx` in edit forms.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header + `assets/icon-48.png`).
 - Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
 - OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
@@ -117,15 +120,15 @@ pnpm ci:release   # check + build → dist/
 
 ## Repository layout
 
-| Path                         | Purpose                                                                                                                                                                                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/`                   | Supabase auth, passkey unlock, encrypt/decrypt, repository CRUD, config (E2EE core)                                                                                                                                                                                                               |
-| `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                                                                  |
-| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                                                                           |
-| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `side-panel-chrome`, `security-e2ee-docs`, `auth-session-policy-wiring`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`, `tsconfig-build`) |
-| `src/**/*.test.ts`           | Co-located unit tests (`entity-catalogs`, `entity-navigation` + `entityFormSessionKey`, `entity-rich-text-editor`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                                              |
-| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                                                                     |
-| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                                                                           |
+| Path                         | Purpose                                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/`                   | Helvety auth API (`helvety-auth-api.ts`), Supabase session (`extension-supabase.ts`), passkey unlock, encrypt/decrypt, entity + link repositories, config (E2EE core)                                                                                                                                                     |
+| `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                                                                                          |
+| `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                                                                                                   |
+| `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `entity-catalog-drift`, `side-panel-chrome`, `security-e2ee-docs`, `auth-session-policy-wiring`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`, `tsconfig-build`) |
+| `src/**/*.test.ts`           | Co-located unit tests (`helvety-auth-api`, `entity-link-repository`, `entity-catalogs`, `entity-navigation` + `entityFormSessionKey`, `entity-rich-text-editor`, `list-group-utils`, `link-tree`, `e2ee-data-select`, repository/crypto guards, …)                                                                        |
+| `src/lib/e2ee-privacy.ts`    | Forbidden plaintext column names; guarded by `e2ee-privacy.test.ts` and select/mutation tests                                                                                                                                                                                                                             |
+| `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                                                                                                   |
 
 ## Docs
 

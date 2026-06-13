@@ -4,6 +4,8 @@ import {
   buildHelvetyAuthApiUrl,
   DEFAULT_HELVETY_AUTH_ORIGIN,
   EXTENSION_AUTH_API_PATHS,
+  EXTENSION_OTP_SEND_PATH,
+  EXTENSION_OTP_VERIFY_PATH,
   EXTENSION_PASSKEY_OPTIONS_PATH,
   EXTENSION_PASSKEY_PARAMS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
@@ -59,8 +61,8 @@ describe("production Supabase (public client config, safe to hardcode)", () => {
   });
 });
 
-describe("extension passkey API paths", () => {
-  it("documents legacy params path but only options/verify are runtime auth routes", () => {
+describe("extension auth API paths", () => {
+  it("documents legacy params path and runtime passkey + OTP routes", () => {
     expect(EXTENSION_PASSKEY_PARAMS_PATH).toBe(
       "/api/extension/encryption/passkey-params"
     );
@@ -68,9 +70,13 @@ describe("extension passkey API paths", () => {
       "/api/extension/passkey/options"
     );
     expect(EXTENSION_PASSKEY_VERIFY_PATH).toBe("/api/extension/passkey/verify");
+    expect(EXTENSION_OTP_SEND_PATH).toBe("/api/extension/otp/send");
+    expect(EXTENSION_OTP_VERIFY_PATH).toBe("/api/extension/otp/verify");
     expect(EXTENSION_AUTH_API_PATHS).toEqual([
       EXTENSION_PASSKEY_OPTIONS_PATH,
       EXTENSION_PASSKEY_VERIFY_PATH,
+      EXTENSION_OTP_SEND_PATH,
+      EXTENSION_OTP_VERIFY_PATH,
     ]);
     expect(EXTENSION_AUTH_API_PATHS).not.toContain(
       EXTENSION_PASSKEY_PARAMS_PATH
@@ -79,7 +85,7 @@ describe("extension passkey API paths", () => {
 });
 
 describe("buildHelvetyAuthApiUrl", () => {
-  it("joins auth origin with runtime extension routes used by passkey unlock", () => {
+  it("joins auth origin with runtime extension routes", () => {
     for (const path of EXTENSION_AUTH_API_PATHS) {
       expect(buildHelvetyAuthApiUrl(path)).toBe(
         `${HELVETY_AUTH_ORIGIN}${path}`

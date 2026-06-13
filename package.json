@@ -1,6 +1,6 @@
 {
   "name": "helvety-browser-extension-chromium",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "Helvety Chromium side panel extension — E2EE CRUD for tasks, notes, contacts, links, and link folders",
@@ -24,7 +24,7 @@
     "@helvety/shared": "file:.helvety/packages/shared",
     "@helvety/ui": "file:.helvety/packages/ui",
     "@simplewebauthn/browser": "^13.3.0",
-    "@supabase/supabase-js": "^2.107.0",
+    "@supabase/supabase-js": "^2.108.1",
     "lucide-react": "^1.17.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

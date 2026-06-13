@@ -49,10 +49,20 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("extension-chrome-shell");
     expect(readme).toContain("security-e2ee-docs");
     expect(readme).toContain("webauthn-docs");
+    expect(readme).toContain("entity-catalog-drift");
     expect(readme).toContain("tsconfig-build");
     expect(readme).toContain("src/**/*.test.ts");
     expect(readme).toContain("entity-catalogs");
+    expect(readme).toContain("entity-link-repository");
+    expect(readme).toContain("helvety-auth-api");
     expect(readme).toContain("list-group-utils");
+  });
+
+  it("documents auth API OTP sign-in (not direct Supabase OTP client)", () => {
+    expect(readme).toContain("/api/extension/otp/");
+    expect(readme).toMatch(/EU\/EEA attestation/i);
+    expect(readme).not.toMatch(/signInWithOtp/i);
+    expect(readme).toMatch(/auth API/i);
   });
 
   it("does not describe a separate read-only detail step", () => {

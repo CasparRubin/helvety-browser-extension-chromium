@@ -27,4 +27,33 @@ describe("e2ee-privacy invariants", () => {
       expect(selectSource).not.toMatch(new RegExp(`\\b${field}\\b(?!_)`, "g"));
     }
   });
+
+  it("entity link mutations store structural metadata only", () => {
+    const sharedClientSource = readFileSync(
+      join(repoRoot, ".helvety/packages/shared/src/entity-links-client.ts"),
+      "utf8"
+    );
+    const linkRepoSource = readFileSync(
+      join(repoRoot, "src/lib/entity-link-repository.ts"),
+      "utf8"
+    );
+    expect(linkRepoSource).toContain("createEntityLink");
+    expect(linkRepoSource).toContain("deleteEntityLink");
+    expect(sharedClientSource).toContain('.from("entity_links")');
+    expect(sharedClientSource).toContain("ENTITY_LINK_COLUMNS");
+
+    const insertMatch = sharedClientSource.match(
+      /\.insert\(\s*\{([\s\S]*?)\}\s*\)/
+    );
+    expect(insertMatch).not.toBeNull();
+    const insertBody = insertMatch?.[1] ?? "";
+    for (const field of PLAINTEXT_CONTENT_FIELD_NAMES) {
+      expect(insertBody).not.toMatch(new RegExp(`\\b${field}\\b`));
+    }
+    for (const field of PLAINTEXT_CONTENT_FIELD_NAMES) {
+      expect(sharedClientSource).not.toMatch(
+        new RegExp(`ENTITY_LINK_COLUMNS[^\\n]*\\b${field}\\b`)
+      );
+    }
+  });
 });

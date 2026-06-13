@@ -85,10 +85,16 @@ export const EXTENSION_PASSKEY_OPTIONS_PATH =
 export const EXTENSION_PASSKEY_VERIFY_PATH =
   "/api/extension/passkey/verify" as const;
 
-/** Runtime auth HTTP routes used by passkey unlock (options + verify only). */
+/** Public JSON routes for extension OTP sign-in (no Bearer). */
+export const EXTENSION_OTP_SEND_PATH = "/api/extension/otp/send" as const;
+export const EXTENSION_OTP_VERIFY_PATH = "/api/extension/otp/verify" as const;
+
+/** Runtime auth HTTP routes (passkey unlock + OTP sign-in). */
 export const EXTENSION_AUTH_API_PATHS = [
   EXTENSION_PASSKEY_OPTIONS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
+  EXTENSION_OTP_SEND_PATH,
+  EXTENSION_OTP_VERIFY_PATH,
 ] as const;
 
 /** Current extension origin (`chrome-extension://<id>`). */

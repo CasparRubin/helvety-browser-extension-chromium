@@ -1,7 +1,7 @@
 /** `chrome.storage.local` key for in-progress email OTP (panel closed mid-flow). */
 export const STORAGE_KEY_PENDING_OTP = "helvetyExtensionPendingOtp" as const;
 
-/** Align with Supabase Auth email OTP expiry (1 hour). */
+/** Align with Helvety auth OTP user-visible expiry (1 hour; see `OTP_USER_VISIBLE_EXPIRY_LABEL` on auth). */
 export const PENDING_OTP_TTL_MS = 60 * 60 * 1000;
 
 /** Pending email OTP saved when the side panel closes before verification. */

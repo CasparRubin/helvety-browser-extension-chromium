@@ -196,6 +196,7 @@ export function DataTabsView({
         <EntityFormView
           kind={screen.kind}
           formMode={screen.formMode}
+          editingEntityId={screen.formMode === "edit" ? screen.id : undefined}
           formSessionKey={entityFormSessionKey(screen)}
           draft={formDraft}
           onDraftChange={onFormDraftChange}

@@ -1,14 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import * as config from "./config";
 import {
   buildHelvetyAuthApiUrl,
   EXTENSION_AUTH_API_PATHS,
+  EXTENSION_OTP_SEND_PATH,
+  EXTENSION_OTP_VERIFY_PATH,
   EXTENSION_PASSKEY_OPTIONS_PATH,
+  getExtensionOrigin,
   HELVETY_AUTH_ORIGIN,
 } from "./config";
 import {
   helvetyAuthFetch,
+  helvetyPublicAuthFetch,
   PASSKEY_API_NOT_DEPLOYED_MESSAGE,
+  sendExtensionOtp,
+  verifyExtensionOtp,
 } from "./helvety-auth-api";
 
 describe("helvetyAuthFetch", () => {
@@ -369,5 +376,160 @@ describe("helvetyAuthFetch", () => {
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
+  });
+});
+
+describe("helvetyPublicAuthFetch and extension OTP helpers", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("sendExtensionOtp posts attestation, email, and extension origin", async () => {
+    vi.stubGlobal("chrome", { runtime: { id: "otp-test-extension" } });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ success: true, data: { codeSent: true } }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await sendExtensionOtp({
+      email: "user@example.com",
+      nonEUEEAConfirmed: true,
+    });
+
+    expect(result).toEqual({ success: true, data: { codeSent: true } });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(buildHelvetyAuthApiUrl(EXTENSION_OTP_SEND_PATH));
+    const headers = new Headers(init.headers);
+    expect(headers.get("Authorization")).toBeNull();
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(String(init.body))).toEqual({
+      email: "user@example.com",
+      nonEUEEAConfirmed: true,
+      origin: getExtensionOrigin(),
+    });
+  });
+
+  it("verifyExtensionOtp returns session payload for setSession", async () => {
+    vi.stubGlobal("chrome", { runtime: { id: "otp-test-extension" } });
+    const session = {
+      access_token: "access-token",
+      refresh_token: "refresh-token",
+      expires_at: 1_700_000_000,
+      user: { id: "user-id", email: "user@example.com" },
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true, data: session }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await verifyExtensionOtp({
+      email: "user@example.com",
+      code: "123456",
+    });
+
+    expect(result).toEqual({ success: true, data: session });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(buildHelvetyAuthApiUrl(EXTENSION_OTP_VERIFY_PATH));
+    expect(JSON.parse(String(init.body))).toEqual({
+      email: "user@example.com",
+      code: "123456",
+      origin: getExtensionOrigin(),
+    });
+  });
+
+  it("maps OTP route HTML responses to auth API not deployed", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("<!DOCTYPE html><html>404</html>", {
+        status: 404,
+        headers: { "Content-Type": "text/html" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyPublicAuthFetch(EXTENSION_OTP_SEND_PATH, {
+      method: "POST",
+      body: JSON.stringify({ email: "user@example.com" }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Auth API is not deployed on the Helvety auth server yet.",
+    });
+  });
+
+  it("detects missing /auth base path for OTP routes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("<!DOCTYPE html><html>gateway</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(config, "buildHelvetyAuthApiUrl").mockReturnValue(
+      `https://helvety.com${EXTENSION_OTP_VERIFY_PATH}`
+    );
+
+    const result = await helvetyPublicAuthFetch(EXTENSION_OTP_VERIFY_PATH, {
+      method: "POST",
+      body: "{}",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("misconfigured");
+    }
+  });
+
+  it("passes through JSON OTP errors including rate limits", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ success: false, error: "Request rate limit reached" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyPublicAuthFetch(EXTENSION_OTP_SEND_PATH, {
+      method: "POST",
+      body: "{}",
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: "Request rate limit reached",
+    });
+  });
+
+  it("does not treat non-passkey paths as passkey-not-deployed in helvetyAuthFetch", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("{}", {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyAuthFetch("/api/internal/other", {
+      method: "GET",
+      accessToken: "token",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).not.toBe(PASSKEY_API_NOT_DEPLOYED_MESSAGE);
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { mapPasskeyWebAuthnError } from "@helvety/shared/auth-flow-errors";
 import { verifyKeyCheckValue } from "@helvety/shared/crypto/key-check";
 import { storeMasterKey } from "@helvety/shared/crypto/key-storage";
 import {
@@ -118,14 +119,7 @@ export async function unlockEncryptionWithPasskey(input: {
       optionsJSON: authOptions,
     });
   } catch (err) {
-    const msg =
-      err instanceof Error
-        ? err.name === "NotAllowedError"
-          ? "Authentication was canceled"
-          : err.name === "AbortError"
-            ? "Authentication timed out"
-            : "Failed to authenticate with passkey"
-        : "Failed to authenticate with passkey";
+    const { message: msg } = mapPasskeyWebAuthnError(err);
     logUnlockFailure("webauthn", {
       error: msg,
       name: err instanceof Error ? err.name : undefined,

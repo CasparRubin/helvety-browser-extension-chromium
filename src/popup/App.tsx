@@ -1,6 +1,8 @@
 import { readExtensionVersion } from "@helvety/extension-chrome/extension-version";
 import { POPUP_SHELL_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { usePopupTheme } from "@helvety/extension-chrome/use-popup-theme";
+import { shouldForceHardLogout } from "@helvety/shared/auth-errors";
+import { resolveRateLimitedAuthError } from "@helvety/shared/auth-flow-errors";
 import {
   deleteMasterKey,
   getCachedMasterKey,
@@ -8,19 +10,24 @@ import {
   touchVaultSessionInStorage,
 } from "@helvety/shared/crypto/key-storage";
 import { useVaultIdleLock } from "@helvety/shared/crypto/use-vault-idle-lock";
+import { buildE2eeDeepLink } from "@helvety/shared/e2ee-deep-link";
 import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog";
+import { E2EE_UNSAVED_CHANGES_DIALOG } from "@helvety/ui/e2ee-form-layout";
 import { TooltipProvider } from "@helvety/ui/tooltip";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { HELVETY_GATEWAY } from "../lib/config";
+import { HELVETY_AUTH_ORIGIN, HELVETY_GATEWAY } from "../lib/config";
+import { EntityLinkRepository } from "../lib/entity-link-repository";
 import { EntityRepository } from "../lib/entity-repository";
 import {
   clearExtensionEmailProof,
   hasValidExtensionEmailProof,
   writeExtensionEmailProof,
 } from "../lib/extension-email-proof";
+import { ExtensionLinksProvider } from "../lib/extension-entity-links-hooks";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
+import { sendExtensionOtp, verifyExtensionOtp } from "../lib/helvety-auth-api";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
 import {
   clearPendingOtp,
@@ -76,6 +83,7 @@ export default function App() {
   const [emailInput, setEmailInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [nonEUEEAConfirmed, setNonEUEEAConfirmed] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
@@ -101,6 +109,8 @@ export default function App() {
   const [loadedTabs, setLoadedTabs] = useState<Set<EntityTabId>>(new Set());
 
   const [formDraft, setFormDraft] = useState<EntityFormDraft | null>(null);
+  const baselineDraftRef = useRef<string | null>(null);
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
@@ -117,6 +127,13 @@ export default function App() {
     }
     return new EntityRepository(supabase, userId, masterKey);
   }, [masterKey, supabase, userId]);
+
+  const linkRepo = useMemo(() => {
+    if (!repo) {
+      return null;
+    }
+    return new EntityLinkRepository(supabase, userId ?? "", repo);
+  }, [repo, supabase, userId]);
 
   /** Drop decrypted entity data from React state (sign-out / account switch). */
   const clearDecryptedEntityState = useCallback(() => {
@@ -136,7 +153,14 @@ export default function App() {
   const shellClass = `flex h-full min-h-0 w-full flex-col ${POPUP_SHELL_CLASS} text-foreground`;
 
   const refreshSession = useCallback(async () => {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+    if (error && shouldForceHardLogout(error.message)) {
+      await supabase.auth.signOut();
+      setSessionEmail(null);
+      setUserId(null);
+      setAccessToken(null);
+      return;
+    }
     const session = data.session;
     if (!session?.user) {
       setSessionEmail(null);
@@ -316,12 +340,18 @@ export default function App() {
     setAuthError(null);
     setAuthBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      if (!nonEUEEAConfirmed) {
+        setAuthError(
+          "Please confirm that you are not located in the EU/EEA to continue."
+        );
+        return;
+      }
+      const result = await sendExtensionOtp({
         email: emailInput.trim(),
-        options: { shouldCreateUser: true },
+        nonEUEEAConfirmed: true,
       });
-      if (error) {
-        setAuthError(error.message);
+      if (!result.success) {
+        setAuthError(resolveRateLimitedAuthError(result.error));
         return;
       }
       setOtpSent(true);
@@ -335,22 +365,27 @@ export default function App() {
     setAuthError(null);
     setAuthBusy(true);
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const result = await verifyExtensionOtp({
         email: emailInput.trim(),
-        token: otpInput.trim(),
-        type: "email",
+        code: otpInput.trim(),
       });
-      if (error) {
-        setAuthError(error.message);
+      if (!result.success) {
+        setAuthError(resolveRateLimitedAuthError(result.error));
+        return;
+      }
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.data.access_token,
+        refresh_token: result.data.refresh_token,
+      });
+      if (sessionError) {
+        setAuthError(sessionError.message);
         return;
       }
       setOtpInput("");
       setOtpSent(false);
+      setNonEUEEAConfirmed(false);
       await clearPendingOtp();
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.user) {
-        await writeExtensionEmailProof(data.session.user.id);
-      }
+      await writeExtensionEmailProof(result.data.user.id);
       await refreshSession();
     } finally {
       setAuthBusy(false);
@@ -368,6 +403,7 @@ export default function App() {
     setEmailInput("");
     setOtpInput("");
     setOtpSent(false);
+    setNonEUEEAConfirmed(false);
     setAuthError(null);
     await clearPendingOtp();
     await clearExtensionEmailProof();
@@ -438,14 +474,36 @@ export default function App() {
     }
   };
 
+  const setDraftWithBaseline = useCallback((draft: EntityFormDraft | null) => {
+    setFormDraft(draft);
+    baselineDraftRef.current = draft ? serializeFormDraft(draft) : null;
+  }, []);
+
+  const isFormDraftDirty = useCallback((): boolean => {
+    if (!formDraft || !baselineDraftRef.current) {
+      return false;
+    }
+    return serializeFormDraft(formDraft) !== baselineDraftRef.current;
+  }, [formDraft]);
+
   const goToList = () => {
     setScreen({ mode: "list" });
     setMutationError(null);
     setFormDraft(null);
+    baselineDraftRef.current = null;
+    setUnsavedDialogOpen(false);
+  };
+
+  const handleCancelForm = () => {
+    if (isFormDraftDirty()) {
+      setUnsavedDialogOpen(true);
+      return;
+    }
+    goToList();
   };
 
   const openCreate = (kind: EntityKind) => {
-    setFormDraft(draftForKind(kind));
+    setDraftWithBaseline(draftForKind(kind));
     setScreen({ mode: "form", kind, formMode: "create" });
     setMutationError(null);
   };
@@ -467,7 +525,8 @@ export default function App() {
       setMutationError(null);
       try {
         const record = await fetchEntity(repo, kind, id);
-        setFormDraft(draftFromRecord(kind, record));
+        const draft = draftFromRecord(kind, record);
+        setDraftWithBaseline(draft);
         setScreen({
           mode: "form",
           kind,
@@ -487,7 +546,7 @@ export default function App() {
         });
       }
     },
-    [repo]
+    [repo, setDraftWithBaseline]
   );
 
   const retryFormLoad = useCallback(() => {
@@ -518,7 +577,7 @@ export default function App() {
         await updateEntity(repo, screen.kind, screen.id, formDraft);
         await reloadCurrentTab();
         const record = await fetchEntity(repo, screen.kind, screen.id);
-        setFormDraft(draftFromRecord(screen.kind, record));
+        setDraftWithBaseline(draftFromRecord(screen.kind, record));
         setScreen({
           mode: "form",
           kind: screen.kind,
@@ -559,6 +618,25 @@ export default function App() {
   };
 
   const openInApp = () => {
+    if (
+      screen.mode === "form" &&
+      screen.formMode === "edit" &&
+      screen.id &&
+      screen.kind !== "link_folder"
+    ) {
+      const zone =
+        screen.kind === "tasks"
+          ? "tasks"
+          : screen.kind === "notes"
+            ? "notes"
+            : screen.kind === "contacts"
+              ? "contacts"
+              : "links";
+      void chrome.tabs.create({
+        url: buildE2eeDeepLink(zone, screen.id),
+      });
+      return;
+    }
     const path =
       tab === "tasks"
         ? "/tasks"
@@ -648,15 +726,18 @@ export default function App() {
           emailInput={emailInput}
           otpInput={otpInput}
           otpSent={otpSent}
+          nonEUEEAConfirmed={nonEUEEAConfirmed}
           authBusy={authBusy}
           authError={authError}
           onEmailChange={setEmailInput}
           onOtpChange={setOtpInput}
+          onNonEUEEAConfirmedChange={setNonEUEEAConfirmed}
           onSendOtp={() => void handleSendOtp()}
           onVerifyOtp={() => void handleVerifyOtp()}
           onUseDifferentEmail={() => {
             setOtpSent(false);
             setOtpInput("");
+            setNonEUEEAConfirmed(false);
             void clearPendingOtp();
           }}
         />
@@ -676,6 +757,9 @@ export default function App() {
             cryptoError={cryptoError}
             onUnlock={() => void handleUnlock()}
             onLogout={() => void handleLogout()}
+            onOpenEncryptionSetup={() => {
+              void chrome.tabs.create({ url: HELVETY_AUTH_ORIGIN });
+            }}
           />
         </div>
       </TooltipProvider>
@@ -684,70 +768,86 @@ export default function App() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className={shellClass}>
-        <div className="flex min-h-0 flex-1 flex-col">
-          <DataTabsView
-            version={extensionVersion}
-            sessionEmail={sessionEmail}
-            tab={tab}
-            onTabChange={handleTabChange}
-            screen={screen}
-            listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
-            listError={listError}
-            tasks={tasks}
-            notes={notes}
-            contacts={contacts}
-            links={links}
-            linkFolders={linkFolders}
-            linkFolderPickerItems={linkFolderPickerItems}
-            formDraft={formDraft}
-            onFormDraftChange={setFormDraft}
-            mutationBusy={mutationBusy}
-            mutationError={mutationError}
-            themePreference={themePreference}
-            onSaveTheme={saveTheme}
-            paramsPreflight={paramsPreflight}
-            onOpenInApp={openInApp}
-            onLogout={() => void handleLogout()}
-            onRetryList={handleRetryList}
-            onAdd={handleAdd}
-            onAddFolder={handleAddFolder}
-            onCancelForm={goToList}
-            onSave={() => void handleSave()}
-            onTaskClick={(task) => void openEdit("tasks", task.id)}
-            onNoteClick={(note) => void openEdit("notes", note.id)}
-            onContactClick={(contact) => void openEdit("contacts", contact.id)}
-            onLinkEdit={(link) => void openEdit("links", link.id)}
-            onFolderEdit={(folder) => void openEdit("link_folder", folder.id)}
-            onTaskDelete={(task) => requestDelete("tasks", task.id, task.title)}
-            onNoteDelete={(note) => requestDelete("notes", note.id, note.title)}
-            onContactDelete={(contact) =>
-              requestDelete(
-                "contacts",
-                contact.id,
-                `${contact.first_name} ${contact.last_name}`.trim()
-              )
+      <ExtensionLinksProvider repo={linkRepo}>
+        <div className={shellClass}>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <DataTabsView
+              version={extensionVersion}
+              sessionEmail={sessionEmail}
+              tab={tab}
+              onTabChange={handleTabChange}
+              screen={screen}
+              listBusy={tab !== "about" && (listBusy || !loadedTabs.has(tab))}
+              listError={listError}
+              tasks={tasks}
+              notes={notes}
+              contacts={contacts}
+              links={links}
+              linkFolders={linkFolders}
+              linkFolderPickerItems={linkFolderPickerItems}
+              formDraft={formDraft}
+              onFormDraftChange={setFormDraft}
+              mutationBusy={mutationBusy}
+              mutationError={mutationError}
+              themePreference={themePreference}
+              onSaveTheme={saveTheme}
+              paramsPreflight={paramsPreflight}
+              onOpenInApp={openInApp}
+              onLogout={() => void handleLogout()}
+              onRetryList={handleRetryList}
+              onAdd={handleAdd}
+              onAddFolder={handleAddFolder}
+              onCancelForm={handleCancelForm}
+              onSave={() => void handleSave()}
+              onTaskClick={(task) => void openEdit("tasks", task.id)}
+              onNoteClick={(note) => void openEdit("notes", note.id)}
+              onContactClick={(contact) =>
+                void openEdit("contacts", contact.id)
+              }
+              onLinkEdit={(link) => void openEdit("links", link.id)}
+              onFolderEdit={(folder) => void openEdit("link_folder", folder.id)}
+              onTaskDelete={(task) =>
+                requestDelete("tasks", task.id, task.title)
+              }
+              onNoteDelete={(note) =>
+                requestDelete("notes", note.id, note.title)
+              }
+              onContactDelete={(contact) =>
+                requestDelete(
+                  "contacts",
+                  contact.id,
+                  `${contact.first_name} ${contact.last_name}`.trim()
+                )
+              }
+              onReorderTasks={handleReorderTasks}
+              onReorderNotes={handleReorderNotes}
+              onReorderContacts={handleReorderContacts}
+              onRetryFormLoad={retryFormLoad}
+              onDeleteForm={requestDeleteFromForm}
+            />
+          </div>
+          <DeleteConfirmationDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title="Delete permanently?"
+            description={
+              deleteTarget
+                ? `"${deleteTarget.label}" will be removed. This cannot be undone.`
+                : ""
             }
-            onReorderTasks={handleReorderTasks}
-            onReorderNotes={handleReorderNotes}
-            onReorderContacts={handleReorderContacts}
-            onRetryFormLoad={retryFormLoad}
-            onDeleteForm={requestDeleteFromForm}
+            onConfirm={() => confirmDelete()}
+            isDeleting={mutationBusy}
+          />
+          <DeleteConfirmationDialog
+            open={unsavedDialogOpen}
+            onOpenChange={setUnsavedDialogOpen}
+            title={E2EE_UNSAVED_CHANGES_DIALOG.title}
+            description={E2EE_UNSAVED_CHANGES_DIALOG.description}
+            onConfirm={() => goToList()}
+            isDeleting={false}
           />
         </div>
-        <DeleteConfirmationDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          title="Delete permanently?"
-          description={
-            deleteTarget
-              ? `"${deleteTarget.label}" will be removed. This cannot be undone.`
-              : ""
-          }
-          onConfirm={() => confirmDelete()}
-          isDeleting={mutationBusy}
-        />
-      </div>
+      </ExtensionLinksProvider>
     </TooltipProvider>
   );
 }
@@ -952,4 +1052,9 @@ function deleteLabelFromDraft(
     case "link_folder":
       return draft.value.name.trim() || "Folder";
   }
+}
+
+/** Stable JSON snapshot for unsaved-changes detection. */
+function serializeFormDraft(draft: EntityFormDraft): string {
+  return JSON.stringify(draft);
 }

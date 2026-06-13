@@ -18,6 +18,12 @@ import {
 } from "../components/catalog-picker";
 import { EntityRichTextEditor } from "../components/EntityRichTextEditor";
 import { EntityScreenLayout } from "../components/EntityScreenLayout";
+import {
+  ContactEntityLinkPanels,
+  LinkEntityLinkPanels,
+  NoteEntityLinkPanels,
+  TaskEntityLinkPanels,
+} from "../components/ExtensionEntityLinkPanels";
 import { IconTooltipButton } from "../components/IconTooltipButton";
 import { Textarea } from "../components/Textarea";
 import { emptyContactInput } from "../entity-drafts";
@@ -48,6 +54,7 @@ export type EntityFormDraft =
 export function EntityFormView({
   kind,
   formMode,
+  editingEntityId,
   formSessionKey,
   draft,
   onDraftChange,
@@ -61,6 +68,8 @@ export function EntityFormView({
 }: {
   kind: EntityKind;
   formMode: "create" | "edit";
+  /** Set in edit mode for entity link panels. */
+  editingEntityId?: string;
   /** Passed to TipTap as `sessionKey` — stable while editing one record (`entityFormSessionKey`). */
   formSessionKey: string;
   draft: EntityFormDraft;
@@ -367,7 +376,20 @@ export function EntityFormView({
         </>
       }
     >
-      <div className="flex flex-col gap-3 pb-2">{fields}</div>
+      <div className="flex flex-col gap-3 pb-2">
+        {fields}
+        {formMode === "edit" && editingEntityId ? (
+          kind === "tasks" ? (
+            <TaskEntityLinkPanels taskId={editingEntityId} />
+          ) : kind === "notes" ? (
+            <NoteEntityLinkPanels noteId={editingEntityId} />
+          ) : kind === "contacts" ? (
+            <ContactEntityLinkPanels contactId={editingEntityId} />
+          ) : kind === "links" ? (
+            <LinkEntityLinkPanels linkId={editingEntityId} />
+          ) : null
+        ) : null}
+      </div>
     </EntityScreenLayout>
   );
 }

@@ -148,14 +148,18 @@ export function AboutTab({
               How it works
             </p>
             <ul className="flex list-disc flex-col gap-1 pl-4">
-              <li>Sign in with email OTP via Supabase Auth.</li>
+              <li>
+                Sign in with email OTP via the Helvety auth API (EU/EEA
+                attestation required).
+              </li>
               <li>
                 Unlock with a passkey (PRF) to derive the master key in this
                 extension only.
               </li>
               <li>
                 Grouped lists open straight into the editor; links open in your
-                browser on tap. Use the web app for advanced workflows.
+                browser on tap. Cross-app linking is available in edit forms.
+                Use the web apps for bulk workflows and automation.
               </li>
             </ul>
 

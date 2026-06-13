@@ -21,6 +21,7 @@ export function UnlockView({
   cryptoError,
   onUnlock,
   onLogout,
+  onOpenEncryptionSetup,
 }: {
   version: string;
   sessionEmail: string;
@@ -29,7 +30,10 @@ export function UnlockView({
   cryptoError: string | null;
   onUnlock: () => void;
   onLogout: () => void;
+  onOpenEncryptionSetup: () => void;
 }): React.JSX.Element {
+  const notSetup = paramsPreflight?.status === "not_setup";
+
   return (
     <>
       <div className="relative mb-2">
@@ -57,9 +61,9 @@ export function UnlockView({
         <CardHeader className="p-3 pb-2">
           <p className="text-sm font-medium">Unlock encryption</p>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Use your Helvety passkey to decrypt and manage tasks, notes,
-            contacts, links, and folders in this browser. See the About tab for
-            E2EE and WebAuthn setup details.
+            {notSetup
+              ? "Passkey encryption is not set up for this account yet. Complete setup on helvety.com, then return here to unlock."
+              : "Use your Helvety passkey to decrypt and manage tasks, notes, contacts, links, and folders in this browser."}
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 p-3 pt-0">
@@ -75,18 +79,25 @@ export function UnlockView({
                     : `cannot load: ${paramsPreflight.message}`}
             </p>
           ) : null}
-          <Button disabled={cryptoBusy} onClick={onUnlock}>
-            {cryptoBusy ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Waiting for passkey…
-              </>
-            ) : (
-              <>
-                <Lock className="size-4" />
-                Unlock with passkey
-              </>
-            )}
-          </Button>
+          {notSetup ? (
+            <Button variant="default" onClick={onOpenEncryptionSetup}>
+              Set up encryption on helvety.com
+            </Button>
+          ) : (
+            <Button disabled={cryptoBusy} onClick={onUnlock}>
+              {cryptoBusy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Waiting for
+                  passkey…
+                </>
+              ) : (
+                <>
+                  <Lock className="size-4" />
+                  Unlock with passkey
+                </>
+              )}
+            </Button>
+          )}
           {cryptoError ? (
             <p role="alert" className="text-destructive text-sm">
               {cryptoError}

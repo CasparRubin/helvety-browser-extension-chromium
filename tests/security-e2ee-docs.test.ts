@@ -42,6 +42,14 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("helvety_extension_last_email_verified");
   });
 
+  it("documents server-enforced OTP and cross-app entity links", () => {
+    expect(doc).toContain("/api/extension/otp/");
+    expect(doc).toMatch(/EU\/EEA attestation/i);
+    expect(doc).not.toMatch(/signInWithOtp/i);
+    expect(doc).toContain("EntityLinksPanel");
+    expect(doc).toContain("entity_links");
+  });
+
   it("describes edit-first side panel UX (not a read-only detail view)", () => {
     expect(doc).toMatch(/edit-first|Edit-first/i);
     expect(doc).toMatch(/\*_DETAIL_SELECT.*edit/i);

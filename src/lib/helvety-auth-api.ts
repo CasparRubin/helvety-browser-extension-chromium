@@ -1,8 +1,9 @@
 /**
- * Authenticated JSON fetch to `HELVETY_AUTH_ORIGIN` for passkey options/verify only.
+ * JSON fetch to `HELVETY_AUTH_ORIGIN` for extension auth routes.
+ * Public OTP send/verify (`/api/extension/otp/*`) and Bearer passkey options/verify.
  * PRF params use Supabase (`extension-passkey-params.ts`), not this module.
  * Responses use `@helvety/shared/parse-action-response` (`ActionResponse` shape).
- * Maps undeployed passkey routes (404 or HTML responses) to “Passkey API is not deployed…”.
+ * Undeployed routes (404 or HTML) map to passkey- or auth-specific “not deployed” messages.
  * JSON errors from a deployed auth app (allowlist, rate limit, server faults) pass through unchanged.
  */
 
@@ -13,8 +14,11 @@ import {
 
 import {
   buildHelvetyAuthApiUrl,
+  EXTENSION_OTP_SEND_PATH,
+  EXTENSION_OTP_VERIFY_PATH,
   EXTENSION_PASSKEY_OPTIONS_PATH,
   EXTENSION_PASSKEY_VERIFY_PATH,
+  getExtensionOrigin,
 } from "./config";
 import { logUnlockFailure } from "./unlock-dev-log";
 
@@ -29,8 +33,19 @@ const DEFAULT_AUTH_ERROR = "Request to Helvety auth failed";
 export const PASSKEY_API_NOT_DEPLOYED_MESSAGE =
   "Passkey API is not deployed on the Helvety auth server yet.";
 
-/** Extension passkey HTTP routes (undeployed app may return HTML “Page not found” with 200). */
-function isExtensionPasskeyPath(path: string): boolean {
+/** Extension auth HTTP routes that may return HTML when undeployed. */
+function isExtensionAuthApiPath(path: string): boolean {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return (
+    normalized === EXTENSION_PASSKEY_OPTIONS_PATH ||
+    normalized === EXTENSION_PASSKEY_VERIFY_PATH ||
+    normalized === EXTENSION_OTP_SEND_PATH ||
+    normalized === EXTENSION_OTP_VERIFY_PATH
+  );
+}
+
+/** Bearer passkey routes (`helvetyAuthFetch` only). */
+function isExtensionPasskeyApiPath(path: string): boolean {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return (
     normalized === EXTENSION_PASSKEY_OPTIONS_PATH ||
@@ -52,8 +67,8 @@ function looksLikeMissingAuthBasePath(url: string): boolean {
   try {
     const { pathname } = new URL(url);
     return (
-      pathname.startsWith("/api/extension/passkey/") &&
-      !pathname.startsWith("/auth/api/extension/passkey/")
+      pathname.startsWith("/api/extension/") &&
+      !pathname.startsWith("/auth/api/extension/")
     );
   } catch {
     return false;
@@ -111,7 +126,7 @@ export async function helvetyAuthFetch<T>(
   const raw = await response.text();
   const contentType = response.headers.get("content-type") ?? "";
 
-  if (isExtensionPasskeyPath(path) && looksLikeHtmlBody(raw, contentType)) {
+  if (isExtensionPasskeyApiPath(path) && looksLikeHtmlBody(raw, contentType)) {
     const error = looksLikeMissingAuthBasePath(url)
       ? "Passkey API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
       : PASSKEY_API_NOT_DEPLOYED_MESSAGE;
@@ -127,7 +142,7 @@ export async function helvetyAuthFetch<T>(
     return { success: false, error };
   }
 
-  if (isExtensionPasskeyPath(path) && response.status === 404) {
+  if (isExtensionPasskeyApiPath(path) && response.status === 404) {
     logPasskeyAuthFetchFailure({
       url,
       status: response.status,
@@ -147,7 +162,7 @@ export async function helvetyAuthFetch<T>(
 
   if (!parsed.success) {
     const error = normalizeAuthError(response, parsed.error);
-    if (isExtensionPasskeyPath(path)) {
+    if (isExtensionPasskeyApiPath(path)) {
       logPasskeyAuthFetchFailure({
         url,
         status: response.status,
@@ -159,10 +174,10 @@ export async function helvetyAuthFetch<T>(
   }
 
   if (response.ok && !isActionResponsePayload<T>(parsed)) {
-    const error = isExtensionPasskeyPath(path)
+    const error = isExtensionPasskeyApiPath(path)
       ? PASSKEY_API_NOT_DEPLOYED_MESSAGE
       : DEFAULT_AUTH_ERROR;
-    if (isExtensionPasskeyPath(path)) {
+    if (isExtensionPasskeyApiPath(path)) {
       logPasskeyAuthFetchFailure({
         url,
         status: response.status,
@@ -178,4 +193,96 @@ export async function helvetyAuthFetch<T>(
   }
 
   return parsed;
+}
+
+/** OTP verify response consumed by `supabase.auth.setSession`. */
+export type ExtensionOtpSessionPayload = {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number | null;
+  user: {
+    id: string;
+    email?: string | null;
+  };
+};
+
+/** Public fetch to extension OTP routes (no Bearer). */
+export async function helvetyPublicAuthFetch<T>(
+  path: string,
+  init: RequestInit
+): Promise<HelvetyJsonResponse<T>> {
+  const url = buildHelvetyAuthApiUrl(path);
+  const headers = new Headers(init.headers);
+  if (!headers.has("Content-Type") && init.body) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(url, {
+    ...init,
+    headers,
+  });
+
+  const raw = await response.text();
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (isExtensionAuthApiPath(path) && looksLikeHtmlBody(raw, contentType)) {
+    const error = looksLikeMissingAuthBasePath(url)
+      ? "Auth API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
+      : "Auth API is not deployed on the Helvety auth server yet.";
+    return { success: false, error };
+  }
+
+  if (isExtensionAuthApiPath(path) && response.status === 404) {
+    return {
+      success: false,
+      error: "Auth API is not deployed on the Helvety auth server yet.",
+    };
+  }
+
+  const synthetic = new Response(raw, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+  const parsed = await parseActionResponse<T>(synthetic, DEFAULT_AUTH_ERROR);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: normalizeAuthError(response, parsed.error),
+    };
+  }
+  return parsed;
+}
+
+/** Sends OTP via server-enforced extension route. */
+export async function sendExtensionOtp(input: {
+  email: string;
+  nonEUEEAConfirmed: true;
+}): Promise<HelvetyJsonResponse<{ codeSent: true }>> {
+  return helvetyPublicAuthFetch<{ codeSent: true }>(EXTENSION_OTP_SEND_PATH, {
+    method: "POST",
+    body: JSON.stringify({
+      email: input.email,
+      nonEUEEAConfirmed: input.nonEUEEAConfirmed,
+      origin: getExtensionOrigin(),
+    }),
+  });
+}
+
+/** Verifies OTP and returns session tokens for `supabase.auth.setSession`. */
+export async function verifyExtensionOtp(input: {
+  email: string;
+  code: string;
+}): Promise<HelvetyJsonResponse<ExtensionOtpSessionPayload>> {
+  return helvetyPublicAuthFetch<ExtensionOtpSessionPayload>(
+    EXTENSION_OTP_VERIFY_PATH,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email: input.email,
+        code: input.code,
+        origin: getExtensionOrigin(),
+      }),
+    }
+  );
 }

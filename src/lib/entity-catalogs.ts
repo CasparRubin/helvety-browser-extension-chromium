@@ -151,14 +151,6 @@ export const TASK_LABELS: CatalogEntry[] = [
     sort_order: 4,
     default_rows_shown: 20,
   },
-  {
-    id: "default-item-label",
-    name: "Default",
-    color: "#6b7280",
-    icon: "tag",
-    sort_order: 5,
-    default_rows_shown: 20,
-  },
 ];
 
 export const TASK_PRIORITIES: CatalogEntryLite[] = [
@@ -175,9 +167,7 @@ export const PRIORITY_COLORS: Record<number, string> = {
   3: "#dc2626",
 };
 
-/**
- *
- */
+/** Resolves a catalog entry name by id. */
 export function catalogName(
   entries: CatalogEntry[] | CatalogEntryLite[],
   id: string
@@ -185,9 +175,7 @@ export function catalogName(
   return entries.find((e) => e.id === id)?.name ?? id;
 }
 
-/**
- *
- */
+/** Finds a catalog entry by id. */
 export function catalogById(
   entries: CatalogEntry[],
   id: string
@@ -195,9 +183,7 @@ export function catalogById(
   return entries.find((e) => e.id === id);
 }
 
-/**
- *
- */
+/** Returns a catalog entry color by id. */
 export function catalogColor(
   entries: CatalogEntry[],
   id: string

@@ -9,14 +9,14 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 ## Privacy summary
 
-| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?                                      | Plaintext in extension before unlock?          |
-| ----------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------- |
-| **Identity**            | Email, OTP                                                                                       | Email via Supabase Auth only                                               | Email in UI when signed in                     |
-| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                                                        | Yes after fetch (not secret)                   |
-| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)                                        | Yes when unlocked                              |
-| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only                                                | **Only after passkey unlock** (memory / UI)    |
-| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                                                         | Master key in extension IndexedDB after unlock |
-| **Session**             | Supabase JWT / refresh, weekly email-proof anchor                                                | In `chrome.storage.local` (auth + `helvety_extension_last_email_verified`) | Not shown in About UI                          |
+| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?                                                         | Plaintext in extension before unlock?          |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Identity**            | Email, OTP                                                                                       | Email in Supabase Auth; OTP send/verify via Helvety auth API (not direct client Supabase OTP) | Email in UI when signed in                     |
+| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                                                                           | Yes after fetch (not secret)                   |
+| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)                                                           | Yes when unlocked                              |
+| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only                                                                   | **Only after passkey unlock** (memory / UI)    |
+| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                                                                            | Master key in extension IndexedDB after unlock |
+| **Session**             | Supabase JWT / refresh, weekly email-proof anchor                                                | In `chrome.storage.local` (auth + `helvety_extension_last_email_verified`)                    | Not shown in About UI                          |
 
 **“100% client-side” for user content** means: this extension **never** sends decrypted titles, notes, contact details, or URLs to Helvety app APIs or PostgREST. Encryption and decryption run in the extension via Web Crypto (`encrypt-entities.ts` / `decrypt-entities.ts`). That matches helvety.com.
 
@@ -28,16 +28,17 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 **Allowed on infrastructure** (aligned with helvety.com web apps):
 
-| Data                                                                                             | Where                                 | User-readable content?              |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------- | ----------------------------------- |
-| Email, OTP                                                                                       | Supabase Auth                         | Email only (identity)               |
-| `created_at`, `updated_at`, row `id`                                                             | Supabase                              | Timestamps / identifiers            |
-| `encrypted_*` columns                                                                            | Supabase                              | No — AES-256-GCM ciphertext         |
-| `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Supabase                              | No — structural metadata            |
-| `user_id`                                                                                        | Supabase                              | Account linkage (RLS)               |
-| `prf_salt`, `credential_id`, `version` (and `key_check_value` when deployed)                     | `user_passkey_params`                 | Crypto metadata, not task/note text |
-| WebAuthn assertion                                                                               | Helvety auth (when deployed)          | Signatures / authenticator bytes    |
-| Access token (Bearer)                                                                            | Auth passkey routes + Supabase client | Session material                    |
+| Data                                                                                             | Where                                 | User-readable content?                      |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------- | ------------------------------------------- |
+| Email                                                                                            | Supabase Auth                         | Email only (identity)                       |
+| OTP send/verify                                                                                  | Helvety auth (`HELVETY_AUTH_ORIGIN`)  | Codes in transit only; not entity plaintext |
+| `created_at`, `updated_at`, row `id`                                                             | Supabase                              | Timestamps / identifiers                    |
+| `encrypted_*` columns                                                                            | Supabase                              | No — AES-256-GCM ciphertext                 |
+| `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Supabase                              | No — structural metadata                    |
+| `user_id`                                                                                        | Supabase                              | Account linkage (RLS)                       |
+| `prf_salt`, `credential_id`, `version` (and `key_check_value` when deployed)                     | `user_passkey_params`                 | Crypto metadata, not task/note text         |
+| WebAuthn assertion                                                                               | Helvety auth (when deployed)          | Signatures / authenticator bytes            |
+| Access token (Bearer)                                                                            | Auth passkey routes + Supabase client | Session material                            |
 
 **PRF salt** is a public HKDF parameter; security comes from the passkey private key. **Key check value (KCV)** is an encrypted blob to detect a wrong derived key — not human-readable content.
 
@@ -52,7 +53,9 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 User **access tokens** after OTP sign-in live in `chrome.storage.local` via the Supabase auth adapter. Sensitive at runtime; not entity plaintext.
 
-**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively.
+**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). OTP sign-in uses server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively.
+
+**Cross-app entity links:** edit forms include shared `EntityLinksPanel` sections (tasks ↔ notes ↔ contacts ↔ links). Link rows are stored in Supabase `entity_links` (structural metadata only); linked record titles are decrypted client-side for display.
 
 ## Entity content (tasks, notes, contacts, links)
 
@@ -76,7 +79,9 @@ A master key unlocked on **helvety.com** is **not** available in this extension 
 
 ### Writes
 
-Create, update, and delete use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; structural metadata matches the web apps. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
+Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; structural metadata matches the web apps. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
+
+**Cross-app links** (link/unlink between tasks, notes, contacts, and links) use `entity-link-repository.ts` and `@helvety/shared/entity-links-client` on the `entity_links` table — structural metadata only (no decrypted titles in link rows).
 
 - Every mutation uses `.eq("user_id", userId)` plus Supabase RLS.
 - Does **not** call Next.js server actions.
@@ -84,13 +89,13 @@ Create, update, and delete use **direct Supabase PostgREST** (`entity-repository
 
 ## What is sent where (by design)
 
-| Data                                     | Where                     | Notes                                     |
-| ---------------------------------------- | ------------------------- | ----------------------------------------- |
-| Email + OTP                              | **Supabase Auth**         | Identity only                             |
-| `Authorization: Bearer`                  | **`HELVETY_AUTH_ORIGIN`** | Passkey options/verify only               |
-| WebAuthn assertion + `challengeEnvelope` | **Helvety auth**          | No entity plaintext; no PRF in body       |
-| `prf_salt`, `version`, `credential_id`   | **Supabase**              | `user_passkey_params` under RLS           |
-| Ciphertext + structural metadata         | **Supabase**              | Operators/backups see ciphertext/metadata |
+| Data                                     | Where                     | Notes                                        |
+| ---------------------------------------- | ------------------------- | -------------------------------------------- |
+| Email + OTP send/verify                  | **`HELVETY_AUTH_ORIGIN`** | EU/EEA attestation; session via `setSession` |
+| `Authorization: Bearer`                  | **`HELVETY_AUTH_ORIGIN`** | Passkey options/verify only                  |
+| WebAuthn assertion + `challengeEnvelope` | **Helvety auth**          | No entity plaintext; no PRF in body          |
+| `prf_salt`, `version`, `credential_id`   | **Supabase**              | `user_passkey_params` under RLS              |
+| Ciphertext + structural metadata         | **Supabase**              | Operators/backups see ciphertext/metadata    |
 
 Auth responses use `@helvety/shared/parse-action-response` in `helvety-auth-api.ts`. Unlock logs omit user ids and tokens; passkey auth HTTP failures log URL/status as `[helvety-unlock]` in production (other unlock steps are dev-only).
 

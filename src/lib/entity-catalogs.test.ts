@@ -16,9 +16,7 @@ import type { CatalogEntry } from "./entity-catalogs";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const vendorRoot = join(repoRoot, ".helvety");
 
-/**
- *
- */
+/** Asserts extension catalog entries exist in monorepo default config sources. */
 function assertMonorepoCatalogSync(
   entries: CatalogEntry[],
   monorepoRelativePath: string
@@ -58,7 +56,7 @@ describe("entity-catalogs", () => {
       "apps/tasks/lib/config/default-stages.ts"
     );
     assertMonorepoCatalogSync(
-      TASK_LABELS.filter((entry) => entry.id !== "default-item-label"),
+      TASK_LABELS,
       "apps/tasks/lib/config/default-labels.ts"
     );
     assertMonorepoCatalogSync(

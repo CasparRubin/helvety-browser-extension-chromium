@@ -40,4 +40,10 @@ describe("webauthn-extension.md", () => {
     expect(doc).toMatch(/passkey auth HTTP failures|\[helvety-unlock\]/i);
     expect(doc).toMatch(/production builds also log passkey/i);
   });
+
+  it("documents auth API OTP sign-in contract", () => {
+    expect(doc).toContain("/api/extension/otp/");
+    expect(doc).toContain("helvety-auth-api.ts");
+    expect(doc).not.toMatch(/Supabase Auth OTP/i);
+  });
 });
