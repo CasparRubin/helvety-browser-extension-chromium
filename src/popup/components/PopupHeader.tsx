@@ -2,7 +2,7 @@ import { PopupHeader as PopupHeaderBase } from "@helvety/extension-chrome/popup-
 
 import { EXTENSION_DISPLAY_NAME } from "../about-meta";
 
-import { EXTENSION_ICON_URL } from "./ExtensionMark";
+import { EXTENSION_ICON_URL } from "./extension-icon";
 
 /** Shared side panel chrome: extension icon, product name, optional version. */
 export function PopupHeader({ version }: { version?: string }) {

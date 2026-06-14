@@ -111,6 +111,8 @@ export function DataTabsView({
   onReorderTasks,
   onReorderNotes,
   onReorderContacts,
+  onReorderLinks,
+  onReorderLinkFolders,
   onRetryFormLoad,
   onDeleteForm,
 }: {
@@ -157,6 +159,12 @@ export function DataTabsView({
   ) => void | Promise<void>;
   onReorderContacts: (
     updates: { id: string; sort_order: number; category_id?: string }[]
+  ) => void | Promise<void>;
+  onReorderLinks: (
+    updates: { id: string; sort_order: number }[]
+  ) => void | Promise<void>;
+  onReorderLinkFolders: (
+    updates: { id: string; sort_order: number }[]
   ) => void | Promise<void>;
   onRetryFormLoad: () => void;
   onDeleteForm: () => void;
@@ -295,6 +303,8 @@ export function DataTabsView({
               onRetry={onRetryList}
               onLinkEdit={onLinkEdit}
               onFolderEdit={onFolderEdit}
+              onReorderLinks={onReorderLinks}
+              onReorderFolders={onReorderLinkFolders}
             />
           ) : null}
         </div>
@@ -323,7 +333,11 @@ export function DataTabsView({
           <PopupHeader version={version} />
         </div>
         <div className="flex shrink-0 gap-1 pt-0.5">
-          {tab !== "about" && screen.mode === "list" ? (
+          {tab !== "about" &&
+          (screen.mode === "list" ||
+            (screen.mode === "form" &&
+              screen.formMode === "edit" &&
+              screen.id)) ? (
             <IconTooltipButton
               label="Open in web app"
               variant="outline"

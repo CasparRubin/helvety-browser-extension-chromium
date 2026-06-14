@@ -113,6 +113,7 @@ export default function App() {
 
   const [formDraft, setFormDraft] = useState<EntityFormDraft | null>(null);
   const baselineDraftRef = useRef<string | null>(null);
+  const pendingTabChangeRef = useRef<EntityTabId | null>(null);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -446,15 +447,6 @@ export default function App() {
     }
   };
 
-  const handleTabChange = (next: EntityTabId) => {
-    void touchVaultActivity();
-    setTab(next);
-    setListError(null);
-    setScreen({ mode: "list" });
-    setMutationError(null);
-    setFormDraft(null);
-  };
-
   const handleRetryList = () => {
     if (tab !== "about") {
       void loadTab(tab);
@@ -481,8 +473,39 @@ export default function App() {
     setUnsavedDialogOpen(false);
   };
 
+  const applyTabChange = useCallback((next: EntityTabId) => {
+    setTab(next);
+    setListError(null);
+    setScreen({ mode: "list" });
+    setMutationError(null);
+    setFormDraft(null);
+    baselineDraftRef.current = null;
+  }, []);
+
+  const confirmDiscardUnsaved = () => {
+    const pendingTab = pendingTabChangeRef.current;
+    pendingTabChangeRef.current = null;
+    goToList();
+    if (pendingTab) {
+      setTab(pendingTab);
+      setListError(null);
+      setMutationError(null);
+    }
+  };
+
+  const handleTabChange = (next: EntityTabId) => {
+    void touchVaultActivity();
+    if (screen.mode === "form" && isFormDraftDirty() && next !== tab) {
+      pendingTabChangeRef.current = next;
+      setUnsavedDialogOpen(true);
+      return;
+    }
+    applyTabChange(next);
+  };
+
   const handleCancelForm = () => {
     if (isFormDraftDirty()) {
+      pendingTabChangeRef.current = null;
       setUnsavedDialogOpen(true);
       return;
     }
@@ -694,6 +717,36 @@ export default function App() {
     }
   };
 
+  const handleReorderLinks = async (
+    updates: { id: string; sort_order: number }[]
+  ) => {
+    if (!repo || updates.length === 0) {
+      return;
+    }
+    try {
+      await repo.reorderLinks(updates);
+      setLinks(await repo.listLinks());
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Failed to reorder links");
+    }
+  };
+
+  const handleReorderLinkFolders = async (
+    updates: { id: string; sort_order: number }[]
+  ) => {
+    if (!repo || updates.length === 0) {
+      return;
+    }
+    try {
+      await repo.reorderLinkFolders(updates);
+      setLinkFolders(await repo.listLinkFolders());
+    } catch (e) {
+      setListError(
+        e instanceof Error ? e.message : "Failed to reorder folders"
+      );
+    }
+  };
+
   const requestDeleteFromForm = useCallback(() => {
     if (screen.mode !== "form" || screen.formMode !== "edit" || !screen.id) {
       return;
@@ -809,6 +862,8 @@ export default function App() {
               onReorderTasks={handleReorderTasks}
               onReorderNotes={handleReorderNotes}
               onReorderContacts={handleReorderContacts}
+              onReorderLinks={handleReorderLinks}
+              onReorderLinkFolders={handleReorderLinkFolders}
               onRetryFormLoad={retryFormLoad}
               onDeleteForm={requestDeleteFromForm}
             />
@@ -830,7 +885,7 @@ export default function App() {
             onOpenChange={setUnsavedDialogOpen}
             title={E2EE_UNSAVED_CHANGES_DIALOG.title}
             description={E2EE_UNSAVED_CHANGES_DIALOG.description}
-            onConfirm={() => goToList()}
+            onConfirm={() => confirmDiscardUnsaved()}
             isDeleting={false}
           />
         </div>

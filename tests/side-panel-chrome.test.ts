@@ -158,6 +158,20 @@ describe("side panel chrome", () => {
     expect(entityRow).toContain('label="Delete"');
   });
 
+  it("LinksTreeList uses normalizeBookmarkUrl (no inline normalizeUrl)", () => {
+    const tree = readSource("src/popup/components/lists/links-tree-list.tsx");
+    expect(tree).toContain("normalizeBookmarkUrl");
+    expect(tree).not.toMatch(/function normalizeUrl/);
+    expect(tree).toMatch(/if \(!result\.ok\)/);
+  });
+
+  it("LinksTreeList wires link and folder reorder handlers", () => {
+    const tree = readSource("src/popup/components/lists/links-tree-list.tsx");
+    expect(tree).toContain('label="Move up"');
+    expect(tree).toContain("onReorderLinks");
+    expect(tree).toContain("onReorderFolders");
+  });
+
   it("EntityDetailView is removed (edit-first navigation)", () => {
     expect(
       existsSync(join(repoRoot, "src/popup/views/EntityDetailView.tsx"))
@@ -215,6 +229,46 @@ describe("side panel chrome", () => {
     expect(dataTabs).toContain("ContactEntityList");
     expect(dataTabs).toContain("LinksTreeList");
     expect(dataTabs).toContain("onReorderTasks");
+    expect(dataTabs).toContain("onReorderLinks");
+    expect(dataTabs).toContain("onReorderLinkFolders");
+  });
+
+  it("DataTabsView shows Open in web app in list and edit modes", () => {
+    const dataTabs = readSource("src/popup/views/DataTabsView.tsx");
+    expect(dataTabs).toContain('label="Open in web app"');
+    expect(dataTabs).toContain("onOpenInApp");
+    expect(dataTabs).toMatch(
+      /screen\.mode === "form"[\s\S]*screen\.formMode === "edit"/
+    );
+  });
+
+  it("App wires openInApp deep links and tab unsaved guard", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain("buildE2eeDeepLink");
+    expect(app).toContain("openInApp");
+    expect(app).toContain("isFormDraftDirty");
+    expect(app).toContain("handleReorderLinks");
+    expect(app).toContain("handleReorderLinkFolders");
+    const tabChangeBlock = app.slice(
+      app.indexOf("const handleTabChange"),
+      app.indexOf("const handleCancelForm")
+    );
+    expect(tabChangeBlock).toContain("isFormDraftDirty");
+    expect(tabChangeBlock).toContain("pendingTabChangeRef");
+  });
+
+  it("App guards cancel and tab discard with the same unsaved dialog", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain("const handleCancelForm");
+    expect(app).toContain("const confirmDiscardUnsaved");
+    expect(app).toContain("onConfirm={() => confirmDiscardUnsaved()}");
+
+    const cancelBlock = app.slice(
+      app.indexOf("const handleCancelForm"),
+      app.indexOf("const openCreate")
+    );
+    expect(cancelBlock).toContain("isFormDraftDirty");
+    expect(cancelBlock).toContain("setUnsavedDialogOpen(true)");
   });
 
   it("LinksTreeList opens URLs in a new browser tab", () => {

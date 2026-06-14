@@ -25,6 +25,10 @@ describe("README vendor and side panel documentation", () => {
     expect(panelSection).toContain("edit-first");
     expect(panelSection).toContain("IconTooltipButton");
     expect(panelSection).toContain("components/lists/");
+    expect(panelSection).toContain("up/down reorder");
+    expect(panelSection).toContain("buildE2eeDeepLink");
+    expect(panelSection).toContain("Open in web app");
+    expect(panelSection).toContain("isFormDraftDirty");
     expect(panelSection).toContain("clears decrypted state");
     expect(panelSection).toContain("openPanelOnActionClick");
     expect(panelSection).toContain("pending-otp-storage.ts");
@@ -79,6 +83,9 @@ describe("README vendor and side panel documentation", () => {
     expect(e2eeSection).toMatch(/Create, edit, and delete/i);
     expect(e2eeSection).toMatch(/edit-first/i);
     expect(e2eeSection).toMatch(/links open the URL on tap/i);
+    expect(e2eeSection).toMatch(/up\/down reorder/i);
+    expect(e2eeSection).toMatch(/Open in web app/i);
+    expect(e2eeSection).toMatch(/unsaved edit shows the discard dialog/i);
   });
 
   it("describes CRUD and does not claim read-only MVP", () => {
@@ -87,6 +94,7 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).not.toMatch(/Read-only MVP/);
     expect(readme).toContain("link folders");
     expect(readme).toContain("entity-repository");
+    expect(readme).toMatch(/Open in web app \(list \+ edit\)/);
   });
 
   it("points to current security and webauthn docs", () => {

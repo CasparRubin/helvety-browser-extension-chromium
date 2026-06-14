@@ -25,7 +25,7 @@ import { logUnlockFailure } from "./unlock-dev-log";
 import type { ActionResponse } from "@helvety/shared/types/entities";
 
 /** Alias for Helvety auth JSON routes (`ActionResponse` from `@helvety/shared`). */
-export type HelvetyJsonResponse<T> = ActionResponse<T>;
+type HelvetyJsonResponse<T> = ActionResponse<T>;
 
 const DEFAULT_AUTH_ERROR = "Request to Helvety auth failed";
 

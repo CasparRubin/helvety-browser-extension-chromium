@@ -6,6 +6,7 @@ import {
   groupEntitiesByKey,
   moveToNextGroup,
   moveToPreviousGroup,
+  swapSiblingSortOrder,
 } from "./list-group-utils";
 
 describe("list-group-utils", () => {
@@ -56,5 +57,32 @@ describe("list-group-utils", () => {
     expect(moveToPreviousGroup(tasks, "a", TASK_STAGES, "stage_id")).toEqual(
       []
     );
+  });
+
+  it("swapSiblingSortOrder exchanges sort_order with adjacent sibling", () => {
+    const links = [
+      { id: "a", sort_order: 0 },
+      { id: "b", sort_order: 1 },
+      { id: "c", sort_order: 2 },
+    ];
+
+    expect(swapSiblingSortOrder(links, "b", "up")).toEqual([
+      { id: "b", sort_order: 0 },
+      { id: "a", sort_order: 1 },
+    ]);
+    expect(swapSiblingSortOrder(links, "b", "down")).toEqual([
+      { id: "b", sort_order: 2 },
+      { id: "c", sort_order: 1 },
+    ]);
+  });
+
+  it("swapSiblingSortOrder returns empty updates at list boundaries", () => {
+    const links = [
+      { id: "a", sort_order: 0 },
+      { id: "b", sort_order: 1 },
+    ];
+    expect(swapSiblingSortOrder(links, "a", "up")).toEqual([]);
+    expect(swapSiblingSortOrder(links, "b", "down")).toEqual([]);
+    expect(swapSiblingSortOrder(links, "missing", "up")).toEqual([]);
   });
 });

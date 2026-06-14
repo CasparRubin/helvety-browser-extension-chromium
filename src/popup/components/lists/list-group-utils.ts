@@ -85,3 +85,31 @@ export function groupEntitiesByKey<
   }
   return map;
 }
+
+/** Swap sort_order with the adjacent sibling in a flat list. */
+export function swapSiblingSortOrder<
+  T extends { id: string; sort_order: number },
+>(
+  siblings: T[],
+  entityId: string,
+  direction: "up" | "down"
+): { id: string; sort_order: number }[] {
+  const sorted = [...siblings].sort((a, b) => a.sort_order - b.sort_order);
+  const index = sorted.findIndex((entry) => entry.id === entityId);
+  if (index < 0) {
+    return [];
+  }
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= sorted.length) {
+    return [];
+  }
+  const current = sorted[index];
+  const neighbor = sorted[swapIndex];
+  if (!current || !neighbor) {
+    return [];
+  }
+  return [
+    { id: current.id, sort_order: neighbor.sort_order },
+    { id: neighbor.id, sort_order: current.sort_order },
+  ];
+}

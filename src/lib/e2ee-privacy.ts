@@ -17,17 +17,3 @@ export const PLAINTEXT_CONTENT_FIELD_NAMES = [
   "birthday",
   "notes",
 ] as const;
-
-/**
- * Structural fields stored in plaintext on Supabase (same as helvety.com web apps).
- * They describe organization, not human-readable record content.
- */
-export const PLAINTEXT_STRUCTURAL_FIELD_NAMES = [
-  "category_id",
-  "stage_id",
-  "label_id",
-  "priority",
-  "folder_id",
-  "parent_folder_id",
-  "sort_order",
-] as const;

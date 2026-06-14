@@ -8,7 +8,7 @@ export interface CatalogEntry {
   default_rows_shown: number;
 }
 
-/** Simple id/name for legacy selects. */
+/** Simple id/name pairs for priority and other compact catalog arrays. */
 export interface CatalogEntryLite {
   id: string;
   name: string;
@@ -166,14 +166,6 @@ export const PRIORITY_COLORS: Record<number, string> = {
   2: "#d97706",
   3: "#dc2626",
 };
-
-/** Resolves a catalog entry name by id. */
-export function catalogName(
-  entries: CatalogEntry[] | CatalogEntryLite[],
-  id: string
-): string {
-  return entries.find((e) => e.id === id)?.name ?? id;
-}
 
 /** Finds a catalog entry by id. */
 export function catalogById(

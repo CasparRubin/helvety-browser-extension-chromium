@@ -134,4 +134,52 @@ describe("EntityRepository mutation payloads", () => {
     });
     expect(payload).toHaveProperty("updated_at");
   });
+
+  it("reorderLinks updates sort_order", async () => {
+    const key = await aes256GcmKey();
+    const eqChain = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: eqChain }),
+    });
+    const supabase = {
+      from: vi.fn(() => ({
+        insert: vi.fn(),
+        update,
+        delete: vi.fn(),
+        select: vi.fn(),
+      })),
+    };
+
+    const repo = new EntityRepository(supabase as never, "user-1", key);
+    await repo.reorderLinks([{ id: "link-1", sort_order: 3 }]);
+
+    expect(update).toHaveBeenCalledOnce();
+    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).toMatchObject({ sort_order: 3 });
+    expect(payload).toHaveProperty("updated_at");
+  });
+
+  it("reorderLinkFolders updates sort_order", async () => {
+    const key = await aes256GcmKey();
+    const eqChain = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: eqChain }),
+    });
+    const supabase = {
+      from: vi.fn(() => ({
+        insert: vi.fn(),
+        update,
+        delete: vi.fn(),
+        select: vi.fn(),
+      })),
+    };
+
+    const repo = new EntityRepository(supabase as never, "user-1", key);
+    await repo.reorderLinkFolders([{ id: "folder-1", sort_order: 1 }]);
+
+    expect(update).toHaveBeenCalledOnce();
+    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).toMatchObject({ sort_order: 1 });
+    expect(payload).toHaveProperty("updated_at");
+  });
 });

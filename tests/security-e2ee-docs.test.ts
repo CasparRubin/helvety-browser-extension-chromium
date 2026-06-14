@@ -76,4 +76,13 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("EntityRichTextEditor");
     expect(doc).toContain("entity-rich-text-editor.test.ts");
   });
+
+  it("documents side panel reorder, open-in-app deep links, and unsaved tab guard", () => {
+    expect(doc).toMatch(/Open in web app/i);
+    expect(doc).toMatch(/entity deep link/i);
+    expect(doc).toMatch(/up-down reorder|reorder within tree level/i);
+    expect(doc).toMatch(
+      /unsaved form shows discard dialog|Tab switch with unsaved/i
+    );
+  });
 });
