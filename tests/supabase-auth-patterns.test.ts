@@ -42,7 +42,9 @@ describe("supabase auth patterns (extension)", () => {
     const violations: string[] = [];
 
     for (const absolutePath of listSourceFiles(srcRoot)) {
-      const relativePath = absolutePath.slice(repoRoot.length + 1);
+      const relativePath = absolutePath
+        .slice(repoRoot.length + 1)
+        .replace(/\\/g, "/");
       const source = readFileSync(absolutePath, "utf8");
       if (!FORBIDDEN_GET_SESSION.test(source)) {
         continue;
