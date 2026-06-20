@@ -29,6 +29,13 @@ describe("entity-rich-text", () => {
     expect(serializeStoredRichText(parseStoredRichText(""))).toBeNull();
   });
 
+  it("returns null for whitespace-only paragraphs (draft may be null while typing)", () => {
+    const emptyParagraph = parseStoredRichText(
+      '{"type":"doc","content":[{"type":"paragraph"}]}'
+    );
+    expect(serializeStoredRichText(emptyParagraph)).toBeNull();
+  });
+
   it("does not treat legacy plain text as ProseMirror JSON", () => {
     expect(parseStoredRichText("Hello legacy")).toBeNull();
     expect(

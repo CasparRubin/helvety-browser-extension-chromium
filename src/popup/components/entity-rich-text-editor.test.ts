@@ -30,4 +30,32 @@ describe("EntityRichTextEditor", () => {
     expect(matches.length).toBe(3);
     expect(formView.match(/sessionKey=\{formSessionKey\}/g)?.length).toBe(3);
   });
+
+  it("web E2eeRichTextItemEditorShell keys TipTap by editorSessionKey (parity)", () => {
+    const monorepoRoot = join(repoRoot, ".helvety");
+    const shellPath = join(
+      monorepoRoot,
+      "packages/ui/src/e2ee-item-editor-shell.tsx"
+    );
+    const source = readFileSync(shellPath, "utf8");
+    expect(source).toContain("editorSessionKey: string");
+    expect(source).toContain("key={editorSessionKey}");
+    expect(source).not.toMatch(/key=\{value/);
+  });
+
+  it("shared TiptapEditor uses mount-only content (parity)", () => {
+    const monorepoRoot = join(repoRoot, ".helvety");
+    const editorPath = join(monorepoRoot, "packages/ui/src/tiptap-editor.tsx");
+    const source = readFileSync(editorPath, "utf8");
+    expect(source).toContain("initialContentRef");
+    expect(source).toContain("shouldRerenderOnTransaction: false");
+    expect(source).toContain("const extensions = useMemo");
+  });
+
+  it("EntityRichTextEditor documents mount-only content and sessionKey remount", () => {
+    const source = readFileSync(componentPath, "utf8");
+    expect(source).toContain("mount-only");
+    expect(source).toContain("editorSessionKey");
+    expect(source).toContain("initialContentRef");
+  });
 });

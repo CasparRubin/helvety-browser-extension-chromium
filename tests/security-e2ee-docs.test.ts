@@ -75,6 +75,8 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("entityFormSessionKey");
     expect(doc).toContain("EntityRichTextEditor");
     expect(doc).toContain("entity-rich-text-editor.test.ts");
+    expect(doc).toMatch(/mount-only|initialContentRef/i);
+    expect(doc).toContain("editorSessionKey");
   });
 
   it("documents side panel reorder, open-in-app deep links, and unsaved tab guard", () => {

@@ -13,7 +13,7 @@ export type EntityScreen =
       loadError?: string | null;
     };
 
-/** React key for TipTap in entity forms; stable while editing one record. */
+/** React key for TipTap in entity forms — stable per record (`tasks-edit-<id>`), never draft text. */
 export function entityFormSessionKey(screen: EntityScreen): string {
   if (screen.mode !== "form") {
     return "";

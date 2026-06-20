@@ -6,7 +6,7 @@ import {
 
 import type { JSONContent } from "@helvety/ui/tiptap-utils";
 
-/** Parse stored ciphertext-decrypted string for TipTap `content` prop. */
+/** Parse stored ciphertext-decrypted string for TipTap mount-only `content`. */
 export function parseStoredRichText(value: string | null): JSONContent | null {
   return parseRichTextContent(value);
 }

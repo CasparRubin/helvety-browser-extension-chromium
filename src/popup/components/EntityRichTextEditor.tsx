@@ -16,9 +16,12 @@ const TiptapEditor = lazy(() =>
 /**
  * TipTap field for the extension side panel (task/note description, contact notes).
  *
- * Remount via `sessionKey` only when switching create/edit records — never on serialized
- * `value` (that remounts on every keystroke and steals focus). Web apps use the same idea
- * in `E2eeRichTextItemEditorShell` (editor ref + draft baseline, no value-based key).
+ * Remount via `sessionKey` only when switching create/edit records — never use serialized
+ * `value` as a React `key` (that remounts on every keystroke). `value` is passed as
+ * mount-only `content` through shared `@helvety/ui/tiptap-editor` (`initialContentRef`);
+ * draft updates flow through `onChange` only.
+ *
+ * Web zone editors use the same pattern in `E2eeRichTextItemEditorShell` (`editorSessionKey`).
  */
 export function EntityRichTextEditor({
   sessionKey,
