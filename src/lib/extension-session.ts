@@ -1,10 +1,12 @@
 import { shouldForceHardLogout } from "@helvety/shared/auth-errors";
+import { AUTH_MAX_LIFETIME_MS } from "@helvety/shared/crypto";
+import { isJwtWithinMaxLifetime } from "@helvety/shared/jwt-session-lifetime";
 
-import { hasValidExtensionEmailProof } from "./extension-email-proof";
+import { hasValidExtensionWeeklyOtpAnchor } from "./extension-weekly-otp-anchor";
 
 import type { ExtensionSupabaseClient } from "./extension-supabase";
 
-/** Verified extension session after getUser() and weekly email proof. */
+/** Verified extension session after getUser(), JWT lifetime, and weekly OTP anchor. */
 export type VerifiedExtensionSession = Readonly<{
   userId: string;
   email: string | null;
@@ -20,6 +22,10 @@ export type ResolveExtensionSessionResult =
  * Resolves the current extension session using `getUser()` for authorization,
  * then reads the access token from storage via `getSession()` only after the
  * JWT is validated — mirrors the monorepo Supabase auth pattern.
+ *
+ * Weekly re-auth is enforced by:
+ * 1. Supabase JWT `iat` vs {@link AUTH_MAX_LIFETIME_MS} (server-issued token age)
+ * 2. Client OTP anchor timestamp (UX; tampering cannot extend JWT validity)
  */
 export async function resolveVerifiedExtensionSession(
   supabase: ExtensionSupabaseClient
@@ -43,15 +49,21 @@ export async function resolveVerifiedExtensionSession(
   }
 
   const user = userResult.data.user;
-  const emailProofValid = await hasValidExtensionEmailProof(user.id);
-  if (!emailProofValid) {
-    await supabase.auth.signOut();
-    return { ok: false, signedOut: true };
-  }
 
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (!accessToken || sessionData.session?.user.id !== user.id) {
+    await supabase.auth.signOut();
+    return { ok: false, signedOut: true };
+  }
+
+  if (!isJwtWithinMaxLifetime(accessToken, AUTH_MAX_LIFETIME_MS)) {
+    await supabase.auth.signOut();
+    return { ok: false, signedOut: true };
+  }
+
+  const otpAnchorValid = await hasValidExtensionWeeklyOtpAnchor(user.id);
+  if (!otpAnchorValid) {
     await supabase.auth.signOut();
     return { ok: false, signedOut: true };
   }
@@ -103,6 +115,18 @@ export async function ensureExtensionAuthReady(
 
   if (userResult.data.user.id !== userId) {
     return { ok: false, error: "Sign in again." };
+  }
+
+  const accessToken = (await supabase.auth.getSession()).data.session
+    ?.access_token;
+  if (
+    !accessToken ||
+    !isJwtWithinMaxLifetime(accessToken, AUTH_MAX_LIFETIME_MS)
+  ) {
+    return {
+      ok: false,
+      error: "Session expired. Sign out and sign in again.",
+    };
   }
 
   return { ok: true };

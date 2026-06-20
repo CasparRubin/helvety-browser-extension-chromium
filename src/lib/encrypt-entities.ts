@@ -5,8 +5,7 @@
  * content. Plaintext never appears in insert/update objects from this module.
  */
 import {
-  buildAAD,
-  encrypt,
+  encryptEntityField,
   serializeEncryptedData,
 } from "@helvety/shared/crypto/encryption";
 
@@ -30,9 +29,19 @@ import type {
   TaskInput,
 } from "./entity-types";
 
-/**
- *
- */
+const CONTACTS_TABLE = "contacts" as const;
+const NOTES_TABLE = "notes" as const;
+const ITEMS_TABLE = "items" as const;
+const LINKS_TABLE = "links" as const;
+const LINK_FOLDERS_TABLE = "link_folders" as const;
+
+/** v2 field-bound AAD context (`table`, `recordId`, `column`). */
+type FieldContext = {
+  table: string;
+  recordId: string;
+  column: string;
+};
+
 function prepareLinkNameAndUrl(
   name: string,
   url: string
@@ -50,24 +59,18 @@ function prepareLinkNameAndUrl(
   };
 }
 
-/**
- *
- */
 async function encryptRequired(
   plaintext: string,
   key: CryptoKey,
-  aad: string
+  ctx: FieldContext
 ): Promise<string> {
-  return serializeEncryptedData(await encrypt(plaintext, key, aad));
+  return serializeEncryptedData(await encryptEntityField(plaintext, key, ctx));
 }
 
-/**
- *
- */
 async function encryptOptional(
   value: string | null | undefined,
   key: CryptoKey,
-  aad: string
+  ctx: FieldContext
 ): Promise<string | null> {
   if (value === undefined) {
     return null;
@@ -75,12 +78,9 @@ async function encryptOptional(
   if (value === null || value.trim() === "") {
     return null;
   }
-  return serializeEncryptedData(await encrypt(value, key, aad));
+  return serializeEncryptedData(await encryptEntityField(value, key, ctx));
 }
 
-/**
- *
- */
 export async function encryptContactCreate(
   input: ContactInput,
   key: CryptoKey
@@ -96,23 +96,49 @@ export async function encryptContactCreate(
   category_id: string;
 }> {
   const id = crypto.randomUUID();
-  const aad = buildAAD("contacts", id);
+  const recordId = id;
+  const table = CONTACTS_TABLE;
   return {
     id,
-    encrypted_first_name: await encryptRequired(input.first_name, key, aad),
-    encrypted_last_name: await encryptRequired(input.last_name, key, aad),
-    encrypted_description: await encryptOptional(input.description, key, aad),
-    encrypted_email: await encryptOptional(input.email, key, aad),
-    encrypted_phone: await encryptOptional(input.phone, key, aad),
-    encrypted_birthday: await encryptOptional(input.birthday, key, aad),
-    encrypted_notes: await encryptOptional(input.notes, key, aad),
+    encrypted_first_name: await encryptRequired(input.first_name, key, {
+      table,
+      recordId,
+      column: "encrypted_first_name",
+    }),
+    encrypted_last_name: await encryptRequired(input.last_name, key, {
+      table,
+      recordId,
+      column: "encrypted_last_name",
+    }),
+    encrypted_description: await encryptOptional(input.description, key, {
+      table,
+      recordId,
+      column: "encrypted_description",
+    }),
+    encrypted_email: await encryptOptional(input.email, key, {
+      table,
+      recordId,
+      column: "encrypted_email",
+    }),
+    encrypted_phone: await encryptOptional(input.phone, key, {
+      table,
+      recordId,
+      column: "encrypted_phone",
+    }),
+    encrypted_birthday: await encryptOptional(input.birthday, key, {
+      table,
+      recordId,
+      column: "encrypted_birthday",
+    }),
+    encrypted_notes: await encryptOptional(input.notes, key, {
+      table,
+      recordId,
+      column: "encrypted_notes",
+    }),
     category_id: input.category_id ?? DEFAULT_CONTACT_CATEGORY_ID,
   };
 }
 
-/**
- *
- */
 export async function encryptContactUpdate(
   id: string,
   input: Partial<ContactInput>,
@@ -127,7 +153,8 @@ export async function encryptContactUpdate(
   encrypted_notes?: string | null;
   category_id?: string;
 }> {
-  const aad = buildAAD("contacts", id);
+  const table = CONTACTS_TABLE;
+  const recordId = id;
   const patch: {
     encrypted_first_name?: string;
     encrypted_last_name?: string;
@@ -140,37 +167,53 @@ export async function encryptContactUpdate(
   } = {};
 
   if (input.first_name !== undefined) {
-    patch.encrypted_first_name = await encryptRequired(
-      input.first_name,
-      key,
-      aad
-    );
+    patch.encrypted_first_name = await encryptRequired(input.first_name, key, {
+      table,
+      recordId,
+      column: "encrypted_first_name",
+    });
   }
   if (input.last_name !== undefined) {
-    patch.encrypted_last_name = await encryptRequired(
-      input.last_name,
-      key,
-      aad
-    );
+    patch.encrypted_last_name = await encryptRequired(input.last_name, key, {
+      table,
+      recordId,
+      column: "encrypted_last_name",
+    });
   }
   if (input.description !== undefined) {
     patch.encrypted_description = await encryptOptional(
       input.description,
       key,
-      aad
+      { table, recordId, column: "encrypted_description" }
     );
   }
   if (input.email !== undefined) {
-    patch.encrypted_email = await encryptOptional(input.email, key, aad);
+    patch.encrypted_email = await encryptOptional(input.email, key, {
+      table,
+      recordId,
+      column: "encrypted_email",
+    });
   }
   if (input.phone !== undefined) {
-    patch.encrypted_phone = await encryptOptional(input.phone, key, aad);
+    patch.encrypted_phone = await encryptOptional(input.phone, key, {
+      table,
+      recordId,
+      column: "encrypted_phone",
+    });
   }
   if (input.birthday !== undefined) {
-    patch.encrypted_birthday = await encryptOptional(input.birthday, key, aad);
+    patch.encrypted_birthday = await encryptOptional(input.birthday, key, {
+      table,
+      recordId,
+      column: "encrypted_birthday",
+    });
   }
   if (input.notes !== undefined) {
-    patch.encrypted_notes = await encryptOptional(input.notes, key, aad);
+    patch.encrypted_notes = await encryptOptional(input.notes, key, {
+      table,
+      recordId,
+      column: "encrypted_notes",
+    });
   }
   if (input.category_id !== undefined) {
     patch.category_id = input.category_id;
@@ -179,9 +222,6 @@ export async function encryptContactUpdate(
   return patch;
 }
 
-/**
- *
- */
 export async function encryptNoteCreate(
   input: NoteInput,
   key: CryptoKey
@@ -192,18 +232,24 @@ export async function encryptNoteCreate(
   category_id: string;
 }> {
   const id = crypto.randomUUID();
-  const aad = buildAAD("notes", id);
+  const recordId = id;
+  const table = NOTES_TABLE;
   return {
     id,
-    encrypted_title: await encryptRequired(input.title, key, aad),
-    encrypted_description: await encryptOptional(input.description, key, aad),
+    encrypted_title: await encryptRequired(input.title, key, {
+      table,
+      recordId,
+      column: "encrypted_title",
+    }),
+    encrypted_description: await encryptOptional(input.description, key, {
+      table,
+      recordId,
+      column: "encrypted_description",
+    }),
     category_id: input.category_id ?? DEFAULT_NOTE_CATEGORY_ID,
   };
 }
 
-/**
- *
- */
 export async function encryptNoteUpdate(
   id: string,
   input: Partial<NoteInput>,
@@ -213,7 +259,8 @@ export async function encryptNoteUpdate(
   encrypted_description?: string | null;
   category_id?: string;
 }> {
-  const aad = buildAAD("notes", id);
+  const table = NOTES_TABLE;
+  const recordId = id;
   const patch: {
     encrypted_title?: string;
     encrypted_description?: string | null;
@@ -221,13 +268,17 @@ export async function encryptNoteUpdate(
   } = {};
 
   if (input.title !== undefined) {
-    patch.encrypted_title = await encryptRequired(input.title, key, aad);
+    patch.encrypted_title = await encryptRequired(input.title, key, {
+      table,
+      recordId,
+      column: "encrypted_title",
+    });
   }
   if (input.description !== undefined) {
     patch.encrypted_description = await encryptOptional(
       input.description,
       key,
-      aad
+      { table, recordId, column: "encrypted_description" }
     );
   }
   if (input.category_id !== undefined) {
@@ -237,9 +288,6 @@ export async function encryptNoteUpdate(
   return patch;
 }
 
-/**
- *
- */
 export async function encryptTaskCreate(
   input: TaskInput,
   key: CryptoKey
@@ -254,22 +302,36 @@ export async function encryptTaskCreate(
   priority: number;
 }> {
   const id = crypto.randomUUID();
-  const aad = buildAAD("items", id);
+  const recordId = id;
+  const table = ITEMS_TABLE;
   return {
     id,
-    encrypted_title: await encryptRequired(input.title, key, aad),
-    encrypted_description: await encryptOptional(input.description, key, aad),
-    encrypted_start_date: await encryptOptional(input.start_date, key, aad),
-    encrypted_end_date: await encryptOptional(input.end_date, key, aad),
+    encrypted_title: await encryptRequired(input.title, key, {
+      table,
+      recordId,
+      column: "encrypted_title",
+    }),
+    encrypted_description: await encryptOptional(input.description, key, {
+      table,
+      recordId,
+      column: "encrypted_description",
+    }),
+    encrypted_start_date: await encryptOptional(input.start_date, key, {
+      table,
+      recordId,
+      column: "encrypted_start_date",
+    }),
+    encrypted_end_date: await encryptOptional(input.end_date, key, {
+      table,
+      recordId,
+      column: "encrypted_end_date",
+    }),
     stage_id: input.stage_id ?? DEFAULT_TASK_STAGE_ID,
     label_id: input.label_id ?? DEFAULT_TASK_LABEL_ID,
     priority: input.priority ?? DEFAULT_TASK_PRIORITY,
   };
 }
 
-/**
- *
- */
 export async function encryptTaskUpdate(
   id: string,
   input: Partial<TaskInput>,
@@ -283,7 +345,8 @@ export async function encryptTaskUpdate(
   label_id?: string;
   priority?: number;
 }> {
-  const aad = buildAAD("items", id);
+  const table = ITEMS_TABLE;
+  const recordId = id;
   const patch: {
     encrypted_title?: string;
     encrypted_description?: string | null;
@@ -295,24 +358,32 @@ export async function encryptTaskUpdate(
   } = {};
 
   if (input.title !== undefined) {
-    patch.encrypted_title = await encryptRequired(input.title, key, aad);
+    patch.encrypted_title = await encryptRequired(input.title, key, {
+      table,
+      recordId,
+      column: "encrypted_title",
+    });
   }
   if (input.description !== undefined) {
     patch.encrypted_description = await encryptOptional(
       input.description,
       key,
-      aad
+      { table, recordId, column: "encrypted_description" }
     );
   }
   if (input.start_date !== undefined) {
-    patch.encrypted_start_date = await encryptOptional(
-      input.start_date,
-      key,
-      aad
-    );
+    patch.encrypted_start_date = await encryptOptional(input.start_date, key, {
+      table,
+      recordId,
+      column: "encrypted_start_date",
+    });
   }
   if (input.end_date !== undefined) {
-    patch.encrypted_end_date = await encryptOptional(input.end_date, key, aad);
+    patch.encrypted_end_date = await encryptOptional(input.end_date, key, {
+      table,
+      recordId,
+      column: "encrypted_end_date",
+    });
   }
   if (input.stage_id !== undefined) {
     patch.stage_id = input.stage_id;
@@ -327,9 +398,6 @@ export async function encryptTaskUpdate(
   return patch;
 }
 
-/**
- *
- */
 export async function encryptLinkCreate(
   input: LinkInput,
   key: CryptoKey
@@ -340,19 +408,25 @@ export async function encryptLinkCreate(
   folder_id: string | null;
 }> {
   const id = crypto.randomUUID();
-  const aad = buildAAD("links", id);
+  const recordId = id;
+  const table = LINKS_TABLE;
   const { name, url } = prepareLinkNameAndUrl(input.name, input.url);
   return {
     id,
-    encrypted_name: await encryptRequired(name, key, aad),
-    encrypted_url: await encryptRequired(url, key, aad),
+    encrypted_name: await encryptRequired(name, key, {
+      table,
+      recordId,
+      column: "encrypted_name",
+    }),
+    encrypted_url: await encryptRequired(url, key, {
+      table,
+      recordId,
+      column: "encrypted_url",
+    }),
     folder_id: input.folder_id ?? null,
   };
 }
 
-/**
- *
- */
 export async function encryptLinkUpdate(
   id: string,
   input: Partial<LinkInput>,
@@ -362,7 +436,8 @@ export async function encryptLinkUpdate(
   encrypted_url?: string;
   folder_id?: string | null;
 }> {
-  const aad = buildAAD("links", id);
+  const table = LINKS_TABLE;
+  const recordId = id;
   const patch: {
     encrypted_name?: string;
     encrypted_url?: string;
@@ -371,10 +446,22 @@ export async function encryptLinkUpdate(
 
   if (input.url !== undefined) {
     const { name, url } = prepareLinkNameAndUrl(input.name ?? "", input.url);
-    patch.encrypted_url = await encryptRequired(url, key, aad);
-    patch.encrypted_name = await encryptRequired(name, key, aad);
+    patch.encrypted_url = await encryptRequired(url, key, {
+      table,
+      recordId,
+      column: "encrypted_url",
+    });
+    patch.encrypted_name = await encryptRequired(name, key, {
+      table,
+      recordId,
+      column: "encrypted_name",
+    });
   } else if (input.name !== undefined) {
-    patch.encrypted_name = await encryptRequired(input.name, key, aad);
+    patch.encrypted_name = await encryptRequired(input.name, key, {
+      table,
+      recordId,
+      column: "encrypted_name",
+    });
   }
   if (input.folder_id !== undefined) {
     patch.folder_id = input.folder_id;
@@ -383,9 +470,6 @@ export async function encryptLinkUpdate(
   return patch;
 }
 
-/**
- *
- */
 export async function encryptLinkFolderCreate(
   input: LinkFolderInput,
   key: CryptoKey
@@ -395,17 +479,19 @@ export async function encryptLinkFolderCreate(
   parent_folder_id: string | null;
 }> {
   const id = crypto.randomUUID();
-  const aad = buildAAD("link_folders", id);
+  const recordId = id;
+  const table = LINK_FOLDERS_TABLE;
   return {
     id,
-    encrypted_name: await encryptRequired(input.name, key, aad),
+    encrypted_name: await encryptRequired(input.name, key, {
+      table,
+      recordId,
+      column: "encrypted_name",
+    }),
     parent_folder_id: input.parent_folder_id ?? null,
   };
 }
 
-/**
- *
- */
 export async function encryptLinkFolderUpdate(
   id: string,
   input: Partial<LinkFolderInput>,
@@ -414,14 +500,19 @@ export async function encryptLinkFolderUpdate(
   encrypted_name?: string;
   parent_folder_id?: string | null;
 }> {
-  const aad = buildAAD("link_folders", id);
+  const table = LINK_FOLDERS_TABLE;
+  const recordId = id;
   const patch: {
     encrypted_name?: string;
     parent_folder_id?: string | null;
   } = {};
 
   if (input.name !== undefined) {
-    patch.encrypted_name = await encryptRequired(input.name, key, aad);
+    patch.encrypted_name = await encryptRequired(input.name, key, {
+      table,
+      recordId,
+      column: "encrypted_name",
+    });
   }
   if (input.parent_folder_id !== undefined) {
     patch.parent_folder_id = input.parent_folder_id;

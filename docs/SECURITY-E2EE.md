@@ -9,14 +9,14 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 ## Privacy summary
 
-| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?                                                         | Plaintext in extension before unlock?          |
-| ----------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| **Identity**            | Email, OTP                                                                                       | Email in Supabase Auth; OTP send/verify via Helvety auth API (not direct client Supabase OTP) | Email in UI when signed in                     |
-| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                                                                           | Yes after fetch (not secret)                   |
-| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)                                                           | Yes when unlocked                              |
-| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only                                                                   | **Only after passkey unlock** (memory / UI)    |
-| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                                                                            | Master key in extension IndexedDB after unlock |
-| **Session**             | Supabase JWT / refresh, weekly email-proof anchor                                                | In `chrome.storage.local` (auth + `helvety_extension_last_email_verified`)                    | Not shown in About UI                          |
+| Class                   | Examples                                                                                         | Plaintext on Supabase / Helvety auth?                                                             | Plaintext in extension before unlock?          |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Identity**            | Email, OTP                                                                                       | Email in Supabase Auth; OTP send/verify via Helvety auth API (not direct client Supabase OTP)     | Email in UI when signed in                     |
+| **Timestamps & ids**    | `created_at`, `updated_at`, row UUIDs                                                            | Yes                                                                                               | Yes after fetch (not secret)                   |
+| **Structural metadata** | `category_id`, `stage_id`, `label_id`, `priority`, `folder_id`, `parent_folder_id`, `sort_order` | Yes (organizational, not body text)                                                               | Yes when unlocked                              |
+| **Entity content**      | Titles, descriptions, contact fields, link URLs                                                  | **No** — `encrypted_*` only                                                                       | **Only after passkey unlock** (memory / UI)    |
+| **Crypto unlock**       | PRF salt, credential id, KCV                                                                     | Metadata rows only                                                                                | Master key in extension IndexedDB after unlock |
+| **Session**             | Supabase JWT / refresh, weekly OTP anchor timestamp                                              | Refresh + OTP anchor in `chrome.storage.local`; access token mirrored in `chrome.storage.session` | Not shown in About UI                          |
 
 **“100% client-side” for user content** means: this extension **never** sends decrypted titles, notes, contact details, or URLs to Helvety app APIs or PostgREST. Encryption and decryption run in the extension via Web Crypto (`encrypt-entities.ts` / `decrypt-entities.ts`). That matches helvety.com.
 
@@ -51,23 +51,23 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 - Does **not** replace RLS.
 - **Never** add server secrets (`SUPABASE_SECRET_KEY`, `sb_secret_*`, etc.).
 
-User **access tokens** after OTP sign-in live in `chrome.storage.local` via the Supabase auth adapter. Sensitive at runtime; not entity plaintext.
+User **access tokens** after OTP sign-in are mirrored to `chrome.storage.session` (cleared when the browser session ends). **Refresh tokens** and the Supabase session JSON remain in `chrome.storage.local`. Sensitive at runtime; not entity plaintext.
 
-**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). OTP sign-in uses server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records weekly email proof (7d). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired email proof or vault policy triggers sign-out or passkey re-unlock respectively. Session bootstrap uses **`getUser()` for authorization** (`extension-session.ts`); `getSession()` is only used after JWT validation to read the access token.
+**Session and vault policy (aligned with helvety.com):** TTL constants come from `@helvety/shared/crypto` (`auth-session-policy`, no extension env vars). OTP sign-in uses server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client). After OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records a **weekly OTP anchor** (local timestamp — not a cryptographic proof). **JWT max lifetime** is enforced via access-token `iat` and `@helvety/shared/jwt-session-lifetime` (align Supabase session JWT expiry to **7d**). Vault master keys in IndexedDB follow **24h sliding idle** and **7d absolute max**; the side panel uses `useVaultIdleLock` and `touchVaultSessionInStorage` on entity activity. Expired JWT, missing OTP anchor, or vault policy triggers sign-out or passkey re-unlock respectively. Session bootstrap uses **`getUser()` for authorization** (`extension-session.ts`); `getSession()` is only used after JWT validation to read the access token.
 
-### Weekly email proof vs web device trust (threat model)
+### Weekly OTP anchor vs web device trust (threat model)
 
 Helvety web apps mint an **HttpOnly HMAC-signed** `helvety_device_trust` cookie after email verification. E2EE server pages and mutations enforce it via `requireDeviceTrust` — tampering without the signing secret fails server-side.
 
-The extension **cannot** set helvety.com cookies. Extension OTP verify intentionally **does not** mint device-trust cookies ([`apps/auth/README.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/README.md)). Instead, the side panel stores `helvety_extension_last_email_verified` in `chrome.storage.local` and `resolveVerifiedExtensionSession` signs the user out when proof is missing or expired.
+The extension **cannot** set helvety.com cookies. Extension OTP verify intentionally **does not** mint device-trust cookies ([`apps/auth/README.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/README.md)). Instead, `resolveVerifiedExtensionSession` (`extension-session.ts`) validates JWT `iat`, checks the weekly OTP anchor in `helvety_extension_last_email_verified`, and signs out when either check fails.
 
-| Mechanism         | Web (helvety.com)             | Extension                                  |
-| ----------------- | ----------------------------- | ------------------------------------------ |
-| Storage           | HttpOnly signed cookie        | `chrome.storage.local` timestamp           |
-| Enforcement       | Server (`requireDeviceTrust`) | Client (`extension-session.ts`, `App.tsx`) |
-| Tamper resistance | HMAC + server verify          | Same-origin extension code only            |
+| Mechanism         | Web (helvety.com)             | Extension                                   |
+| ----------------- | ----------------------------- | ------------------------------------------- |
+| Storage           | HttpOnly signed cookie        | `chrome.storage.local` OTP anchor + JWT     |
+| Enforcement       | Server (`requireDeviceTrust`) | JWT `iat` max age + client OTP anchor check |
+| Tamper resistance | HMAC + server verify          | JWT issued by Supabase; anchor is UX only   |
 
-**Implication:** A modified extension build could skip email-proof checks locally. **RLS and JWT validity still gate PostgREST**; vault content still requires passkey + PRF. Email re-proof is defense-in-depth for stolen refresh tokens on a shared machine, not the primary E2EE boundary.
+**Implication:** A modified extension build could skip OTP-anchor checks locally, but **cannot forge a Supabase JWT** with a fresh `iat` without re-authenticating. **RLS and JWT validity still gate PostgREST**; vault content still requires passkey + PRF. The OTP anchor prompts re-sign-in on a shared machine; JWT max age is the authoritative weekly cap when Supabase session settings are aligned.
 
 **Cross-app entity links:** edit forms include shared `EntityLinksPanel` sections (tasks ↔ notes ↔ contacts ↔ links). Link rows are stored in Supabase `entity_links` (structural metadata only); linked record titles are decrypted client-side for display.
 
@@ -81,7 +81,7 @@ Passkey unlock params: `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts` 
 
 ### Decrypt
 
-`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with per-table AAD (`items`, `notes`, `contacts`, `links`, `link_folders`). Plaintext exists in extension memory and React state while unlocked. Sign-out clears the cached master key (`deleteMasterKey`) and wipes decrypted list and form state in the side panel (`App.tsx` `clearDecryptedEntityState`). The same wipe runs when `user_id` changes so another account never sees the previous user’s in-memory rows before the next fetch.
+`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with **v2 field-bound AAD** (`table:recordId:column` per `encrypted_*` column; v1 legacy ciphertext still decrypts). Plaintext exists in extension memory and React state while unlocked. Sign-out clears the cached master key (`deleteMasterKey`) and wipes decrypted list and form state in the side panel (`App.tsx` `clearDecryptedEntityState`). The same wipe runs when `user_id` changes so another account never sees the previous user’s in-memory rows before the next fetch.
 
 **Limitation:** malware, a tampered build, or a debugger can read memory. “Client-side only” means **not sent as plaintext over the network by this code**, not “unextractable on a hostile machine.”
 

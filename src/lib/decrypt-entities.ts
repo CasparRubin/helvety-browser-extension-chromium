@@ -1,6 +1,5 @@
 import {
-  buildAAD,
-  decrypt,
+  decryptEntityField,
   parseEncryptedData,
 } from "@helvety/shared/crypto/encryption";
 
@@ -25,9 +24,19 @@ import type {
  * Plaintext exists in extension memory while unlocked only.
  */
 
-/**
- *
- */
+const CONTACTS_TABLE = "contacts" as const;
+const NOTES_TABLE = "notes" as const;
+const ITEMS_TABLE = "items" as const;
+const LINKS_TABLE = "links" as const;
+const LINK_FOLDERS_TABLE = "link_folders" as const;
+
+/** v2 field-bound AAD context (`table`, `recordId`, `column`). */
+type FieldContext = {
+  table: string;
+  recordId: string;
+  column: string;
+};
+
 export interface TaskEncryptedRow {
   id: string;
   encrypted_title: string;
@@ -36,9 +45,6 @@ export interface TaskEncryptedRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface TaskDetailRow extends TaskEncryptedRow {
   user_id: string;
   encrypted_description: string | null;
@@ -52,9 +58,6 @@ export interface TaskDetailRow extends TaskEncryptedRow {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface NoteEncryptedRow {
   id: string;
   encrypted_title: string;
@@ -63,9 +66,6 @@ export interface NoteEncryptedRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface NoteDetailRow extends NoteEncryptedRow {
   user_id: string;
   encrypted_description: string | null;
@@ -75,9 +75,6 @@ export interface NoteDetailRow extends NoteEncryptedRow {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface ContactEncryptedRow {
   id: string;
   encrypted_first_name: string;
@@ -87,9 +84,6 @@ export interface ContactEncryptedRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface ContactDetailRow extends ContactEncryptedRow {
   user_id: string;
   encrypted_description: string | null;
@@ -103,9 +97,6 @@ export interface ContactDetailRow extends ContactEncryptedRow {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface LinkEncryptedRow {
   id: string;
   encrypted_name: string;
@@ -115,9 +106,6 @@ export interface LinkEncryptedRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface LinkDetailRow extends LinkEncryptedRow {
   user_id: string;
   encrypted_url: string;
@@ -127,9 +115,6 @@ export interface LinkDetailRow extends LinkEncryptedRow {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface LinkFolderEncryptedRow {
   id: string;
   encrypted_name: string;
@@ -138,9 +123,6 @@ export interface LinkFolderEncryptedRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface LinkFolderDetailRow extends LinkFolderEncryptedRow {
   user_id: string;
   sort_order: number;
@@ -148,50 +130,53 @@ export interface LinkFolderDetailRow extends LinkFolderEncryptedRow {
   updated_at: string;
 }
 
-/**
- *
- */
 async function decryptOptionalField(
   serialized: string | null,
   key: CryptoKey,
-  aad: string
+  ctx: FieldContext
 ): Promise<string | null> {
   if (!serialized) {
     return null;
   }
-  return decrypt(parseEncryptedData(serialized), key, aad);
+  return decryptEntityField(parseEncryptedData(serialized), key, ctx);
 }
 
-/**
- *
- */
 export async function decryptTaskTitle(
   row: TaskEncryptedRow,
   key: CryptoKey
 ): Promise<string> {
-  const aad = buildAAD("items", row.id);
-  return decrypt(parseEncryptedData(row.encrypted_title), key, aad);
+  return decryptEntityField(parseEncryptedData(row.encrypted_title), key, {
+    table: ITEMS_TABLE,
+    recordId: row.id,
+    column: "encrypted_title",
+  });
 }
 
-/**
- *
- */
 export async function decryptTaskRow(
   row: TaskDetailRow,
   key: CryptoKey
 ): Promise<Task> {
-  const aad = buildAAD("items", row.id);
+  const ctx = { table: ITEMS_TABLE, recordId: row.id };
   return {
     id: row.id,
     user_id: row.user_id,
-    title: await decrypt(parseEncryptedData(row.encrypted_title), key, aad),
-    description: await decryptOptionalField(
-      row.encrypted_description,
+    title: await decryptEntityField(
+      parseEncryptedData(row.encrypted_title),
       key,
-      aad
+      { ...ctx, column: "encrypted_title" }
     ),
-    start_date: await decryptOptionalField(row.encrypted_start_date, key, aad),
-    end_date: await decryptOptionalField(row.encrypted_end_date, key, aad),
+    description: await decryptOptionalField(row.encrypted_description, key, {
+      ...ctx,
+      column: "encrypted_description",
+    }),
+    start_date: await decryptOptionalField(row.encrypted_start_date, key, {
+      ...ctx,
+      column: "encrypted_start_date",
+    }),
+    end_date: await decryptOptionalField(row.encrypted_end_date, key, {
+      ...ctx,
+      column: "encrypted_end_date",
+    }),
     stage_id: row.stage_id,
     label_id: row.label_id,
     priority: row.priority,
@@ -201,34 +186,34 @@ export async function decryptTaskRow(
   };
 }
 
-/**
- *
- */
 export async function decryptNoteTitle(
   row: NoteEncryptedRow,
   key: CryptoKey
 ): Promise<string> {
-  const aad = buildAAD("notes", row.id);
-  return decrypt(parseEncryptedData(row.encrypted_title), key, aad);
+  return decryptEntityField(parseEncryptedData(row.encrypted_title), key, {
+    table: NOTES_TABLE,
+    recordId: row.id,
+    column: "encrypted_title",
+  });
 }
 
-/**
- *
- */
 export async function decryptNoteRow(
   row: NoteDetailRow,
   key: CryptoKey
 ): Promise<Note> {
-  const aad = buildAAD("notes", row.id);
+  const ctx = { table: NOTES_TABLE, recordId: row.id };
   return {
     id: row.id,
     user_id: row.user_id,
-    title: await decrypt(parseEncryptedData(row.encrypted_title), key, aad),
-    description: await decryptOptionalField(
-      row.encrypted_description,
+    title: await decryptEntityField(
+      parseEncryptedData(row.encrypted_title),
       key,
-      aad
+      { ...ctx, column: "encrypted_title" }
     ),
+    description: await decryptOptionalField(row.encrypted_description, key, {
+      ...ctx,
+      column: "encrypted_description",
+    }),
     category_id: row.category_id,
     sort_order: row.sort_order,
     created_at: row.created_at,
@@ -241,23 +226,20 @@ async function decryptContactNames(
   row: ContactEncryptedRow,
   key: CryptoKey
 ): Promise<{ first: string; last: string }> {
-  const aad = buildAAD("contacts", row.id);
-  const first = await decrypt(
+  const ctx = { table: CONTACTS_TABLE, recordId: row.id };
+  const first = await decryptEntityField(
     parseEncryptedData(row.encrypted_first_name),
     key,
-    aad
+    { ...ctx, column: "encrypted_first_name" }
   );
-  const last = await decrypt(
+  const last = await decryptEntityField(
     parseEncryptedData(row.encrypted_last_name),
     key,
-    aad
+    { ...ctx, column: "encrypted_last_name" }
   );
   return { first, last };
 }
 
-/**
- *
- */
 export async function decryptContactLabel(
   row: ContactEncryptedRow,
   key: CryptoKey
@@ -266,36 +248,44 @@ export async function decryptContactLabel(
   return `${first} ${last}`.trim();
 }
 
-/**
- *
- */
 export async function decryptContactRow(
   row: ContactDetailRow,
   key: CryptoKey
 ): Promise<Contact> {
-  const aad = buildAAD("contacts", row.id);
+  const ctx = { table: CONTACTS_TABLE, recordId: row.id };
   return {
     id: row.id,
     user_id: row.user_id,
-    first_name: await decrypt(
+    first_name: await decryptEntityField(
       parseEncryptedData(row.encrypted_first_name),
       key,
-      aad
+      { ...ctx, column: "encrypted_first_name" }
     ),
-    last_name: await decrypt(
+    last_name: await decryptEntityField(
       parseEncryptedData(row.encrypted_last_name),
       key,
-      aad
+      { ...ctx, column: "encrypted_last_name" }
     ),
-    description: await decryptOptionalField(
-      row.encrypted_description,
-      key,
-      aad
-    ),
-    email: await decryptOptionalField(row.encrypted_email, key, aad),
-    phone: await decryptOptionalField(row.encrypted_phone, key, aad),
-    birthday: await decryptOptionalField(row.encrypted_birthday, key, aad),
-    notes: await decryptOptionalField(row.encrypted_notes, key, aad),
+    description: await decryptOptionalField(row.encrypted_description, key, {
+      ...ctx,
+      column: "encrypted_description",
+    }),
+    email: await decryptOptionalField(row.encrypted_email, key, {
+      ...ctx,
+      column: "encrypted_email",
+    }),
+    phone: await decryptOptionalField(row.encrypted_phone, key, {
+      ...ctx,
+      column: "encrypted_phone",
+    }),
+    birthday: await decryptOptionalField(row.encrypted_birthday, key, {
+      ...ctx,
+      column: "encrypted_birthday",
+    }),
+    notes: await decryptOptionalField(row.encrypted_notes, key, {
+      ...ctx,
+      column: "encrypted_notes",
+    }),
     category_id: row.category_id ?? DEFAULT_CONTACT_CATEGORY_ID,
     sort_order: row.sort_order,
     created_at: row.created_at,
@@ -303,30 +293,34 @@ export async function decryptContactRow(
   };
 }
 
-/**
- *
- */
 export async function decryptLinkName(
   row: LinkEncryptedRow,
   key: CryptoKey
 ): Promise<string> {
-  const aad = buildAAD("links", row.id);
-  return decrypt(parseEncryptedData(row.encrypted_name), key, aad);
+  return decryptEntityField(parseEncryptedData(row.encrypted_name), key, {
+    table: LINKS_TABLE,
+    recordId: row.id,
+    column: "encrypted_name",
+  });
 }
 
-/**
- *
- */
 export async function decryptLinkRow(
   row: LinkDetailRow,
   key: CryptoKey
 ): Promise<Link> {
-  const aad = buildAAD("links", row.id);
+  const ctx = { table: LINKS_TABLE, recordId: row.id };
   return {
     id: row.id,
     user_id: row.user_id,
-    name: await decrypt(parseEncryptedData(row.encrypted_name), key, aad),
-    url: await decrypt(parseEncryptedData(row.encrypted_url), key, aad),
+    name: await decryptEntityField(
+      parseEncryptedData(row.encrypted_name),
+      key,
+      { ...ctx, column: "encrypted_name" }
+    ),
+    url: await decryptEntityField(parseEncryptedData(row.encrypted_url), key, {
+      ...ctx,
+      column: "encrypted_url",
+    }),
     folder_id: row.folder_id,
     sort_order: row.sort_order,
     created_at: row.created_at,
@@ -334,29 +328,33 @@ export async function decryptLinkRow(
   };
 }
 
-/**
- *
- */
 export async function decryptLinkFolderName(
   row: LinkFolderEncryptedRow,
   key: CryptoKey
 ): Promise<string> {
-  const aad = buildAAD("link_folders", row.id);
-  return decrypt(parseEncryptedData(row.encrypted_name), key, aad);
+  return decryptEntityField(parseEncryptedData(row.encrypted_name), key, {
+    table: LINK_FOLDERS_TABLE,
+    recordId: row.id,
+    column: "encrypted_name",
+  });
 }
 
-/**
- *
- */
 export async function decryptLinkFolderRow(
   row: LinkFolderDetailRow,
   key: CryptoKey
 ): Promise<LinkFolder> {
-  const aad = buildAAD("link_folders", row.id);
   return {
     id: row.id,
     user_id: row.user_id,
-    name: await decrypt(parseEncryptedData(row.encrypted_name), key, aad),
+    name: await decryptEntityField(
+      parseEncryptedData(row.encrypted_name),
+      key,
+      {
+        table: LINK_FOLDERS_TABLE,
+        recordId: row.id,
+        column: "encrypted_name",
+      }
+    ),
     parent_folder_id: row.parent_folder_id,
     sort_order: row.sort_order,
     created_at: row.created_at,
@@ -364,9 +362,6 @@ export async function decryptLinkFolderRow(
   };
 }
 
-/**
- *
- */
 export async function toTaskListItem(
   row: TaskEncryptedRow,
   key: CryptoKey
@@ -380,9 +375,6 @@ export async function toTaskListItem(
   };
 }
 
-/**
- *
- */
 export async function toNoteListItem(
   row: NoteEncryptedRow,
   key: CryptoKey
@@ -396,9 +388,6 @@ export async function toNoteListItem(
   };
 }
 
-/**
- *
- */
 export async function toContactListItem(
   row: ContactEncryptedRow,
   key: CryptoKey
@@ -414,27 +403,24 @@ export async function toContactListItem(
   };
 }
 
-/**
- *
- */
 export async function toLinkListItem(
   row: LinkEncryptedRow,
   key: CryptoKey
 ): Promise<LinkListRow> {
-  const aad = buildAAD("links", row.id);
   return {
     id: row.id,
     name: await decryptLinkName(row, key),
-    url: await decrypt(parseEncryptedData(row.encrypted_url), key, aad),
+    url: await decryptEntityField(parseEncryptedData(row.encrypted_url), key, {
+      table: LINKS_TABLE,
+      recordId: row.id,
+      column: "encrypted_url",
+    }),
     folder_id: row.folder_id,
     sort_order: row.sort_order,
     created_at: row.created_at,
   };
 }
 
-/**
- *
- */
 export async function toLinkFolderListItem(
   row: LinkFolderEncryptedRow,
   key: CryptoKey

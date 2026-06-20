@@ -24,7 +24,7 @@ You can sign in and the extension will load PRF params when configured (prefligh
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Email OTP send / verify           | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_OTP_SEND_PATH` and `EXTENSION_OTP_VERIFY_PATH` (EU/EEA attestation; session tokens via `setSession` into Supabase client storage)                         |
 | PRF params (salt, KCV)            | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                                                                                                                |
-| OTP session storage               | **Supabase client** (`extension-supabase.ts`) — `chrome.storage.local`, not website cookies                                                                                                      |
+| OTP session storage               | **Supabase client** (`extension-supabase.ts`) — refresh token in `chrome.storage.local`; access token mirrored to `chrome.storage.session` (not website cookies)                                 |
 | Passkey options / verify          | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only                                                                                            |
 | Encrypted list and edit-form rows | **Supabase** PostgREST — projections in `e2ee-data-select.ts` (`*_LIST_SELECT` for grouped lists; `*_DETAIL_SELECT` when opening the editor)                                                     |
 | Decryption                        | **This extension** — `decrypt-entities.ts` and `@helvety/shared` crypto (client-side only)                                                                                                       |
@@ -76,10 +76,20 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 
 Aligned with helvety.com (`@helvety/shared/auth-session-policy.ts`; no extension env vars):
 
-- **Weekly email proof** — after OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records the proof window (**7d**). `resolveVerifiedExtensionSession` (`extension-session.ts`) signs you out when proof is missing or expired. The extension does **not** receive the web `helvety_device_trust` cookie.
+- **Weekly OTP anchor (client UX)** — after OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records when email was last verified (**7d** window). This is **not** a cryptographic proof; it pairs with server-issued JWT age checks.
+- **JWT max lifetime (server-enforced)** — `resolveVerifiedExtensionSession` rejects access tokens whose `iat` exceeds **7d** (`@helvety/shared/jwt-session-lifetime`). Align Supabase Dashboard → Authentication → Sessions JWT expiry to the same cap. The extension does **not** receive the web `helvety_device_trust` cookie.
 - **Vault idle lock** — IndexedDB master keys follow **24h sliding idle** and **7d absolute max**; `useVaultIdleLock` and `touchVaultSessionInStorage` on entity CRUD renew activity.
 
-See [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
+### Token storage threat model
+
+| Token / data      | Storage                      | Notes                                                                      |
+| ----------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| Refresh token     | `chrome.storage.local`       | Persists across browser restarts (standard MV3 Supabase adapter)           |
+| Access token      | `chrome.storage.session`     | Cleared when the browser session ends; also embedded in local session JSON |
+| OTP anchor        | `chrome.storage.local`       | UX timestamp only — tampering cannot extend JWT validity                   |
+| Master key (E2EE) | IndexedDB (extension origin) | Requires passkey unlock; separate from helvety.com web storage             |
+
+Malware or a modified extension build can read extension storage. **RLS + valid JWT + passkey/PRF** remain the server and crypto boundaries. See [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
 
 ## Prerequisites
 

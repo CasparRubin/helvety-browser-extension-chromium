@@ -13,12 +13,30 @@ describe("auth session policy wiring (extension)", () => {
     expect(src).toContain("touchVaultSessionInStorage");
   });
 
-  it("extension email proof uses shared auth max lifetime", () => {
+  it("extension weekly OTP anchor uses shared auth max lifetime", () => {
     const src = readFileSync(
-      join(repoRoot, "src/lib/extension-email-proof.ts"),
+      join(repoRoot, "src/lib/extension-weekly-otp-anchor.ts"),
       "utf8"
     );
     expect(src).toContain("AUTH_MAX_LIFETIME_MS");
     expect(src).not.toMatch(/30 \* 24 \* 60 \* 60 \* 1000/);
+  });
+
+  it("extension session enforces JWT max lifetime via shared helper", () => {
+    const src = readFileSync(
+      join(repoRoot, "src/lib/extension-session.ts"),
+      "utf8"
+    );
+    expect(src).toContain("isJwtWithinMaxLifetime");
+    expect(src).toContain("@helvety/shared/jwt-session-lifetime");
+  });
+
+  it("extension supabase mirrors access token to chrome.storage.session", () => {
+    const src = readFileSync(
+      join(repoRoot, "src/lib/extension-supabase.ts"),
+      "utf8"
+    );
+    expect(src).toContain("chrome.storage.session");
+    expect(src).toContain("chrome.storage.local");
   });
 });

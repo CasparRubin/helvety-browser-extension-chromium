@@ -1,8 +1,5 @@
 import type { LinkFolderListRow, LinkListRow } from "./entity-types";
 
-/**
- *
- */
 function sortByOrder<T extends { sort_order: number; created_at: string }>(
   items: T[]
 ): T[] {
@@ -14,9 +11,6 @@ function sortByOrder<T extends { sort_order: number; created_at: string }>(
   });
 }
 
-/**
- *
- */
 export function getLinkTreeChildren(
   folders: LinkFolderListRow[],
   links: LinkListRow[],

@@ -6,9 +6,6 @@ import { describe, expect, it } from "vitest";
 
 const libRoot = join(dirname(fileURLToPath(import.meta.url)));
 
-/**
- *
- */
 function readLibSource(relativePath: string): string {
   return readFileSync(join(libRoot, relativePath), "utf8");
 }
@@ -32,6 +29,13 @@ describe("extension dead export cleanup guards", () => {
     const src = readLibSource("e2ee-privacy.ts");
     expect(src).toContain("PLAINTEXT_CONTENT_FIELD_NAMES");
     expect(src).not.toContain("PLAINTEXT_STRUCTURAL_FIELD_NAMES");
+  });
+
+  it("weekly OTP anchor module does not export retired email-proof aliases", () => {
+    const src = readLibSource("extension-weekly-otp-anchor.ts");
+    expect(src).toContain("writeExtensionWeeklyOtpAnchor");
+    expect(src).not.toMatch(/export const writeExtensionEmailProof/);
+    expect(src).not.toMatch(/export type ExtensionEmailProofRecord/);
   });
 
   it("helvety-auth-api keeps HelvetyJsonResponse internal", () => {

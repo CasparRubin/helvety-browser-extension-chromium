@@ -52,8 +52,8 @@ describe("SECURITY-E2EE.md", () => {
   });
 
   it("documents extension vs web device-trust threat model", () => {
-    expect(doc).toMatch(/Weekly email proof vs web device trust/i);
-    expect(doc).toMatch(/client-only|Client \(`extension-session/i);
+    expect(doc).toMatch(/Weekly OTP anchor vs web device trust/i);
+    expect(doc).toMatch(/JWT `iat`|JWT max lifetime/i);
   });
 
   it("documents server-enforced OTP and cross-app entity links", () => {

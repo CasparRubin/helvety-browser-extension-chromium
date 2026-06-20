@@ -8,6 +8,16 @@ import {
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** Unsigned JWT with a recent `iat` for session lifetime tests. */
+function testAccessToken(iatSeconds = Math.floor(Date.now() / 1000)): string {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode({
+    iat: iatSeconds,
+    sub: "u1",
+  })}.sig`;
+}
+
 /** PostgREST `.single()` result shape for tests. */
 type SingleResult = {
   data: unknown;
@@ -37,8 +47,16 @@ function mockSupabase(options: MockSupabaseOptions): SupabaseClient {
     data: {
       session:
         options.session === undefined
-          ? { user: { id: "u1" } }
-          : options.session,
+          ? {
+              user: { id: "u1" },
+              access_token: testAccessToken(),
+            }
+          : options.session
+            ? {
+                user: { id: options.session.user.id },
+                access_token: testAccessToken(),
+              }
+            : null,
     },
     error: options.sessionError ?? null,
   });
@@ -133,7 +151,15 @@ describe("fetchPasskeyParamsForUser", () => {
   });
 
   it("calls getUser before querying user_passkey_params", async () => {
-    const getSession = vi.fn();
+    const getSession = vi.fn().mockResolvedValue({
+      data: {
+        session: {
+          user: { id: "u1" },
+          access_token: testAccessToken(),
+        },
+      },
+      error: null,
+    });
     const single = vi.fn().mockResolvedValue({
       data: null,
       error: { code: "PGRST116", message: "not found" },
@@ -153,8 +179,8 @@ describe("fetchPasskeyParamsForUser", () => {
 
     await fetchPasskeyParamsForUser(supabase, "u1");
 
-    expect(getSession).not.toHaveBeenCalled();
     expect(getUser).toHaveBeenCalled();
+    expect(getSession).toHaveBeenCalled();
     expect(from).toHaveBeenCalledWith("user_passkey_params");
   });
 
@@ -242,7 +268,12 @@ describe("fetchPasskeyParamsForUser", () => {
     const select = vi.fn().mockReturnValue({ eq });
     const from = vi.fn().mockReturnValue({ select });
     const getSession = vi.fn().mockResolvedValue({
-      data: { session: { user: { id: "u1" } } },
+      data: {
+        session: {
+          user: { id: "u1" },
+          access_token: testAccessToken(),
+        },
+      },
       error: null,
     });
     const getUser = vi.fn().mockResolvedValue({

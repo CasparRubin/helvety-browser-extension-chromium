@@ -62,16 +62,10 @@ import type { ExtensionSupabaseClient } from "./extension-supabase";
 
 const LIST_LIMIT = 500;
 
-/**
- *
- */
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-/**
- *
- */
 export class EntityRepository {
   constructor(
     private readonly supabase: ExtensionSupabaseClient,

@@ -4,9 +4,6 @@ export interface EntityListItem {
   title: string;
 }
 
-/**
- *
- */
 export interface TaskListRow {
   id: string;
   title: string;
@@ -15,9 +12,6 @@ export interface TaskListRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface NoteListRow {
   id: string;
   title: string;
@@ -26,9 +20,6 @@ export interface NoteListRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface ContactListRow {
   id: string;
   first_name: string;
@@ -38,9 +29,6 @@ export interface ContactListRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface LinkListRow {
   id: string;
   name: string;
@@ -50,9 +38,6 @@ export interface LinkListRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface LinkFolderListRow {
   id: string;
   name: string;
@@ -61,9 +46,6 @@ export interface LinkFolderListRow {
   created_at: string;
 }
 
-/**
- *
- */
 export interface Contact {
   id: string;
   user_id: string;
@@ -80,9 +62,6 @@ export interface Contact {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface ContactInput {
   first_name: string;
   last_name: string;
@@ -94,9 +73,6 @@ export interface ContactInput {
   category_id?: string;
 }
 
-/**
- *
- */
 export interface Note {
   id: string;
   user_id: string;
@@ -108,18 +84,12 @@ export interface Note {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface NoteInput {
   title: string;
   description?: string | null;
   category_id?: string;
 }
 
-/**
- *
- */
 export interface Task {
   id: string;
   user_id: string;
@@ -135,9 +105,6 @@ export interface Task {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface TaskInput {
   title: string;
   description?: string | null;
@@ -148,9 +115,6 @@ export interface TaskInput {
   priority?: number;
 }
 
-/**
- *
- */
 export interface Link {
   id: string;
   user_id: string;
@@ -162,18 +126,12 @@ export interface Link {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface LinkInput {
   name: string;
   url: string;
   folder_id?: string | null;
 }
 
-/**
- *
- */
 export interface LinkFolder {
   id: string;
   user_id: string;
@@ -184,17 +142,11 @@ export interface LinkFolder {
   updated_at: string;
 }
 
-/**
- *
- */
 export interface LinkFolderInput {
   name: string;
   parent_folder_id?: string | null;
 }
 
-/**
- *
- */
 export type EntityKind =
   | "tasks"
   | "notes"
@@ -202,7 +154,4 @@ export type EntityKind =
   | "links"
   | "link_folder";
 
-/**
- *
- */
 export type EntityRecord = Contact | Note | Task | Link | LinkFolder;

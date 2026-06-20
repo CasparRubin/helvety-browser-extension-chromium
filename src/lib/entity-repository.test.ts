@@ -5,9 +5,6 @@ import { EntityRepository } from "./entity-repository";
 
 const PLAINTEXT_FIELD_KEYS = new Set<string>(PLAINTEXT_CONTENT_FIELD_NAMES);
 
-/**
- *
- */
 function assertNoPlaintextEntityFields(payload: Record<string, unknown>): void {
   for (const key of Object.keys(payload)) {
     expect(PLAINTEXT_FIELD_KEYS.has(key)).toBe(false);
@@ -19,9 +16,6 @@ function assertNoPlaintextEntityFields(payload: Record<string, unknown>): void {
   }
 }
 
-/**
- *
- */
 async function aes256GcmKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
     "encrypt",

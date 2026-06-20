@@ -1,6 +1,7 @@
 import {
   buildAAD,
   encrypt,
+  encryptEntityField,
   serializeEncryptedData,
 } from "@helvety/shared/crypto/encryption";
 import { describe, expect, it } from "vitest";
@@ -35,9 +36,27 @@ const LIST_META = {
 };
 
 describe("decrypt-entities (client-side roundtrip)", () => {
-  it("decryptTaskTitle reverses encrypt with items AAD", async () => {
+  it("decryptTaskTitle reverses v2 field-bound encrypt", async () => {
     const key = await aes256GcmKey();
     const plaintext = "Buy oat milk";
+    const enc = await encryptEntityField(plaintext, key, {
+      table: "items",
+      recordId: TASK_ID,
+      column: "encrypted_title",
+    });
+    const row = {
+      id: TASK_ID,
+      encrypted_title: serializeEncryptedData(enc),
+      stage_id: LIST_META.stage_id,
+      sort_order: LIST_META.sort_order,
+      created_at: LIST_META.created_at,
+    };
+    await expect(decryptTaskTitle(row, key)).resolves.toBe(plaintext);
+  });
+
+  it("decryptTaskTitle decrypts legacy v1 ciphertext", async () => {
+    const key = await aes256GcmKey();
+    const plaintext = "Legacy task title";
     const enc = await encrypt(plaintext, key, buildAAD("items", TASK_ID));
     const row = {
       id: TASK_ID,
@@ -49,10 +68,14 @@ describe("decrypt-entities (client-side roundtrip)", () => {
     await expect(decryptTaskTitle(row, key)).resolves.toBe(plaintext);
   });
 
-  it("decryptNoteTitle uses notes table AAD", async () => {
+  it("decryptNoteTitle uses notes table field context", async () => {
     const key = await aes256GcmKey();
     const plaintext = "Meeting notes";
-    const enc = await encrypt(plaintext, key, buildAAD("notes", NOTE_ID));
+    const enc = await encryptEntityField(plaintext, key, {
+      table: "notes",
+      recordId: NOTE_ID,
+      column: "encrypted_title",
+    });
     const row = {
       id: NOTE_ID,
       encrypted_title: serializeEncryptedData(enc),
@@ -65,9 +88,15 @@ describe("decrypt-entities (client-side roundtrip)", () => {
 
   it("decryptContactLabel decrypts first and last", async () => {
     const key = await aes256GcmKey();
-    const aad = buildAAD("contacts", CONTACT_ID);
-    const encFirst = await encrypt("Ada", key, aad);
-    const encLast = await encrypt("Lovelace", key, aad);
+    const ctx = { table: "contacts", recordId: CONTACT_ID };
+    const encFirst = await encryptEntityField("Ada", key, {
+      ...ctx,
+      column: "encrypted_first_name",
+    });
+    const encLast = await encryptEntityField("Lovelace", key, {
+      ...ctx,
+      column: "encrypted_last_name",
+    });
     const row = {
       id: CONTACT_ID,
       encrypted_first_name: serializeEncryptedData(encFirst),
@@ -81,9 +110,15 @@ describe("decrypt-entities (client-side roundtrip)", () => {
 
   it("decryptContactLabel trims when last name decrypts empty", async () => {
     const key = await aes256GcmKey();
-    const aad = buildAAD("contacts", CONTACT_ID);
-    const encFirst = await encrypt("Madonna", key, aad);
-    const encLast = await encrypt("", key, aad);
+    const ctx = { table: "contacts", recordId: CONTACT_ID };
+    const encFirst = await encryptEntityField("Madonna", key, {
+      ...ctx,
+      column: "encrypted_first_name",
+    });
+    const encLast = await encryptEntityField("", key, {
+      ...ctx,
+      column: "encrypted_last_name",
+    });
     const row = {
       id: CONTACT_ID,
       encrypted_first_name: serializeEncryptedData(encFirst),
@@ -98,18 +133,49 @@ describe("decrypt-entities (client-side roundtrip)", () => {
   it("decryptLinkName decrypts bookmark title", async () => {
     const key = await aes256GcmKey();
     const plaintext = "Helvety docs";
-    const enc = await encrypt(plaintext, key, buildAAD("links", LINK_ID));
+    const ctx = { table: "links", recordId: LINK_ID };
+    const enc = await encryptEntityField(plaintext, key, {
+      ...ctx,
+      column: "encrypted_name",
+    });
     const row = {
       id: LINK_ID,
       encrypted_name: serializeEncryptedData(enc),
       encrypted_url: serializeEncryptedData(
-        await encrypt("https://helvety.com", key, buildAAD("links", LINK_ID))
+        await encryptEntityField("https://helvety.com", key, {
+          ...ctx,
+          column: "encrypted_url",
+        })
       ),
       folder_id: LIST_META.folder_id,
       sort_order: LIST_META.sort_order,
       created_at: LIST_META.created_at,
     };
     await expect(decryptLinkName(row, key)).resolves.toBe(plaintext);
+  });
+
+  it("fails when v2 ciphertext is decrypted with the wrong column context", async () => {
+    const key = await aes256GcmKey();
+    const enc = await encryptEntityField("555-0100", key, {
+      table: "contacts",
+      recordId: CONTACT_ID,
+      column: "encrypted_phone",
+    });
+    const row = {
+      id: CONTACT_ID,
+      encrypted_first_name: serializeEncryptedData(enc),
+      encrypted_last_name: serializeEncryptedData(
+        await encryptEntityField("", key, {
+          table: "contacts",
+          recordId: CONTACT_ID,
+          column: "encrypted_last_name",
+        })
+      ),
+      category_id: LIST_META.category_id,
+      sort_order: LIST_META.sort_order,
+      created_at: LIST_META.created_at,
+    };
+    await expect(decryptContactLabel(row, key)).rejects.toThrow();
   });
 
   it("fails when ciphertext was sealed with a different AAD (wrong table)", async () => {
@@ -128,7 +194,11 @@ describe("decrypt-entities (client-side roundtrip)", () => {
   it("fails when decrypting with the wrong key", async () => {
     const keyA = await aes256GcmKey();
     const keyB = await aes256GcmKey();
-    const enc = await encrypt("x", keyA, buildAAD("items", TASK_ID));
+    const enc = await encryptEntityField("x", keyA, {
+      table: "items",
+      recordId: TASK_ID,
+      column: "encrypted_title",
+    });
     const row = {
       id: TASK_ID,
       encrypted_title: serializeEncryptedData(enc),

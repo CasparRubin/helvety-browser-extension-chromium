@@ -24,7 +24,7 @@
     "@helvety/shared": "file:.helvety/packages/shared",
     "@helvety/ui": "file:.helvety/packages/ui",
     "@simplewebauthn/browser": "^13.3.0",
-    "@supabase/supabase-js": "^2.108.2",
+    "@supabase/supabase-js": "2.108.2",
     "lucide-react": "^1.20.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
@@ -48,6 +48,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@supabase/supabase-js": "2.108.2",
       "@helvety/shared": "file:.helvety/packages/shared",
       "@helvety/brand": "file:.helvety/packages/brand",
       "@helvety/ui": "file:.helvety/packages/ui",

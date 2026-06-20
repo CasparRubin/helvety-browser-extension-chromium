@@ -1,11 +1,15 @@
 import {
-  buildAAD,
-  decrypt,
+  ENCRYPTION_VERSION,
   parseEncryptedData,
 } from "@helvety/shared/crypto/encryption";
 import { describe, expect, it } from "vitest";
 
-import { decryptContactRow, decryptNoteRow } from "./decrypt-entities";
+import {
+  decryptContactRow,
+  decryptLinkRow,
+  decryptNoteRow,
+  decryptTaskTitle,
+} from "./decrypt-entities";
 import {
   encryptContactCreate,
   encryptLinkCreate,
@@ -14,9 +18,6 @@ import {
 } from "./encrypt-entities";
 import { normalizeBookmarkUrl } from "./link-url-normalize";
 
-/**
- *
- */
 async function aes256GcmKey(): Promise<CryptoKey> {
   return crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
     "encrypt",
@@ -69,16 +70,19 @@ describe("encrypt-entities roundtrip", () => {
     expect(contact.description).toBe("Admiral");
   });
 
-  it("task create uses items AAD", async () => {
+  it("task create uses field-bound v2 encryption", async () => {
     const key = await aes256GcmKey();
     const payload = await encryptTaskCreate({ title: "Ship feature" }, key);
-    const aad = buildAAD("items", payload.id);
-    const title = await decrypt(
-      parseEncryptedData(payload.encrypted_title),
-      key,
-      aad
-    );
-    expect(title).toBe("Ship feature");
+    const parsed = parseEncryptedData(payload.encrypted_title);
+    expect(parsed.version).toBe(ENCRYPTION_VERSION);
+    const row = {
+      id: payload.id,
+      encrypted_title: payload.encrypted_title,
+      stage_id: "default-item-backlog",
+      sort_order: 0,
+      created_at: new Date().toISOString(),
+    };
+    await expect(decryptTaskTitle(row, key)).resolves.toBe("Ship feature");
   });
 
   it("note create roundtrips through decryptNoteRow", async () => {
@@ -115,12 +119,19 @@ describe("encrypt-entities roundtrip", () => {
     if (!normalized.ok) {
       return;
     }
-    const aad = buildAAD("links", payload.id);
-    const url = await decrypt(
-      parseEncryptedData(payload.encrypted_url),
-      key,
-      aad
+    const link = await decryptLinkRow(
+      {
+        id: payload.id,
+        user_id: "u",
+        encrypted_name: payload.encrypted_name,
+        encrypted_url: payload.encrypted_url,
+        folder_id: payload.folder_id,
+        sort_order: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      key
     );
-    expect(url).toBe(normalized.url);
+    expect(link.url).toBe(normalized.url);
   });
 });

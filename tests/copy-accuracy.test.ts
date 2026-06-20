@@ -28,6 +28,14 @@ const FORBIDDEN_PHRASES = [
     label: "extension receives helvety_device_trust cookie",
     re: /receive[s]?\s+(the\s+web\s+)?`helvety_device_trust`/i,
   },
+  {
+    label: "extension email-proof anchor",
+    re: /email-proof anchor/i,
+  },
+  {
+    label: "extension weekly email proof storage",
+    re: /chrome\.storage\.local.*weekly email proof/i,
+  },
 ] as const;
 
 /** Line-level negations that make an otherwise forbidden phrase accurate. */
@@ -76,6 +84,8 @@ describe("extension copy accuracy (README + docs)", () => {
 
     expect(doc).toMatch(/does not.*mint device-trust/i);
     expect(doc).toContain("resolveVerifiedExtensionSession");
+    expect(doc).toMatch(/JWT `iat`|JWT max lifetime/i);
+    expect(doc).toMatch(/field-bound AAD|table:recordId:column/i);
     expect(doc).toContain("key_check_value");
     expect(doc).toContain("getUser()");
   });

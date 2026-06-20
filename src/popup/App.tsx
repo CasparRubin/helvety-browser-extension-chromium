@@ -18,11 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HELVETY_AUTH_ORIGIN, HELVETY_GATEWAY } from "../lib/config";
 import { EntityLinkRepository } from "../lib/entity-link-repository";
 import { EntityRepository } from "../lib/entity-repository";
-import {
-  clearExtensionEmailProof,
-  hasValidExtensionEmailProof,
-  writeExtensionEmailProof,
-} from "../lib/extension-email-proof";
 import { ExtensionLinksProvider } from "../lib/extension-entity-links-hooks";
 import { fetchPasskeyParamsForUser } from "../lib/extension-passkey-params";
 import {
@@ -30,6 +25,11 @@ import {
   resolveVerifiedExtensionSession,
 } from "../lib/extension-session";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
+import {
+  clearExtensionWeeklyOtpAnchor,
+  hasValidExtensionWeeklyOtpAnchor,
+  writeExtensionWeeklyOtpAnchor,
+} from "../lib/extension-weekly-otp-anchor";
 import { sendExtensionOtp, verifyExtensionOtp } from "../lib/helvety-auth-api";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
 import {
@@ -373,7 +373,7 @@ export default function App() {
       setOtpSent(false);
       setNonEUEEAConfirmed(false);
       await clearPendingOtp();
-      await writeExtensionEmailProof(result.data.user.id);
+      await writeExtensionWeeklyOtpAnchor(result.data.user.id);
       await refreshSession();
     } finally {
       setAuthBusy(false);
@@ -394,7 +394,7 @@ export default function App() {
     setNonEUEEAConfirmed(false);
     setAuthError(null);
     await clearPendingOtp();
-    await clearExtensionEmailProof();
+    await clearExtensionWeeklyOtpAnchor();
     await supabase.auth.signOut();
     await refreshSession();
   };
@@ -404,8 +404,8 @@ export default function App() {
       setCryptoError("Not signed in.");
       return;
     }
-    const emailProofValid = await hasValidExtensionEmailProof(userId);
-    if (!emailProofValid) {
+    const otpAnchorValid = await hasValidExtensionWeeklyOtpAnchor(userId);
+    if (!otpAnchorValid) {
       await handleLogout();
       setAuthError("Your session expired. Sign in again.");
       return;

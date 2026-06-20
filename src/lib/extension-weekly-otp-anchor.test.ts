@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  extensionEmailProofInternals,
-  isExtensionEmailProofValid,
-} from "./extension-email-proof";
+  extensionWeeklyOtpAnchorInternals,
+  isExtensionWeeklyOtpAnchorValid,
+} from "./extension-weekly-otp-anchor";
 
-describe("extension-email-proof", () => {
-  it("accepts proof within the weekly policy window", () => {
+describe("extension-weekly-otp-anchor", () => {
+  it("accepts anchor within the weekly policy window", () => {
     const now = Date.now();
     expect(
-      isExtensionEmailProofValid(
+      isExtensionWeeklyOtpAnchorValid(
         { userId: "user-1", verifiedAt: now - 60_000 },
         "user-1",
         now
@@ -17,10 +17,10 @@ describe("extension-email-proof", () => {
     ).toBe(true);
   });
 
-  it("rejects proof for a different user", () => {
+  it("rejects anchor for a different user", () => {
     const now = Date.now();
     expect(
-      isExtensionEmailProofValid(
+      isExtensionWeeklyOtpAnchorValid(
         { userId: "user-1", verifiedAt: now - 60_000 },
         "user-2",
         now
@@ -28,14 +28,14 @@ describe("extension-email-proof", () => {
     ).toBe(false);
   });
 
-  it("rejects proof older than the weekly cap", () => {
+  it("rejects anchor older than the weekly cap", () => {
     const now = Date.now();
     expect(
-      isExtensionEmailProofValid(
+      isExtensionWeeklyOtpAnchorValid(
         {
           userId: "user-1",
           verifiedAt:
-            now - extensionEmailProofInternals.AUTH_MAX_LIFETIME_MS - 1,
+            now - extensionWeeklyOtpAnchorInternals.AUTH_MAX_LIFETIME_MS - 1,
         },
         "user-1",
         now
