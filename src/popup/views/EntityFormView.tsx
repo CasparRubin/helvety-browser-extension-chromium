@@ -2,6 +2,7 @@ import { Button } from "@helvety/ui/button";
 import { Input } from "@helvety/ui/input";
 import { Label } from "@helvety/ui/label";
 import { NativeSelect } from "@helvety/ui/native-select";
+import { Textarea } from "@helvety/ui/textarea";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 
 import {
@@ -25,7 +26,6 @@ import {
   TaskEntityLinkPanels,
 } from "../components/ExtensionEntityLinkPanels";
 import { IconTooltipButton } from "../components/IconTooltipButton";
-import { Textarea } from "../components/Textarea";
 import { emptyContactInput } from "../entity-drafts";
 
 import type {

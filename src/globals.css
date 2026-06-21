@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@helvety/ui/form-control-touch.css";
 @import "./popup/extension-tokens.css";
 @import "@helvety/extension-chrome/popup.css";
 

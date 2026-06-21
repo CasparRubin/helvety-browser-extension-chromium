@@ -64,7 +64,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles aligned with web apps.
 - Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text).
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
-- Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (shared `@helvety/ui/tiptap-editor`) for task/note descriptions and contact notes. Remount key is `entityFormSessionKey` (record identity), never serialized draft text; `content` is mount-only so TipTap v3 does not reset on each keystroke. Web apps mirror this in `E2eeRichTextItemEditorShell` (`editorSessionKey`). Plain `Input`/`Textarea` for other fields.
+- Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (shared `@helvety/ui/tiptap-editor`) for task/note descriptions and contact notes. Remount key is `entityFormSessionKey` (record identity), never serialized draft text; `content` is mount-only so TipTap v3 does not reset on each keystroke. Web apps mirror this in `E2eeRichTextItemEditorShell` (`editorSessionKey`). `@helvety/ui/input`, `@helvety/ui/textarea`, and `@helvety/ui/native-select` for other fields.
 - E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
 - Entity links UI: `extension-entity-links-hooks.tsx`, `ExtensionEntityLinkPanels.tsx` in edit forms.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header; icon URL from `extension-icon.ts` → `assets/icon-48.png`).
