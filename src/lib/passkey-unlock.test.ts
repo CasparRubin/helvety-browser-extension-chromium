@@ -141,6 +141,7 @@ describe("unlockEncryptionWithPasskey", () => {
     await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -154,6 +155,7 @@ describe("unlockEncryptionWithPasskey", () => {
     await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -175,6 +177,7 @@ describe("unlockEncryptionWithPasskey", () => {
     await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -196,6 +199,7 @@ describe("unlockEncryptionWithPasskey", () => {
     await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -225,6 +229,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -244,6 +249,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -261,6 +267,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -281,6 +288,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -300,6 +308,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -321,6 +330,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -336,6 +346,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -353,6 +364,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -373,6 +385,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -389,6 +402,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -415,6 +429,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -433,6 +448,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -450,6 +466,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -462,6 +479,7 @@ describe("unlockEncryptionWithPasskey", () => {
     await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 
@@ -475,6 +493,7 @@ describe("unlockEncryptionWithPasskey", () => {
     const result = await unlockEncryptionWithPasskey({
       supabase,
       accessToken: ACCESS_TOKEN,
+      weeklyProof: "weekly-proof-token",
       userId: USER_ID,
     });
 

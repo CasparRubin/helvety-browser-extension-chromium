@@ -40,9 +40,10 @@ type ExtensionPasskeyOptionsPayload = {
 export async function unlockEncryptionWithPasskey(input: {
   supabase: ExtensionSupabaseClient;
   accessToken: string;
+  weeklyProof: string;
   userId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { supabase, accessToken, userId } = input;
+  const { supabase, accessToken, weeklyProof, userId } = input;
   const origin = getExtensionOrigin();
 
   const paramsResult = await fetchPasskeyParamsForUser(supabase, userId);
@@ -56,6 +57,7 @@ export async function unlockEncryptionWithPasskey(input: {
     {
       method: "POST",
       accessToken,
+      weeklyProof,
       body: JSON.stringify({
         origin,
         isMobile: false,
@@ -142,6 +144,7 @@ export async function unlockEncryptionWithPasskey(input: {
     {
       method: "POST",
       accessToken,
+      weeklyProof,
       body: JSON.stringify({
         origin,
         credential: authResponseForServer,

@@ -1,16 +1,18 @@
 import { shouldForceHardLogout } from "@helvety/shared/auth-errors";
-import { AUTH_MAX_LIFETIME_MS } from "@helvety/shared/crypto";
-import { isJwtWithinMaxLifetime } from "@helvety/shared/jwt-session-lifetime";
 
-import { hasValidExtensionWeeklyOtpAnchor } from "./extension-weekly-otp-anchor";
+import {
+  hasValidExtensionWeeklyProof,
+  readExtensionWeeklyProof,
+} from "./extension-weekly-proof-storage";
 
 import type { ExtensionSupabaseClient } from "./extension-supabase";
 
-/** Verified extension session after getUser(), JWT lifetime, and weekly OTP anchor. */
+/** Verified extension session after getUser() and signed weekly proof. */
 export type VerifiedExtensionSession = Readonly<{
   userId: string;
   email: string | null;
   accessToken: string;
+  weeklyProof: string;
 }>;
 
 /** Result of resolving the extension auth session (getUser-first). */
@@ -23,9 +25,8 @@ export type ResolveExtensionSessionResult =
  * then reads the access token from storage via `getSession()` only after the
  * JWT is validated — mirrors the monorepo Supabase auth pattern.
  *
- * Weekly re-auth is enforced by:
- * 1. Supabase JWT `iat` vs {@link AUTH_MAX_LIFETIME_MS} (server-issued token age)
- * 2. Client OTP anchor timestamp (UX; tampering cannot extend JWT validity)
+ * Weekly re-auth is enforced by a server-minted HMAC weekly proof stored in
+ * `chrome.storage.local` (same payload schema as web `helvety_device_trust`).
  */
 export async function resolveVerifiedExtensionSession(
   supabase: ExtensionSupabaseClient
@@ -57,13 +58,14 @@ export async function resolveVerifiedExtensionSession(
     return { ok: false, signedOut: true };
   }
 
-  if (!isJwtWithinMaxLifetime(accessToken, AUTH_MAX_LIFETIME_MS)) {
+  const weeklyProofValid = await hasValidExtensionWeeklyProof(user.id);
+  if (!weeklyProofValid) {
     await supabase.auth.signOut();
     return { ok: false, signedOut: true };
   }
 
-  const otpAnchorValid = await hasValidExtensionWeeklyOtpAnchor(user.id);
-  if (!otpAnchorValid) {
+  const weeklyProof = await readExtensionWeeklyProof();
+  if (!weeklyProof) {
     await supabase.auth.signOut();
     return { ok: false, signedOut: true };
   }
@@ -74,6 +76,7 @@ export async function resolveVerifiedExtensionSession(
       userId: user.id,
       email: user.email ?? null,
       accessToken,
+      weeklyProof,
     },
   };
 }
@@ -90,7 +93,7 @@ export async function hasNoAuthenticatedUser(
 }
 
 /**
- * Ensures auth session is loaded and JWT is valid before PostgREST reads.
+ * Ensures auth session is loaded and weekly proof is valid before PostgREST reads.
  * Uses `getUser()` only — never trusts unverified session cookie data.
  */
 export async function ensureExtensionAuthReady(
@@ -119,13 +122,18 @@ export async function ensureExtensionAuthReady(
 
   const accessToken = (await supabase.auth.getSession()).data.session
     ?.access_token;
-  if (
-    !accessToken ||
-    !isJwtWithinMaxLifetime(accessToken, AUTH_MAX_LIFETIME_MS)
-  ) {
+  if (!accessToken) {
     return {
       ok: false,
       error: "Session expired. Sign out and sign in again.",
+    };
+  }
+
+  const weeklyProofValid = await hasValidExtensionWeeklyProof(userId);
+  if (!weeklyProofValid) {
+    return {
+      ok: false,
+      error: "Weekly email verification expired. Sign out and sign in again.",
     };
   }
 

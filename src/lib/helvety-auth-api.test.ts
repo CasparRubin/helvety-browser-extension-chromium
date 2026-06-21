@@ -37,6 +37,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch<{ ok: boolean }>(path, {
       method: "POST",
       accessToken: "test-access-token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({
         origin: "chrome-extension://abc",
         isMobile: false,
@@ -52,6 +53,7 @@ describe("helvetyAuthFetch", () => {
     expect(init.method).toBe("POST");
     const headers = new Headers(init.headers);
     expect(headers.get("Authorization")).toBe("Bearer test-access-token");
+    expect(headers.get("X-Helvety-Weekly-Proof")).toBe("test-weekly-proof");
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
@@ -66,6 +68,7 @@ describe("helvetyAuthFetch", () => {
     await helvetyAuthFetch("api/x", {
       method: "GET",
       accessToken: "t",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe(buildHelvetyAuthApiUrl("api/x"));
@@ -85,6 +88,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "bad",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
@@ -105,6 +109,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "bad",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
@@ -125,6 +130,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "bad",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
@@ -142,6 +148,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "bad",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
@@ -159,6 +166,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
@@ -180,6 +188,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
@@ -207,6 +216,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
@@ -230,6 +240,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
@@ -248,6 +259,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
@@ -269,6 +281,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result.success).toBe(false);
@@ -303,6 +316,7 @@ describe("helvetyAuthFetch", () => {
     await helvetyAuthFetch("/api/extension/passkey/verify", {
       method: "POST",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
       body: JSON.stringify(requestBody),
     });
 
@@ -331,6 +345,7 @@ describe("helvetyAuthFetch", () => {
       {
         method: "POST",
         accessToken: "token",
+        weeklyProof: "test-weekly-proof",
         body: JSON.stringify({
           origin: "chrome-extension://abc",
           isMobile: false,
@@ -353,6 +368,7 @@ describe("helvetyAuthFetch", () => {
     await helvetyAuthFetch(EXTENSION_AUTH_API_PATHS[0], {
       method: "GET",
       accessToken: "t",
+      weeklyProof: "test-weekly-proof",
     });
 
     const headers = new Headers(
@@ -373,6 +389,7 @@ describe("helvetyAuthFetch", () => {
     const result = await helvetyAuthFetch("/api/x", {
       method: "GET",
       accessToken: "bad",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result).toEqual({ success: false, error: "Not authenticated" });
@@ -423,6 +440,7 @@ describe("helvetyPublicAuthFetch and extension OTP helpers", () => {
       refresh_token: "refresh-token",
       expires_at: 1_700_000_000,
       user: { id: "user-id", email: "user@example.com" },
+      weekly_proof: "signed-weekly-proof",
     };
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ success: true, data: session }), {
@@ -525,6 +543,7 @@ describe("helvetyPublicAuthFetch and extension OTP helpers", () => {
     const result = await helvetyAuthFetch("/api/internal/other", {
       method: "GET",
       accessToken: "token",
+      weeklyProof: "test-weekly-proof",
     });
 
     expect(result.success).toBe(false);

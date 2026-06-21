@@ -36,13 +36,14 @@ describe("SECURITY-E2EE.md", () => {
 
   it("documents unified session and vault TTL policy", () => {
     expect(doc).toContain("auth-session-policy");
-    expect(doc).toMatch(/@helvety\/shared\/crypto/i);
     expect(doc).toMatch(/24h sliding idle/i);
     expect(doc).toMatch(/7d absolute max/i);
-    expect(doc).toContain("helvety_extension_last_email_verified");
+    expect(doc).toContain("helvety_extension_weekly_proof");
+    expect(doc).toContain("weekly_proof");
     expect(doc).toContain("extension-session.ts");
     expect(doc).toContain("helvety_device_trust");
     expect(doc).toContain("getUser()");
+    expect(doc).toContain("onKeyEvent");
   });
 
   it("documents KCV metadata and extension backfill on unlock", () => {
@@ -52,8 +53,9 @@ describe("SECURITY-E2EE.md", () => {
   });
 
   it("documents extension vs web device-trust threat model", () => {
-    expect(doc).toMatch(/Weekly OTP anchor vs web device trust/i);
-    expect(doc).toMatch(/JWT `iat`|JWT max lifetime/i);
+    expect(doc).toMatch(/Weekly proof vs web device trust/i);
+    expect(doc).toContain("authenticateBearerRequest");
+    expect(doc).toContain("X-Helvety-Weekly-Proof");
   });
 
   it("documents server-enforced OTP and cross-app entity links", () => {

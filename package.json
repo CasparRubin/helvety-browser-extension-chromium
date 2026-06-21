@@ -1,6 +1,6 @@
 {
   "name": "helvety-browser-extension-chromium",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "description": "Helvety Chromium side panel extension — E2EE CRUD for tasks, notes, contacts, links, and link folders",
@@ -15,7 +15,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci:check": "pnpm run format:check && pnpm run lint && pnpm run type-check && pnpm run test",
+    "ci:check": "pnpm run format:check && pnpm run lint && pnpm run type-check && pnpm run test && node scripts/check-extension-auth-consistency.mjs",
     "ci:release": "pnpm run ci:check && pnpm run build"
   },
   "dependencies": {

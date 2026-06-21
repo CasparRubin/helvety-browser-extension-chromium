@@ -31,11 +31,13 @@ describe("extension dead export cleanup guards", () => {
     expect(src).not.toContain("PLAINTEXT_STRUCTURAL_FIELD_NAMES");
   });
 
-  it("weekly OTP anchor module does not export retired email-proof aliases", () => {
-    const src = readLibSource("extension-weekly-otp-anchor.ts");
-    expect(src).toContain("writeExtensionWeeklyOtpAnchor");
-    expect(src).not.toMatch(/export const writeExtensionEmailProof/);
-    expect(src).not.toMatch(/export type ExtensionEmailProofRecord/);
+  it("weekly proof storage does not export retired OTP anchor aliases", () => {
+    const src = readLibSource("extension-weekly-proof-storage.ts");
+    expect(src).toContain("writeExtensionWeeklyProof");
+    expect(src).not.toMatch(/writeExtensionWeeklyOtpAnchor/);
+    expect(src).not.toMatch(/helvety_extension_last_email_verified/);
+    expect(src).not.toMatch(/jwt-session-lifetime/);
+    expect(src).not.toMatch(/isJwtWithinMaxLifetime/);
   });
 
   it("helvety-auth-api keeps HelvetyJsonResponse internal", () => {

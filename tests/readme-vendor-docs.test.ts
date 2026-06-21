@@ -122,9 +122,9 @@ describe("README vendor and side panel documentation", () => {
       readme.indexOf("## Session and vault policy")
     );
     expect(policySection).toContain("auth-session-policy");
-    expect(policySection).toContain("helvety_extension_last_email_verified");
-    expect(policySection).toMatch(/weekly OTP anchor/i);
-    expect(policySection).toMatch(/jwt-session-lifetime|JWT `iat`/i);
+    expect(policySection).toContain("helvety_extension_weekly_proof");
+    expect(policySection).toMatch(/weekly proof/i);
+    expect(policySection).toContain("X-Helvety-Weekly-Proof");
     expect(policySection).toContain("chrome.storage.session");
     expect(policySection).toMatch(/24h sliding idle/i);
     expect(policySection).toMatch(/7d absolute max/i);

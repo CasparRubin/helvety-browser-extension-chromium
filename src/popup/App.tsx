@@ -6,6 +6,7 @@ import {
   deleteMasterKey,
   getCachedMasterKey,
   getMasterKey,
+  onKeyEvent,
   touchVaultSessionInStorage,
 } from "@helvety/shared/crypto/key-storage";
 import { useVaultIdleLock } from "@helvety/shared/crypto/use-vault-idle-lock";
@@ -26,10 +27,10 @@ import {
 } from "../lib/extension-session";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 import {
-  clearExtensionWeeklyOtpAnchor,
-  hasValidExtensionWeeklyOtpAnchor,
-  writeExtensionWeeklyOtpAnchor,
-} from "../lib/extension-weekly-otp-anchor";
+  clearExtensionWeeklyProof,
+  hasValidExtensionWeeklyProof,
+  writeExtensionWeeklyProof,
+} from "../lib/extension-weekly-proof-storage";
 import { sendExtensionOtp, verifyExtensionOtp } from "../lib/helvety-auth-api";
 import { unlockEncryptionWithPasskey } from "../lib/passkey-unlock";
 import {
@@ -82,6 +83,7 @@ export default function App() {
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [weeklyProof, setWeeklyProof] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [otpInput, setOtpInput] = useState("");
@@ -162,11 +164,13 @@ export default function App() {
       setSessionEmail(null);
       setUserId(null);
       setAccessToken(null);
+      setWeeklyProof(null);
       return;
     }
     setSessionEmail(result.session.email);
     setUserId(result.session.userId);
     setAccessToken(result.session.accessToken);
+    setWeeklyProof(result.session.weeklyProof);
   }, [supabase]);
 
   const touchVaultActivity = useCallback(async () => {
@@ -195,6 +199,20 @@ export default function App() {
     vaultUnlockedAt,
     onLock: handleVaultLock,
   });
+
+  useEffect(() => {
+    if (!userId) {
+      return;
+    }
+    return onKeyEvent((msg) => {
+      if (msg.type === "keys-cleared") {
+        void handleVaultLock(userId);
+      }
+      if (msg.type === "master-key-deleted" && msg.userId === userId) {
+        void handleVaultLock(userId);
+      }
+    });
+  }, [handleVaultLock, userId]);
 
   useEffect(() => {
     void refreshSession();
@@ -373,7 +391,7 @@ export default function App() {
       setOtpSent(false);
       setNonEUEEAConfirmed(false);
       await clearPendingOtp();
-      await writeExtensionWeeklyOtpAnchor(result.data.user.id);
+      await writeExtensionWeeklyProof(result.data.weekly_proof);
       await refreshSession();
     } finally {
       setAuthBusy(false);
@@ -394,18 +412,18 @@ export default function App() {
     setNonEUEEAConfirmed(false);
     setAuthError(null);
     await clearPendingOtp();
-    await clearExtensionWeeklyOtpAnchor();
+    await clearExtensionWeeklyProof();
     await supabase.auth.signOut();
     await refreshSession();
   };
 
   const handleUnlock = async () => {
-    if (!accessToken || !userId) {
+    if (!accessToken || !userId || !weeklyProof) {
       setCryptoError("Not signed in.");
       return;
     }
-    const otpAnchorValid = await hasValidExtensionWeeklyOtpAnchor(userId);
-    if (!otpAnchorValid) {
+    const weeklyProofValid = await hasValidExtensionWeeklyProof(userId);
+    if (!weeklyProofValid) {
       await handleLogout();
       setAuthError("Your session expired. Sign in again.");
       return;
@@ -430,6 +448,7 @@ export default function App() {
       const result = await unlockEncryptionWithPasskey({
         supabase,
         accessToken,
+        weeklyProof,
         userId,
       });
       if (!result.ok) {
@@ -758,7 +777,7 @@ export default function App() {
     requestDelete(screen.kind, screen.id, label);
   }, [formDraft, screen]);
 
-  if (!sessionEmail || !userId || !accessToken) {
+  if (!sessionEmail || !userId || !accessToken || !weeklyProof) {
     return (
       <div className={shellClass}>
         <SignInView

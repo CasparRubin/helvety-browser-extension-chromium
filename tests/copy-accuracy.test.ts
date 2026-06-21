@@ -72,7 +72,7 @@ describe("extension copy accuracy (README + docs)", () => {
     const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 
     expect(readme).toMatch(/side panel/i);
-    expect(readme).toContain("helvety_extension_last_email_verified");
+    expect(readme).toContain("helvety_extension_weekly_proof");
     expect(readme).toMatch(/extension-session|resolveVerifiedExtensionSession/);
     expect(readme).toMatch(/not direct Supabase OTP/i);
     expect(readme).toMatch(/not.*unlock this extension/i);
@@ -84,7 +84,8 @@ describe("extension copy accuracy (README + docs)", () => {
 
     expect(doc).toMatch(/does not.*mint device-trust/i);
     expect(doc).toContain("resolveVerifiedExtensionSession");
-    expect(doc).toMatch(/JWT `iat`|JWT max lifetime/i);
+    expect(doc).toContain("X-Helvety-Weekly-Proof");
+    expect(doc).toContain("helvety_extension_weekly_proof");
     expect(doc).toMatch(/field-bound AAD|table:recordId:column/i);
     expect(doc).toContain("key_check_value");
     expect(doc).toContain("getUser()");

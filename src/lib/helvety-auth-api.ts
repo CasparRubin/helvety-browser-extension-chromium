@@ -11,6 +11,7 @@ import {
   isActionResponsePayload,
   parseActionResponse,
 } from "@helvety/shared/parse-action-response";
+import { EXTENSION_WEEKLY_PROOF_HEADER } from "@helvety/shared/weekly-proof-token";
 
 import {
   buildHelvetyAuthApiUrl,
@@ -108,12 +109,13 @@ function logPasskeyAuthFetchFailure(input: {
 /** Authenticated fetch to a path under `HELVETY_AUTH_ORIGIN`. */
 export async function helvetyAuthFetch<T>(
   path: string,
-  init: RequestInit & { accessToken: string }
+  init: RequestInit & { accessToken: string; weeklyProof: string }
 ): Promise<HelvetyJsonResponse<T>> {
-  const { accessToken, ...rest } = init;
+  const { accessToken, weeklyProof, ...rest } = init;
   const url = buildHelvetyAuthApiUrl(path);
   const headers = new Headers(rest.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
+  headers.set(EXTENSION_WEEKLY_PROOF_HEADER, weeklyProof);
   if (!headers.has("Content-Type") && rest.body) {
     headers.set("Content-Type", "application/json");
   }
@@ -204,6 +206,7 @@ export type ExtensionOtpSessionPayload = {
     id: string;
     email?: string | null;
   };
+  weekly_proof: string;
 };
 
 /** Public fetch to extension OTP routes (no Bearer). */

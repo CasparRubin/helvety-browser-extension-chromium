@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const ensureExtensionAuthReady = vi.hoisted(() => vi.fn());
+
+vi.mock("./extension-session", () => ({
+  ensureExtensionAuthReady,
+}));
 
 import {
   fetchPasskeyParamsForUser,
@@ -8,7 +14,7 @@ import {
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Unsigned JWT with a recent `iat` for session lifetime tests. */
+/** Unsigned JWT for mock Supabase session tokens in tests. */
 function testAccessToken(iatSeconds = Math.floor(Date.now() / 1000)): string {
   const encode = (value: unknown) =>
     Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -123,7 +129,16 @@ describe("mapPasskeyParamsError", () => {
 });
 
 describe("fetchPasskeyParamsForUser", () => {
+  beforeEach(() => {
+    ensureExtensionAuthReady.mockReset();
+    ensureExtensionAuthReady.mockResolvedValue({ ok: true });
+  });
+
   it("returns sign-in message when session is missing", async () => {
+    ensureExtensionAuthReady.mockResolvedValueOnce({
+      ok: false,
+      error: "Session expired. Sign out and sign in again.",
+    });
     const supabase = mockSupabase({
       single: { data: null, error: null },
       session: null,
@@ -139,6 +154,10 @@ describe("fetchPasskeyParamsForUser", () => {
   });
 
   it("returns sign-in message when session user id mismatches", async () => {
+    ensureExtensionAuthReady.mockResolvedValueOnce({
+      ok: false,
+      error: "Sign in again.",
+    });
     const supabase = mockSupabase({
       single: { data: null, error: null },
       session: { user: { id: "other" } },
@@ -150,16 +169,7 @@ describe("fetchPasskeyParamsForUser", () => {
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
-  it("calls getUser before querying user_passkey_params", async () => {
-    const getSession = vi.fn().mockResolvedValue({
-      data: {
-        session: {
-          user: { id: "u1" },
-          access_token: testAccessToken(),
-        },
-      },
-      error: null,
-    });
+  it("delegates auth readiness to ensureExtensionAuthReady before querying", async () => {
     const single = vi.fn().mockResolvedValue({
       data: null,
       error: { code: "PGRST116", message: "not found" },
@@ -167,20 +177,14 @@ describe("fetchPasskeyParamsForUser", () => {
     const eq = vi.fn().mockReturnValue({ single });
     const select = vi.fn().mockReturnValue({ eq });
     const from = vi.fn().mockReturnValue({ select });
-    const getUser = vi.fn().mockResolvedValue({
-      data: { user: { id: "u1" } },
-      error: null,
-    });
-    const refreshSession = vi.fn();
     const supabase = {
       from,
-      auth: { getSession, getUser, refreshSession },
+      auth: { getSession: vi.fn(), getUser: vi.fn(), refreshSession: vi.fn() },
     } as unknown as SupabaseClient;
 
     await fetchPasskeyParamsForUser(supabase, "u1");
 
-    expect(getUser).toHaveBeenCalled();
-    expect(getSession).toHaveBeenCalled();
+    expect(ensureExtensionAuthReady).toHaveBeenCalledWith(supabase, "u1");
     expect(from).toHaveBeenCalledWith("user_passkey_params");
   });
 

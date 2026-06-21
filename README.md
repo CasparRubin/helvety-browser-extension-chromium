@@ -76,9 +76,10 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 
 Aligned with helvety.com (`@helvety/shared/auth-session-policy.ts`; no extension env vars):
 
-- **Weekly OTP anchor (client UX)** — after OTP verify, `helvety_extension_last_email_verified` in `chrome.storage.local` records when email was last verified (**7d** window). This is **not** a cryptographic proof; it pairs with server-issued JWT age checks.
-- **JWT max lifetime (server-enforced)** — `resolveVerifiedExtensionSession` rejects access tokens whose `iat` exceeds **7d** (`@helvety/shared/jwt-session-lifetime`). Align Supabase Dashboard → Authentication → Sessions JWT expiry to the same cap. The extension does **not** receive the web `helvety_device_trust` cookie.
-- **Vault idle lock** — IndexedDB master keys follow **24h sliding idle** and **7d absolute max**; `useVaultIdleLock` and `touchVaultSessionInStorage` on entity CRUD renew activity.
+- **Weekly proof (server-HMAC)** — after OTP verify, auth returns `weekly_proof` stored in `helvety_extension_weekly_proof` (`chrome.storage.local`). Same payload/secret as web `helvety_device_trust`; sent as `X-Helvety-Weekly-Proof` on Bearer passkey routes.
+- **Session bootstrap** — `resolveVerifiedExtensionSession` in `extension-session.ts` requires `getUser()`, a valid weekly proof, and an access token before unlock or PostgREST reads.
+- **GoTrue session time-box** — align Supabase Dashboard → Authentication → Sessions: **JWT expiry 3600s**, **time-box 7d**, **inactivity 24h**. The extension does **not** receive the web HttpOnly device-trust cookie.
+- **Vault idle lock** — IndexedDB master keys follow **24h sliding idle** and **7d absolute max**; `useVaultIdleLock`, `onKeyEvent`, and `touchVaultSessionInStorage` on entity CRUD renew activity.
 
 ### Token storage threat model
 
@@ -86,7 +87,7 @@ Aligned with helvety.com (`@helvety/shared/auth-session-policy.ts`; no extension
 | ----------------- | ---------------------------- | -------------------------------------------------------------------------- |
 | Refresh token     | `chrome.storage.local`       | Persists across browser restarts (standard MV3 Supabase adapter)           |
 | Access token      | `chrome.storage.session`     | Cleared when the browser session ends; also embedded in local session JSON |
-| OTP anchor        | `chrome.storage.local`       | UX timestamp only — tampering cannot extend JWT validity                   |
+| Weekly proof      | `chrome.storage.local`       | HMAC-signed by auth app; verified on Bearer routes                         |
 | Master key (E2EE) | IndexedDB (extension origin) | Requires passkey unlock; separate from helvety.com web storage             |
 
 Malware or a modified extension build can read extension storage. **RLS + valid JWT + passkey/PRF** remain the server and crypto boundaries. See [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).

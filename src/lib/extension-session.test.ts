@@ -1,110 +1,103 @@
-import { isJwtWithinMaxLifetime } from "@helvety/shared/jwt-session-lifetime";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  ensureExtensionAuthReady,
-  hasNoAuthenticatedUser,
   resolveVerifiedExtensionSession,
+  ensureExtensionAuthReady,
 } from "./extension-session";
-import { hasValidExtensionWeeklyOtpAnchor } from "./extension-weekly-otp-anchor";
 
 import type { ExtensionSupabaseClient } from "./extension-supabase";
 
-vi.mock("./extension-weekly-otp-anchor", () => ({
-  hasValidExtensionWeeklyOtpAnchor: vi.fn(),
+const hasValidExtensionWeeklyProof = vi.hoisted(() => vi.fn());
+const readExtensionWeeklyProof = vi.hoisted(() => vi.fn());
+
+vi.mock("./extension-weekly-proof-storage", () => ({
+  hasValidExtensionWeeklyProof,
+  readExtensionWeeklyProof,
 }));
 
-vi.mock("@helvety/shared/jwt-session-lifetime", () => ({
-  isJwtWithinMaxLifetime: vi.fn(() => true),
-}));
-
-type MockAuthOptions = {
-  getUser: {
-    user: { id: string; email?: string } | null;
-    error?: Error | null;
-  };
-  getSession?: {
-    session: { access_token: string; user: { id: string } } | null;
-  };
-  refreshSession?: {
-    session: { user: { id: string } } | null;
-    error?: Error | null;
-  };
-};
-
-function mockSupabase(options: MockAuthOptions): ExtensionSupabaseClient {
-  const getUser = vi.fn().mockResolvedValue({
-    data: { user: options.getUser.user },
-    error: options.getUser.error ?? null,
+function mockSupabase(input: {
+  user: { id: string; email?: string | null } | null;
+  userError?: { message: string } | null;
+  accessToken?: string | null;
+  refreshSession?: { user: { id: string } } | null;
+  refreshError?: { message: string } | null;
+}): ExtensionSupabaseClient {
+  const getUser = vi.fn(async () => {
+    if (input.userError) {
+      return { data: { user: null }, error: input.userError };
+    }
+    return { data: { user: input.user }, error: null };
   });
-  const getSession = vi.fn().mockResolvedValue({
+
+  const refreshSession = vi.fn(async () => {
+    if (input.refreshError) {
+      return { data: { session: null }, error: input.refreshError };
+    }
+    if (input.refreshSession) {
+      return {
+        data: {
+          session: {
+            user: input.refreshSession.user,
+            access_token: "refreshed",
+          },
+        },
+        error: null,
+      };
+    }
+    return { data: { session: null }, error: { message: "no session" } };
+  });
+
+  const getSession = vi.fn(async () => ({
     data: {
-      session: options.getSession?.session ?? null,
+      session: input.accessToken
+        ? {
+            access_token: input.accessToken,
+            user: input.user ?? { id: "unknown" },
+          }
+        : null,
     },
     error: null,
-  });
-  const refreshSession = vi.fn().mockResolvedValue({
-    data: {
-      session: options.refreshSession?.session ?? null,
-    },
-    error: options.refreshSession?.error ?? null,
-  });
-  const signOut = vi.fn().mockResolvedValue({ error: null });
+  }));
+
+  const signOut = vi.fn(async () => ({ error: null }));
+
   return {
-    auth: { getUser, getSession, refreshSession, signOut },
+    auth: { getUser, refreshSession, getSession, signOut },
   } as unknown as ExtensionSupabaseClient;
 }
 
-describe("extension-session", () => {
-  afterEach(() => {
-    vi.mocked(hasValidExtensionWeeklyOtpAnchor).mockReset();
-    vi.mocked(isJwtWithinMaxLifetime).mockReset();
-    vi.mocked(isJwtWithinMaxLifetime).mockReturnValue(true);
+describe("resolveVerifiedExtensionSession", () => {
+  beforeEach(() => {
+    vi.mocked(hasValidExtensionWeeklyProof).mockReset();
+    vi.mocked(readExtensionWeeklyProof).mockReset();
+    vi.mocked(hasValidExtensionWeeklyProof).mockResolvedValue(true);
+    vi.mocked(readExtensionWeeklyProof).mockResolvedValue("signed-proof");
   });
 
-  it("resolveVerifiedExtensionSession returns session after getUser, JWT check, and OTP anchor", async () => {
-    vi.mocked(hasValidExtensionWeeklyOtpAnchor).mockResolvedValue(true);
+  it("returns session when getUser, weekly proof, and access token are valid", async () => {
     const supabase = mockSupabase({
-      getUser: { user: { id: "u1", email: "a@b.c" } },
-      getSession: {
-        session: { access_token: "tok", user: { id: "u1" } },
-      },
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
     });
 
     const result = await resolveVerifiedExtensionSession(supabase);
     expect(result).toEqual({
       ok: true,
-      session: { userId: "u1", email: "a@b.c", accessToken: "tok" },
-    });
-    expect(supabase.auth.getUser).toHaveBeenCalled();
-    expect(isJwtWithinMaxLifetime).toHaveBeenCalledWith(
-      "tok",
-      expect.any(Number)
-    );
-  });
-
-  it("resolveVerifiedExtensionSession signs out when JWT exceeds max lifetime", async () => {
-    vi.mocked(isJwtWithinMaxLifetime).mockReturnValue(false);
-    const supabase = mockSupabase({
-      getUser: { user: { id: "u1", email: "a@b.c" } },
-      getSession: {
-        session: { access_token: "expired-tok", user: { id: "u1" } },
+      session: {
+        userId: "u1",
+        email: "a@b.c",
+        accessToken: "tok",
+        weeklyProof: "signed-proof",
       },
     });
-
-    const result = await resolveVerifiedExtensionSession(supabase);
-    expect(result).toEqual({ ok: false, signedOut: true });
-    expect(supabase.auth.signOut).toHaveBeenCalled();
-    expect(hasValidExtensionWeeklyOtpAnchor).not.toHaveBeenCalled();
+    expect(hasValidExtensionWeeklyProof).toHaveBeenCalledWith("u1");
   });
 
-  it("resolveVerifiedExtensionSession signs out when weekly OTP anchor is missing", async () => {
-    vi.mocked(hasValidExtensionWeeklyOtpAnchor).mockResolvedValue(false);
+  it("signs out when weekly proof is missing or expired", async () => {
+    vi.mocked(hasValidExtensionWeeklyProof).mockResolvedValue(false);
     const supabase = mockSupabase({
-      getUser: { user: { id: "u1", email: "a@b.c" } },
-      getSession: {
-        session: { access_token: "tok", user: { id: "u1" } },
-      },
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
     });
 
     const result = await resolveVerifiedExtensionSession(supabase);
@@ -112,13 +105,83 @@ describe("extension-session", () => {
     expect(supabase.auth.signOut).toHaveBeenCalled();
   });
 
-  it("ensureExtensionAuthReady rejects expired JWT before PostgREST reads", async () => {
-    vi.mocked(isJwtWithinMaxLifetime).mockReturnValue(false);
+  it("refreshes when getUser fails then resolves session", async () => {
+    let userCalls = 0;
     const supabase = mockSupabase({
-      getUser: { user: { id: "u1" } },
-      getSession: {
-        session: { access_token: "expired-tok", user: { id: "u1" } },
-      },
+      user: { id: "u1", email: null },
+      accessToken: "tok",
+      refreshSession: { user: { id: "u1" } },
+    });
+    supabase.auth.getUser = vi.fn(async () => {
+      userCalls += 1;
+      if (userCalls === 1) {
+        return { data: { user: null }, error: { message: "expired" } };
+      }
+      return { data: { user: { id: "u1", email: null } }, error: null };
+    }) as unknown as ExtensionSupabaseClient["auth"]["getUser"];
+
+    const result = await resolveVerifiedExtensionSession(supabase);
+    expect(result.ok).toBe(true);
+    expect(supabase.auth.refreshSession).toHaveBeenCalled();
+  });
+
+  it("signs out when access token is missing after getUser succeeds", async () => {
+    const supabase = mockSupabase({
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: null,
+    });
+
+    const result = await resolveVerifiedExtensionSession(supabase);
+    expect(result).toEqual({ ok: false, signedOut: true });
+    expect(supabase.auth.signOut).toHaveBeenCalled();
+  });
+
+  it("signs out when weekly proof read returns empty despite validity check", async () => {
+    vi.mocked(hasValidExtensionWeeklyProof).mockResolvedValue(true);
+    vi.mocked(readExtensionWeeklyProof).mockResolvedValue(null);
+    const supabase = mockSupabase({
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
+    });
+
+    const result = await resolveVerifiedExtensionSession(supabase);
+    expect(result).toEqual({ ok: false, signedOut: true });
+    expect(supabase.auth.signOut).toHaveBeenCalled();
+  });
+});
+
+describe("ensureExtensionAuthReady", () => {
+  beforeEach(() => {
+    vi.mocked(hasValidExtensionWeeklyProof).mockReset();
+    vi.mocked(readExtensionWeeklyProof).mockReset();
+    vi.mocked(hasValidExtensionWeeklyProof).mockResolvedValue(true);
+  });
+
+  it("returns ok when getUser, access token, and weekly proof are valid", async () => {
+    const supabase = mockSupabase({
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
+    });
+
+    const result = await ensureExtensionAuthReady(supabase, "u1");
+    expect(result).toEqual({ ok: true });
+    expect(hasValidExtensionWeeklyProof).toHaveBeenCalledWith("u1");
+  });
+
+  it("rejects when signed-in user does not match expected userId", async () => {
+    const supabase = mockSupabase({
+      user: { id: "other-user", email: "a@b.c" },
+      accessToken: "tok",
+    });
+
+    const result = await ensureExtensionAuthReady(supabase, "u1");
+    expect(result).toEqual({ ok: false, error: "Sign in again." });
+  });
+
+  it("rejects when access token is missing", async () => {
+    const supabase = mockSupabase({
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: null,
     });
 
     const result = await ensureExtensionAuthReady(supabase, "u1");
@@ -128,18 +191,37 @@ describe("extension-session", () => {
     });
   });
 
-  it("hasNoAuthenticatedUser is true when getUser returns no user", async () => {
+  it("rejects when weekly proof is missing or expired", async () => {
+    vi.mocked(hasValidExtensionWeeklyProof).mockResolvedValue(false);
     const supabase = mockSupabase({
-      getUser: { user: null },
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
     });
-    await expect(hasNoAuthenticatedUser(supabase)).resolves.toBe(true);
+
+    const result = await ensureExtensionAuthReady(supabase, "u1");
+    expect(result).toEqual({
+      ok: false,
+      error: "Weekly email verification expired. Sign out and sign in again.",
+    });
   });
 
-  it("ensureExtensionAuthReady rejects user id mismatch", async () => {
+  it("refreshes session when getUser fails then succeeds", async () => {
+    let userCalls = 0;
     const supabase = mockSupabase({
-      getUser: { user: { id: "other" } },
+      user: { id: "u1", email: "a@b.c" },
+      accessToken: "tok",
+      refreshSession: { user: { id: "u1" } },
     });
+    supabase.auth.getUser = vi.fn(async () => {
+      userCalls += 1;
+      if (userCalls === 1) {
+        return { data: { user: null }, error: { message: "expired" } };
+      }
+      return { data: { user: { id: "u1", email: "a@b.c" } }, error: null };
+    }) as unknown as ExtensionSupabaseClient["auth"]["getUser"];
+
     const result = await ensureExtensionAuthReady(supabase, "u1");
-    expect(result).toEqual({ ok: false, error: "Sign in again." });
+    expect(result).toEqual({ ok: true });
+    expect(supabase.auth.refreshSession).toHaveBeenCalled();
   });
 });

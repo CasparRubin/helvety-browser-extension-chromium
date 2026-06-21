@@ -7,28 +7,32 @@ import { describe, expect, it } from "vitest";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("auth session policy wiring (extension)", () => {
-  it("App.tsx uses shared vault idle lock and session touch", () => {
+  it("App.tsx uses shared vault idle lock, key events, and weekly proof storage", () => {
     const src = readFileSync(join(repoRoot, "src/popup/App.tsx"), "utf8");
     expect(src).toContain("useVaultIdleLock");
     expect(src).toContain("touchVaultSessionInStorage");
+    expect(src).toContain("onKeyEvent");
+    expect(src).toContain("writeExtensionWeeklyProof");
   });
 
-  it("extension weekly OTP anchor uses shared auth max lifetime", () => {
+  it("extension weekly proof storage uses shared token module", () => {
     const src = readFileSync(
-      join(repoRoot, "src/lib/extension-weekly-otp-anchor.ts"),
+      join(repoRoot, "src/lib/extension-weekly-proof-storage.ts"),
       "utf8"
     );
-    expect(src).toContain("AUTH_MAX_LIFETIME_MS");
-    expect(src).not.toMatch(/30 \* 24 \* 60 \* 60 \* 1000/);
+    expect(src).toContain("@helvety/shared/weekly-proof-token");
+    expect(src).toContain("EXTENSION_WEEKLY_PROOF_STORAGE_KEY");
   });
 
-  it("extension session enforces JWT max lifetime via shared helper", () => {
+  it("extension session enforces signed weekly proof (not JWT iat)", () => {
     const src = readFileSync(
       join(repoRoot, "src/lib/extension-session.ts"),
       "utf8"
     );
-    expect(src).toContain("isJwtWithinMaxLifetime");
-    expect(src).toContain("@helvety/shared/jwt-session-lifetime");
+    expect(src).toContain("hasValidExtensionWeeklyProof");
+    expect(src).not.toContain("isJwtWithinMaxLifetime");
+    expect(src).not.toContain("jwt-session-lifetime");
+    expect(src).not.toContain("extension-weekly-otp-anchor");
   });
 
   it("extension supabase mirrors access token to chrome.storage.session", () => {
