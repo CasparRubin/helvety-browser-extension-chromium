@@ -12,6 +12,10 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: createClientMock,
 }));
 
+vi.mock("@helvety/shared/supabase/fetch-with-timeout", () => ({
+  browserFetchWithTimeout: vi.fn(),
+}));
+
 describe("createExtensionSupabaseClient", () => {
   afterEach(() => {
     createClientMock.mockClear();
@@ -35,6 +39,9 @@ describe("createExtensionSupabaseClient", () => {
       HELVETY_SUPABASE_URL,
       HELVETY_SUPABASE_PUBLISHABLE_KEY,
       expect.objectContaining({
+        global: expect.objectContaining({
+          fetch: expect.any(Function),
+        }),
         auth: expect.objectContaining({
           storageKey: "helvety-extension-supabase-auth",
           persistSession: true,

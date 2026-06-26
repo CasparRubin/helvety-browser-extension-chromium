@@ -1,3 +1,4 @@
+import { browserFetchWithTimeout } from "@helvety/shared/supabase/fetch-with-timeout";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -46,9 +47,16 @@ const chromeSplitStorageAdapter = {
  * `chrome.storage.local` (not the website cookie jar).
  *
  * Uses public URL + publishable key from `config.ts` (safe to ship — see file header).
+ *
+ * Resilience: shares the web browser client's fetch timeout so auth requests do
+ * not hang indefinitely on flaky networks or after popup/side-panel suspend and
+ * resume (mirrors `@helvety/shared/supabase/client`).
  */
 export function createExtensionSupabaseClient() {
   return createClient(HELVETY_SUPABASE_URL, HELVETY_SUPABASE_PUBLISHABLE_KEY, {
+    global: {
+      fetch: browserFetchWithTimeout,
+    },
     auth: {
       storage: chromeSplitStorageAdapter,
       storageKey: STORAGE_KEY,
