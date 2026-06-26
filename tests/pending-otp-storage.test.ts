@@ -82,6 +82,26 @@ describe("pending-otp-storage", () => {
     expect(record).toBeNull();
   });
 
+  it("rejects a non-object stored record", async () => {
+    const get = vi.fn().mockResolvedValue({
+      [STORAGE_KEY_PENDING_OTP]: "corrupt",
+    });
+    vi.stubGlobal("chrome", {
+      storage: { local: { get, set: vi.fn(), remove: vi.fn() } },
+    });
+
+    expect(await readPendingOtp()).toBeNull();
+  });
+
+  it("returns null when nothing is stored", async () => {
+    const get = vi.fn().mockResolvedValue({});
+    vi.stubGlobal("chrome", {
+      storage: { local: { get, set: vi.fn(), remove: vi.fn() } },
+    });
+
+    expect(await readPendingOtp()).toBeNull();
+  });
+
   it("clears pending OTP storage key", async () => {
     const remove = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("chrome", {
