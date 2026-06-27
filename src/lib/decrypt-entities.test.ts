@@ -132,7 +132,7 @@ describe("decrypt-entities (client-side roundtrip)", () => {
 
   it("decryptLinkName decrypts bookmark title", async () => {
     const key = await aes256GcmKey();
-    const plaintext = "Helvety docs";
+    const plaintext = "Helvety home page";
     const ctx = { table: "links", recordId: LINK_ID };
     const enc = await encryptEntityField(plaintext, key, {
       ...ctx,

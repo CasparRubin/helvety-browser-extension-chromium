@@ -17,7 +17,7 @@ describe("link-url-normalize", () => {
   });
 
   it("derives display name from host when name empty", () => {
-    expect(resolveLinkDisplayName("", "https://www.helvety.com/docs")).toBe(
+    expect(resolveLinkDisplayName("", "https://www.helvety.com/pdf")).toBe(
       "helvety.com"
     );
   });

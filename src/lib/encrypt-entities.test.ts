@@ -111,10 +111,10 @@ describe("encrypt-entities roundtrip", () => {
   it("link create normalizes URL before encrypt", async () => {
     const key = await aes256GcmKey();
     const payload = await encryptLinkCreate(
-      { name: "", url: "helvety.com/docs" },
+      { name: "", url: "helvety.com/pdf" },
       key
     );
-    const normalized = normalizeBookmarkUrl("helvety.com/docs");
+    const normalized = normalizeBookmarkUrl("helvety.com/pdf");
     expect(normalized.ok).toBe(true);
     if (!normalized.ok) {
       return;
