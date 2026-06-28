@@ -13,8 +13,7 @@ export const PASSKEY_PARAMS_SELECT =
 
 /** Result of loading `user_passkey_params` for unlock. */
 export type PasskeyParamsResult =
-  | { ok: true; params: UserPasskeyParams | null }
-  | { ok: false; error: string };
+  { ok: true; params: UserPasskeyParams | null } | { ok: false; error: string };
 
 /** PostgREST error fields used for user-facing unlock diagnostics. */
 export type PasskeyParamsPostgrestError = Partial<

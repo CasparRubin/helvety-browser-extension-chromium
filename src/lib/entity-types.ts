@@ -148,10 +148,6 @@ export interface LinkFolderInput {
 }
 
 export type EntityKind =
-  | "tasks"
-  | "notes"
-  | "contacts"
-  | "links"
-  | "link_folder";
+  "tasks" | "notes" | "contacts" | "links" | "link_folder";
 
 export type EntityRecord = Contact | Note | Task | Link | LinkFolder;

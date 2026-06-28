@@ -1,7 +1,6 @@
 /** Result of normalizing a user-entered URL before encryption. */
 export type NormalizeUrlResult =
-  | { ok: true; url: string }
-  | { ok: false; error: string };
+  { ok: true; url: string } | { ok: false; error: string };
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 
