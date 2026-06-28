@@ -4,6 +4,7 @@ import { ListErrorState, ListLoadingState } from "@helvety/ui/list-states";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@helvety/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@helvety/ui/tooltip";
 import {
+  ArrowLeft,
   BadgeInfo,
   ExternalLink,
   FolderPlus,
@@ -39,8 +40,8 @@ import type {
 } from "../../lib/entity-types";
 import type { ThemePreference } from "@helvety/extension-chrome/theme-preference";
 
-/** Main entity tabs after unlock (tasks, notes, contacts, links, about). */
-export type EntityTabId = "tasks" | "notes" | "contacts" | "links" | "about";
+/** Main entity tabs after unlock (links, tasks, notes, contacts, about). */
+export type EntityTabId = "links" | "tasks" | "notes" | "contacts" | "about";
 
 /**
  *
@@ -369,6 +370,9 @@ export function DataTabsView({
       </div>
 
       <TabsList className="bg-muted grid h-auto w-full grid-cols-5 gap-0.5 p-1 text-xs">
+        <TabIconTrigger value="links" label="Links">
+          <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </TabIconTrigger>
         <TabIconTrigger value="tasks" label="Tasks">
           <ListTodo className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </TabIconTrigger>
@@ -378,15 +382,28 @@ export function DataTabsView({
         <TabIconTrigger value="contacts" label="Contacts">
           <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </TabIconTrigger>
-        <TabIconTrigger value="links" label="Links">
-          <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        </TabIconTrigger>
         <TabIconTrigger value="about" label="About">
           <BadgeInfo className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </TabIconTrigger>
       </TabsList>
 
-      <h2 className="px-0.5 pt-2 pb-1 text-base font-semibold">{title}</h2>
+      {screen.mode === "form" ? (
+        <div className="flex items-center gap-1 pt-2 pb-1">
+          <IconTooltipButton
+            label="Back"
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={onCancelForm}
+            disabled={mutationBusy}
+          >
+            <ArrowLeft className="size-4" />
+          </IconTooltipButton>
+          <h2 className="px-0.5 text-base font-semibold">{title}</h2>
+        </div>
+      ) : (
+        <h2 className="px-0.5 pt-2 pb-1 text-base font-semibold">{title}</h2>
+      )}
 
       <TabsContent
         value="tasks"

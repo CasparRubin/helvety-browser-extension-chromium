@@ -98,7 +98,7 @@ export default function App() {
   const [paramsPreflight, setParamsPreflight] =
     useState<ParamsPreflight | null>(null);
 
-  const [tab, setTab] = useState<EntityTabId>("tasks");
+  const [tab, setTab] = useState<EntityTabId>("links");
   const [screen, setScreen] = useState<EntityScreen>({ mode: "list" });
 
   const [listBusy, setListBusy] = useState(false);

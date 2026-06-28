@@ -3,7 +3,7 @@ import { Input } from "@helvety/ui/input";
 import { Label } from "@helvety/ui/label";
 import { NativeSelect } from "@helvety/ui/native-select";
 import { Textarea } from "@helvety/ui/textarea";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import {
   CONTACT_CATEGORIES,
@@ -25,7 +25,6 @@ import {
   NoteEntityLinkPanels,
   TaskEntityLinkPanels,
 } from "../components/ExtensionEntityLinkPanels";
-import { IconTooltipButton } from "../components/IconTooltipButton";
 import { emptyContactInput } from "../entity-drafts";
 
 import type {
@@ -313,21 +312,6 @@ export function EntityFormView({
 
   return (
     <EntityScreenLayout
-      header={
-        <div className="flex items-center gap-1 pb-2">
-          <IconTooltipButton
-            label="Back"
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={onCancel}
-            disabled={mutationBusy}
-          >
-            <ArrowLeft className="size-4" />
-          </IconTooltipButton>
-          <span className="min-w-0 flex-1" />
-        </div>
-      }
       footer={
         <>
           {mutationError ? (
