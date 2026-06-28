@@ -43,6 +43,17 @@ describe("DataTabsView edit command bar", () => {
     expect(commandBar).toContain("{title}");
   });
 
+  it("optically nudges the back arrow up to align with the title cap height", () => {
+    const commandBar = dataTabsSource.slice(
+      dataTabsSource.indexOf('screen.mode === "form" ? ('),
+      dataTabsSource.indexOf("<TabsContent")
+    );
+
+    expect(commandBar).toContain(
+      '<ArrowLeft className="size-4 -translate-y-px"'
+    );
+  });
+
   it("does not render a separate back-button header inside EntityFormView", () => {
     expect(entityFormSource).not.toContain("header={");
     expect(entityFormSource).not.toContain("ArrowLeft");

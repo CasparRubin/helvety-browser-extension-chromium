@@ -397,7 +397,7 @@ export function DataTabsView({
             onClick={onCancelForm}
             disabled={mutationBusy}
           >
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-4 -translate-y-px" />
           </IconTooltipButton>
           <h2 className="px-0.5 text-base font-semibold">{title}</h2>
         </div>
