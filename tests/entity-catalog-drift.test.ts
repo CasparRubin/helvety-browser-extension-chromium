@@ -80,6 +80,7 @@ describe("entity catalog drift vs monorepo defaults", () => {
       "apps/contacts/lib/config/default-categories.ts"
     );
     const extensionIds = extractCatalogIds(extensionSource, "NOTE_CATEGORIES");
+    // CONTACT_CATEGORIES is an alias of NOTE_CATEGORIES in entity-catalogs.ts
     const monorepoIds = extractCatalogIds(monorepoSource, "DEFAULT_CATEGORIES");
     expect(extensionIds).toEqual(monorepoIds);
   });
