@@ -65,9 +65,12 @@ describe("extension dependency pins", () => {
     expect(packageJson.packageManager).toMatch(/^pnpm@9\./);
   });
 
-  it("README documents tests/ layout including dependency guard suites", () => {
+  it("README documents tests/ layout including dependency and guardrail suites", () => {
     const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
     expect(readme).toContain("dependency-pins");
     expect(readme).toContain("entity-catalog-drift");
+    expect(readme).toContain("copy-accuracy");
+    expect(readme).toContain("security-e2ee-docs");
+    expect(readme).toContain("guardrail-scripts");
   });
 });
