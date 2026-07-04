@@ -1,3 +1,4 @@
+import { AUTH_MAX_LIFETIME_SECONDS } from "@helvety/shared/auth-session-policy";
 import { EXTENSION_WEEKLY_PROOF_STORAGE_KEY } from "@helvety/shared/weekly-proof-token";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -50,7 +51,7 @@ describe("extension-weekly-proof-storage", () => {
       v: 1 as const,
       userId,
       iat: nowSeconds,
-      exp: nowSeconds + 604_800,
+      exp: nowSeconds + AUTH_MAX_LIFETIME_SECONDS,
     };
     const payloadPart = Buffer.from(JSON.stringify(payload)).toString(
       "base64url"
