@@ -61,6 +61,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Views: `src/popup/views/` — `SignInView`, `UnlockView`, `DataTabsView` (grouped lists + edit-first navigation), `EntityFormView`, `AboutTab`.
 - Lists: `src/popup/components/lists/` — stage/category groups and links tree (mobile-style rows); row tap opens the edit form (links: tap opens URL, pencil opens edit); up/down reorder for tasks, notes, contacts, links, and folders.
 - **Open in web app**: list mode opens the zone path on the gateway; edit mode opens an entity deep link (`buildE2eeDeepLink`).
+- **Save-first create**: **New** opens `formMode: "create"` with empty defaults from `@helvety/shared/e2ee-create-inputs` (no list row until Save); first Save encrypts with a client-generated id and switches to edit mode (same contract as helvety.com web zones).
 - **Unsaved changes**: switching tabs or canceling an edit form with a dirty draft shows the shared discard dialog (`isFormDraftDirty`).
 - Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles (`@helvety/ui/Button`) aligned with web apps.
 - Row actions: `IconTooltipButton` wraps `@helvety/ui/row-action-button` with `showTooltip`; list delete uses `Trash2Icon` + `ICON_SIZE_CLASS`.

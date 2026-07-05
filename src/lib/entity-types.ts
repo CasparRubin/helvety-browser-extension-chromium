@@ -111,7 +111,8 @@ export interface TaskInput {
   start_date?: string | null;
   end_date?: string | null;
   stage_id?: string;
-  label_id?: string;
+  /** Null means unset; encrypt coalesces to DEFAULT_TASK_LABEL_ID on insert. */
+  label_id?: string | null;
   priority?: number;
 }
 

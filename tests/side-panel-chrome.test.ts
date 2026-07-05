@@ -322,6 +322,14 @@ describe("side panel chrome", () => {
     expect(existsSync(join(listDir, "list-group-utils.ts"))).toBe(true);
   });
 
+  it("task and note entity lists use shared getE2eeListTitle for row labels", () => {
+    for (const file of ["task-entity-list.tsx", "note-entity-list.tsx"]) {
+      const src = readSource(`src/popup/components/lists/${file}`);
+      expect(src).toContain("getE2eeListTitle");
+      expect(src).toContain("@helvety/shared/e2ee-draft");
+    }
+  });
+
   it("App wraps unlock screen in TooltipProvider", () => {
     const app = readSource("src/popup/App.tsx");
     expect(app).toMatch(/!masterKey[\s\S]*TooltipProvider[\s\S]*UnlockView/);

@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CONTACT_CATEGORY_ID,
   DEFAULT_NOTE_CATEGORY_ID,
-  DEFAULT_TASK_LABEL_ID,
   DEFAULT_TASK_PRIORITY,
   DEFAULT_TASK_STAGE_ID,
 } from "../lib/entity-defaults";
@@ -65,14 +64,14 @@ describe("empty input factories", () => {
     });
   });
 
-  it("emptyTaskInput uses default stage, label, and priority", () => {
+  it("emptyTaskInput uses default stage and priority with unset label", () => {
     expect(emptyTaskInput()).toEqual({
       title: "",
       description: null,
       start_date: null,
       end_date: null,
       stage_id: DEFAULT_TASK_STAGE_ID,
-      label_id: DEFAULT_TASK_LABEL_ID,
+      label_id: null,
       priority: DEFAULT_TASK_PRIORITY,
     });
   });

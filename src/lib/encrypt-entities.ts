@@ -389,7 +389,7 @@ export async function encryptTaskUpdate(
     patch.stage_id = input.stage_id;
   }
   if (input.label_id !== undefined) {
-    patch.label_id = input.label_id;
+    patch.label_id = input.label_id ?? DEFAULT_TASK_LABEL_ID;
   }
   if (input.priority !== undefined) {
     patch.priority = input.priority;

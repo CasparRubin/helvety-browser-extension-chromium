@@ -88,6 +88,17 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(violations).toEqual([]);
   });
 
+  it("README documents save-first create in Side panel UI section", () => {
+    const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+    const sidePanelBlock = readme.slice(
+      readme.indexOf("## Side panel UI"),
+      readme.indexOf("## Session and vault policy")
+    );
+    expect(sidePanelBlock).toMatch(/save-first/i);
+    expect(sidePanelBlock).toContain("e2ee-create-inputs");
+    expect(sidePanelBlock).not.toMatch(/draft row/i);
+  });
+
   it("README documents side panel (not popup) and session bootstrap accurately", () => {
     const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
 

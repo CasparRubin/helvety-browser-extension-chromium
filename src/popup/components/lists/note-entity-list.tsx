@@ -1,3 +1,4 @@
+import { getE2eeListTitle } from "@helvety/shared/e2ee-draft";
 import {
   ListEmptyState,
   ListErrorState,
@@ -75,7 +76,7 @@ export function NoteEntityList({
             {categoryNotes.map((note) => (
               <EntityRow
                 key={note.id}
-                title={note.title}
+                title={getE2eeListTitle(note.title)}
                 accentColor={catalogColor(NOTE_CATEGORIES, note.category_id)}
                 isFirst={isFirst}
                 isLast={isLast}

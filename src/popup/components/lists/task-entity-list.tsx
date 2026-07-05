@@ -1,3 +1,4 @@
+import { getE2eeListTitle } from "@helvety/shared/e2ee-draft";
 import {
   ListEmptyState,
   ListErrorState,
@@ -71,7 +72,7 @@ export function TaskEntityList({
             {stageTasks.map((task) => (
               <EntityRow
                 key={task.id}
-                title={task.title}
+                title={getE2eeListTitle(task.title)}
                 accentColor={catalogColor(TASK_STAGES, task.stage_id)}
                 isFirst={isFirstStage}
                 isLast={isLastStage}
