@@ -57,15 +57,17 @@ function TabIconTrigger({
 }): React.JSX.Element {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <TabsTrigger
-          value={value}
-          className={POPUP_TAB_TRIGGER_ICON_CLASS}
-          aria-label={label}
-        >
-          {children}
-          <span className="sr-only">{label}</span>
-        </TabsTrigger>
+      <TooltipTrigger
+        render={
+          <TabsTrigger
+            value={value}
+            className={POPUP_TAB_TRIGGER_ICON_CLASS}
+            aria-label={label}
+          />
+        }
+      >
+        {children}
+        <span className="sr-only">{label}</span>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>

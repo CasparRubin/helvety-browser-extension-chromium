@@ -36,12 +36,12 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 Workspace packages supply **extension chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-| Package                     | Role in this extension                                                                 |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities |
-| `@helvety/ui`               | Tabs, buttons, inputs, list states (flat PP-style surfaces)                            |
-| `@helvety/shared`           | E2EE crypto and shared utilities                                                       |
-| `@helvety/brand`            | Helvety mark in the About **Developer** section                                        |
+| Package                     | Role in this extension                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities                         |
+| `@helvety/ui`               | Base UI shadcn primitives (`base-vega`): tabs, buttons, inputs, tooltips, list states (flat PP-style surfaces) |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                                               |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                                |
 
 Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
 

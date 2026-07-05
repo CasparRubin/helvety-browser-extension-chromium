@@ -26,12 +26,13 @@ describe("TypeScript and build config", () => {
     expect(tsconfig.compilerOptions?.paths).toBeUndefined();
   });
 
-  it("vite and vitest do not define unused @ path aliases", () => {
+  it("vite resolve aliases are limited to required CSS package imports", () => {
     const viteConfig = readSource("vite.config.ts");
     const vitestConfig = readSource("vitest.config.ts");
 
-    expect(viteConfig).not.toMatch(/resolve:\s*\{[\s\S]*alias:/);
     expect(vitestConfig).not.toMatch(/resolve:\s*\{[\s\S]*alias:/);
+    expect(viteConfig).toMatch(/shadcn\/tailwind\.css/);
+    expect(viteConfig).not.toMatch(/@\//);
   });
 
   it("uses TypeScript 6 for type-check and build", () => {

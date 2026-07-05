@@ -16,11 +16,9 @@ export function IconTooltipButton({
 } & ComponentProps<typeof Button>): React.JSX.Element {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button aria-label={label} {...buttonProps}>
-          {children}
-          <span className="sr-only">{label}</span>
-        </Button>
+      <TooltipTrigger render={<Button aria-label={label} {...buttonProps} />}>
+        {children}
+        <span className="sr-only">{label}</span>
       </TooltipTrigger>
       <TooltipContent side="bottom">{tooltip ?? label}</TooltipContent>
     </Tooltip>
