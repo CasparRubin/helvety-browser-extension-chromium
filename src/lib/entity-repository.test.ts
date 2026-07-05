@@ -29,6 +29,18 @@ async function aes256GcmKey(): Promise<CryptoKey> {
   ]);
 }
 
+function createOwnedUpdateChain(result: {
+  data: { id: string } | null;
+  error: unknown;
+}) {
+  const maybeSingle = vi.fn().mockResolvedValue(result);
+  const select = vi.fn(() => ({ maybeSingle }));
+  const updateEqUser = vi.fn(() => ({ select }));
+  const updateEqId = vi.fn(() => ({ eq: updateEqUser }));
+  const update = vi.fn().mockReturnValue({ eq: updateEqId });
+  return { update, maybeSingle };
+}
+
 describe("EntityRepository mutation payloads", () => {
   it("never uses star selects on entity tables", () => {
     const source = readFileSync(
@@ -37,6 +49,8 @@ describe("EntityRepository mutation payloads", () => {
     );
     expect(source).not.toMatch(/\.select\s*\(\s*["'`]\*/);
     expect(source).not.toMatch(/\.select\s*\(\s*\*\s*\)/);
+    expect(source).toContain("assertOwnedRowUpdated");
+    expect(source).toMatch(/\.select\("id"\)\s*\n\s*\.maybeSingle\(\)/);
   });
 
   it("inserts contacts with ciphertext keys only", async () => {
@@ -67,10 +81,9 @@ describe("EntityRepository mutation payloads", () => {
 
   it("updates links with ciphertext keys only", async () => {
     const key = await aes256GcmKey();
-    const update = vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
-      }),
+    const { update } = createOwnedUpdateChain({
+      data: { id: "44444444-4444-4444-8444-444444444444" },
+      error: null,
     });
     const supabase = {
       from: vi.fn(() => ({
@@ -92,6 +105,27 @@ describe("EntityRepository mutation payloads", () => {
     assertNoPlaintextEntityFields(payload);
     expect(payload).toHaveProperty("encrypted_url");
     expect(payload).toHaveProperty("updated_at");
+  });
+
+  it("updateLink throws when the owned row is missing", async () => {
+    const key = await aes256GcmKey();
+    const { update } = createOwnedUpdateChain({ data: null, error: null });
+    const supabase = {
+      from: vi.fn(() => ({
+        insert: vi.fn(),
+        update,
+        delete: vi.fn(),
+        select: vi.fn(),
+      })),
+    };
+
+    const repo = new EntityRepository(supabase as never, "user-1", key);
+    await expect(
+      repo.updateLink("44444444-4444-4444-8444-444444444444", {
+        name: "Docs",
+        url: "https://helvety.com",
+      })
+    ).rejects.toThrow("Link not found");
   });
 
   it("inserts tasks with encrypted_title only (no plaintext title)", async () => {

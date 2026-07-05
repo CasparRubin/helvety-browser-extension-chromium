@@ -73,6 +73,15 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function assertOwnedRowUpdated(
+  data: { id: string } | null,
+  entityLabel: string
+): void {
+  if (!data) {
+    throw new Error(`${entityLabel} not found`);
+  }
+}
+
 export class EntityRepository {
   constructor(
     private readonly supabase: ExtensionSupabaseClient,
@@ -127,14 +136,17 @@ export class EntityRepository {
     const encrypted = await encryptTaskUpdate(id, input, this.masterKey);
     const payload = { ...encrypted, updated_at: nowIso() };
     guardEncryptedWrite(payload);
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("items")
       .update(payload)
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
+    assertOwnedRowUpdated(data, "Task");
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -218,14 +230,17 @@ export class EntityRepository {
     const encrypted = await encryptNoteUpdate(id, input, this.masterKey);
     const payload = { ...encrypted, updated_at: nowIso() };
     guardEncryptedWrite(payload);
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("notes")
       .update(payload)
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
+    assertOwnedRowUpdated(data, "Note");
   }
 
   async deleteNote(id: string): Promise<void> {
@@ -312,14 +327,17 @@ export class EntityRepository {
     const encrypted = await encryptContactUpdate(id, input, this.masterKey);
     const payload = { ...encrypted, updated_at: nowIso() };
     guardEncryptedWrite(payload);
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("contacts")
       .update(payload)
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
+    assertOwnedRowUpdated(data, "Contact");
   }
 
   async deleteContact(id: string): Promise<void> {
@@ -409,14 +427,17 @@ export class EntityRepository {
     const encrypted = await encryptLinkUpdate(id, input, this.masterKey);
     const payload = { ...encrypted, updated_at: nowIso() };
     guardEncryptedWrite(payload);
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("links")
       .update(payload)
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
+    assertOwnedRowUpdated(data, "Link");
   }
 
   async deleteLink(id: string): Promise<void> {
@@ -540,14 +561,17 @@ export class EntityRepository {
     const encrypted = await encryptLinkFolderUpdate(id, input, this.masterKey);
     const payload = { ...encrypted, updated_at: nowIso() };
     guardEncryptedWrite(payload);
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from("link_folders")
       .update(payload)
       .eq("id", id)
-      .eq("user_id", this.userId);
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
     if (error) {
       throw new Error(error.message);
     }
+    assertOwnedRowUpdated(data, "Folder");
   }
 
   async deleteLinkFolder(id: string): Promise<void> {
