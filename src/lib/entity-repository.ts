@@ -108,8 +108,12 @@ export class EntityRepository {
     return decryptTaskRow(data, this.masterKey);
   }
 
-  async createTask(input: TaskInput): Promise<string> {
-    const encrypted = await encryptTaskCreate(input, this.masterKey);
+  async createTask(input: TaskInput, clientRecordId?: string): Promise<string> {
+    const encrypted = await encryptTaskCreate(
+      input,
+      this.masterKey,
+      clientRecordId
+    );
     const payload = { ...encrypted, user_id: this.userId };
     guardEncryptedWrite(payload);
     const { error } = await this.supabase.from("items").insert(payload);
@@ -195,8 +199,12 @@ export class EntityRepository {
     return decryptNoteRow(data, this.masterKey);
   }
 
-  async createNote(input: NoteInput): Promise<string> {
-    const encrypted = await encryptNoteCreate(input, this.masterKey);
+  async createNote(input: NoteInput, clientRecordId?: string): Promise<string> {
+    const encrypted = await encryptNoteCreate(
+      input,
+      this.masterKey,
+      clientRecordId
+    );
     const payload = { ...encrypted, user_id: this.userId };
     guardEncryptedWrite(payload);
     const { error } = await this.supabase.from("notes").insert(payload);
@@ -282,8 +290,15 @@ export class EntityRepository {
     return decryptContactRow(data, this.masterKey);
   }
 
-  async createContact(input: ContactInput): Promise<string> {
-    const encrypted = await encryptContactCreate(input, this.masterKey);
+  async createContact(
+    input: ContactInput,
+    clientRecordId?: string
+  ): Promise<string> {
+    const encrypted = await encryptContactCreate(
+      input,
+      this.masterKey,
+      clientRecordId
+    );
     const payload = { ...encrypted, user_id: this.userId };
     guardEncryptedWrite(payload);
     const { error } = await this.supabase.from("contacts").insert(payload);
@@ -369,11 +384,15 @@ export class EntityRepository {
     return decryptLinkRow(data, this.masterKey);
   }
 
-  async createLink(input: LinkInput): Promise<string> {
+  async createLink(input: LinkInput, clientRecordId?: string): Promise<string> {
     if (input.folder_id != null && input.folder_id !== "") {
       await this.assertFolderOwned(input.folder_id);
     }
-    const encrypted = await encryptLinkCreate(input, this.masterKey);
+    const encrypted = await encryptLinkCreate(
+      input,
+      this.masterKey,
+      clientRecordId
+    );
     const payload = { ...encrypted, user_id: this.userId };
     guardEncryptedWrite(payload);
     const { error } = await this.supabase.from("links").insert(payload);
@@ -487,11 +506,18 @@ export class EntityRepository {
     return decryptLinkFolderRow(data, this.masterKey);
   }
 
-  async createLinkFolder(input: LinkFolderInput): Promise<string> {
+  async createLinkFolder(
+    input: LinkFolderInput,
+    clientRecordId?: string
+  ): Promise<string> {
     if (input.parent_folder_id) {
       await this.assertFolderOwned(input.parent_folder_id);
     }
-    const encrypted = await encryptLinkFolderCreate(input, this.masterKey);
+    const encrypted = await encryptLinkFolderCreate(
+      input,
+      this.masterKey,
+      clientRecordId
+    );
     const payload = { ...encrypted, user_id: this.userId };
     guardEncryptedWrite(payload);
     const { error } = await this.supabase.from("link_folders").insert(payload);

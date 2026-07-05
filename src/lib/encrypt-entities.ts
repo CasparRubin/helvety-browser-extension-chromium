@@ -83,7 +83,8 @@ async function encryptOptional(
 
 export async function encryptContactCreate(
   input: ContactInput,
-  key: CryptoKey
+  key: CryptoKey,
+  clientRecordId?: string
 ): Promise<{
   id: string;
   encrypted_first_name: string;
@@ -95,11 +96,10 @@ export async function encryptContactCreate(
   encrypted_notes: string | null;
   category_id: string;
 }> {
-  const id = crypto.randomUUID();
-  const recordId = id;
+  const recordId = clientRecordId ?? crypto.randomUUID();
   const table = CONTACTS_TABLE;
   return {
-    id,
+    id: recordId,
     encrypted_first_name: await encryptRequired(input.first_name, key, {
       table,
       recordId,
@@ -224,18 +224,18 @@ export async function encryptContactUpdate(
 
 export async function encryptNoteCreate(
   input: NoteInput,
-  key: CryptoKey
+  key: CryptoKey,
+  clientRecordId?: string
 ): Promise<{
   id: string;
   encrypted_title: string;
   encrypted_description: string | null;
   category_id: string;
 }> {
-  const id = crypto.randomUUID();
-  const recordId = id;
+  const recordId = clientRecordId ?? crypto.randomUUID();
   const table = NOTES_TABLE;
   return {
-    id,
+    id: recordId,
     encrypted_title: await encryptRequired(input.title, key, {
       table,
       recordId,
@@ -290,7 +290,8 @@ export async function encryptNoteUpdate(
 
 export async function encryptTaskCreate(
   input: TaskInput,
-  key: CryptoKey
+  key: CryptoKey,
+  clientRecordId?: string
 ): Promise<{
   id: string;
   encrypted_title: string;
@@ -301,11 +302,10 @@ export async function encryptTaskCreate(
   label_id: string;
   priority: number;
 }> {
-  const id = crypto.randomUUID();
-  const recordId = id;
+  const recordId = clientRecordId ?? crypto.randomUUID();
   const table = ITEMS_TABLE;
   return {
-    id,
+    id: recordId,
     encrypted_title: await encryptRequired(input.title, key, {
       table,
       recordId,
@@ -400,19 +400,19 @@ export async function encryptTaskUpdate(
 
 export async function encryptLinkCreate(
   input: LinkInput,
-  key: CryptoKey
+  key: CryptoKey,
+  clientRecordId?: string
 ): Promise<{
   id: string;
   encrypted_name: string;
   encrypted_url: string;
   folder_id: string | null;
 }> {
-  const id = crypto.randomUUID();
-  const recordId = id;
+  const recordId = clientRecordId ?? crypto.randomUUID();
   const table = LINKS_TABLE;
   const { name, url } = prepareLinkNameAndUrl(input.name, input.url);
   return {
-    id,
+    id: recordId,
     encrypted_name: await encryptRequired(name, key, {
       table,
       recordId,
@@ -472,17 +472,17 @@ export async function encryptLinkUpdate(
 
 export async function encryptLinkFolderCreate(
   input: LinkFolderInput,
-  key: CryptoKey
+  key: CryptoKey,
+  clientRecordId?: string
 ): Promise<{
   id: string;
   encrypted_name: string;
   parent_folder_id: string | null;
 }> {
-  const id = crypto.randomUUID();
-  const recordId = id;
+  const recordId = clientRecordId ?? crypto.randomUUID();
   const table = LINK_FOLDERS_TABLE;
   return {
-    id,
+    id: recordId,
     encrypted_name: await encryptRequired(input.name, key, {
       table,
       recordId,

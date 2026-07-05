@@ -606,7 +606,8 @@ export default function App() {
     try {
       await touchVaultActivity();
       if (screen.formMode === "create") {
-        const id = await createEntity(repo, formDraft);
+        const id = crypto.randomUUID();
+        await createEntity(repo, formDraft, id);
         await reloadCurrentTab();
         await openEdit(screen.kind, id);
       } else if (screen.id) {
@@ -1002,19 +1003,20 @@ function validateDraft(draft: EntityFormDraft): string | null {
 /** Persists a new entity and returns its id. */
 async function createEntity(
   repo: EntityRepository,
-  draft: EntityFormDraft
+  draft: EntityFormDraft,
+  clientRecordId?: string
 ): Promise<string> {
   switch (draft.kind) {
     case "tasks":
-      return repo.createTask(draft.value);
+      return repo.createTask(draft.value, clientRecordId);
     case "notes":
-      return repo.createNote(draft.value);
+      return repo.createNote(draft.value, clientRecordId);
     case "contacts":
-      return repo.createContact(draft.value);
+      return repo.createContact(draft.value, clientRecordId);
     case "links":
-      return repo.createLink(draft.value);
+      return repo.createLink(draft.value, clientRecordId);
     case "link_folder":
-      return repo.createLinkFolder(draft.value);
+      return repo.createLinkFolder(draft.value, clientRecordId);
   }
 }
 

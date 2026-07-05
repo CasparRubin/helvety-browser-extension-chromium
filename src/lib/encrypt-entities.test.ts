@@ -87,6 +87,17 @@ describe("encrypt-entities roundtrip", () => {
     await expect(decryptTaskTitle(row, key)).resolves.toBe("Ship feature");
   });
 
+  it("create helpers honor clientRecordId when supplied", async () => {
+    const key = await aes256GcmKey();
+    const clientId = "550e8400-e29b-41d4-a716-446655440000";
+    const payload = await encryptTaskCreate(
+      { title: "Draft task" },
+      key,
+      clientId
+    );
+    expect(payload.id).toBe(clientId);
+  });
+
   it("note create roundtrips through decryptNoteRow", async () => {
     const key = await aes256GcmKey();
     const payload = await encryptNoteCreate(

@@ -85,6 +85,11 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("entity_links");
   });
 
+  it("documents create clientRecordId crypto contract vs save-then-edit UI", () => {
+    expect(doc).toContain("clientRecordId");
+    expect(doc).toMatch(/save-then-edit/i);
+  });
+
   it("describes edit-first side panel UX (not a read-only detail view)", () => {
     expect(doc).toMatch(/edit-first|Edit-first/i);
     expect(doc).toMatch(/E2EE_DETAIL_COLUMNS.*edit/i);
