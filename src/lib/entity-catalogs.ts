@@ -168,7 +168,7 @@ export const PRIORITY_COLORS: Record<number, string> = {
 };
 
 /** Finds a catalog entry by id. */
-export function catalogById(
+function catalogById(
   entries: CatalogEntry[],
   id: string
 ): CatalogEntry | undefined {

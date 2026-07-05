@@ -252,7 +252,7 @@ describe("helvetyAuthFetch", () => {
     });
   });
 
-  it("sanitizeExtensionAuthError maps legacy operator copy", () => {
+  it("sanitizeExtensionAuthError maps server allowlist copy", () => {
     expect(
       sanitizeExtensionAuthError(
         "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS)."

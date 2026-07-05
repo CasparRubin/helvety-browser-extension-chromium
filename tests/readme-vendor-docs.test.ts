@@ -51,6 +51,13 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).not.toMatch(/default_popup/i);
   });
 
+  it("documents sonner toasts (not @helvety/ui/sonner) for extension runtime", () => {
+    expect(readme).toContain("sonner");
+    expect(readme).toContain("Toaster");
+    expect(readme).toContain("getE2eeHookErrorMessage");
+    expect(readme).not.toMatch(/\| `@helvety\/ui`[^\n]*@helvety\/ui\/sonner/);
+  });
+
   it("documents tests/ layout contract suites", () => {
     expect(readme).toContain("tests/");
     expect(readme).toContain("manifest-side-panel");
@@ -66,6 +73,8 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("dependency-pins");
     expect(readme).toContain("tsconfig-build");
     expect(readme).toContain("src/**/*.test.ts");
+    expect(readme).toMatch(/src\/\*\*\/\*\.test\.ts\(x\)/);
+    expect(readme).toContain("extension-entity-links-hooks");
     expect(readme).toContain("entity-catalogs");
     expect(readme).toContain("entity-link-repository");
     expect(readme).toContain("helvety-auth-api");

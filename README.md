@@ -36,12 +36,13 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 Workspace packages supply **extension chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-| Package                     | Role in this extension                                                                                                                                                               |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities                                                                                               |
-| `@helvety/ui`               | Base UI shadcn primitives (`base-vega`): tabs, buttons, inputs, tooltips, list states, `row-action-button`, `form-field`, `icon-size`, `public-tool-workspace`, `@helvety/ui/sonner` |
-| `@helvety/shared`           | E2EE crypto and shared utilities                                                                                                                                                     |
-| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                                                                                                      |
+| Package                     | Role in this extension                                                                                                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities                                                                                        |
+| `@helvety/ui`               | Base UI shadcn primitives (`base-vega`): tabs, buttons, inputs, tooltips, list states, `row-action-button`, `form-field`, `icon-size`, `public-tool-workspace`                |
+| `sonner`                    | Toasts (`<Toaster>` in `App.tsx`; entity-link hook failures via `getE2eeHookErrorMessage` in `extension-entity-links-hooks.tsx`) — web zones use `@helvety/ui/sonner` instead |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                                                                                                              |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                                                                                               |
 
 Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
 
@@ -68,7 +69,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Save only); OKLCH tokens via `@helvety/extension-chrome/extension-tokens.css` and `popup.css` (imported from `src/globals.css`, not a local fork).
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (shared `@helvety/ui/tiptap-editor`) for task/note descriptions and contact notes. Remount key is `entityFormSessionKey` (record identity), never serialized draft text; `content` is mount-only so TipTap v3 does not reset on each keystroke. Web apps mirror this in `E2eeRichTextItemEditorShell` (`editorSessionKey`). `@helvety/ui/input`, `@helvety/ui/textarea`, and `@helvety/ui/native-select` for other fields.
 - E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
-- Entity links UI: `extension-entity-links-hooks.tsx`, `ExtensionEntityLinkPanels.tsx` in edit forms.
+- Entity links UI: `extension-entity-links-hooks.tsx` (load/link/unlink failures surface `toast.error` via `getE2eeHookErrorMessage`), `ExtensionEntityLinkPanels.tsx` in edit forms.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header; icon URL from `extension-icon.ts` → `assets/icon-48.png`).
 - Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
 - OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
@@ -128,7 +129,7 @@ The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvet
 ## Scripts
 
 ```bash
-pnpm test          # src/**/*.test.ts + tests/*.test.ts
+pnpm test          # src/**/*.test.ts(x) + tests/*.test.ts
 pnpm type-check
 pnpm ci:check
 pnpm ci:release   # check + build → dist/
@@ -144,7 +145,7 @@ pnpm ci:release   # check + build → dist/
 | `src/popup/`                 | React side panel shell and views                                                                                                                                                                                                                                                                                                                                                                             |
 | `public/manifest.json`       | MV3 manifest (`name` must match `EXTENSION_DISPLAY_NAME` in `about-meta.ts`; `side_panel.default_path`)                                                                                                                                                                                                                                                                                                      |
 | `tests/`                     | Vitest drift/contract tests (`about-meta`, `readme-vendor-docs`, `manifest-side-panel`, `background-side-panel`, `pending-otp-storage`, `entity-catalog-drift`, `dependency-pins`, `guardrail-scripts`, `side-panel-chrome`, `security-e2ee-docs`, `auth-session-policy-wiring`, `extension-chrome-shell`, `theme-preference`, `webauthn-docs`, `supabase-auth-patterns`, `copy-accuracy`, `tsconfig-build`) |
-| `src/**/*.test.ts`           | Co-located unit tests (`helvety-auth-api`, `entity-link-repository`, `entity-catalogs`, `entity-navigation` + `entityFormSessionKey`, `entity-rich-text-editor`, `list-group-utils`, `link-tree`, `decrypt-entities`, `dead-export-cleanup`, repository/crypto guards, …)                                                                                                                                    |
+| `src/**/*.test.ts(x)`        | Co-located unit tests (`helvety-auth-api`, `extension-entity-links-hooks`, `entity-link-repository`, `entity-catalogs`, `entity-navigation` + `entityFormSessionKey`, `entity-rich-text-editor`, `list-group-utils`, `link-tree`, `decrypt-entities`, `dead-export-cleanup`, repository/crypto guards, …)                                                                                                    |
 | `scripts/ensure-helvety.mjs` | Vendor Helvety monorepo packages into `.helvety/` before `pnpm install`                                                                                                                                                                                                                                                                                                                                      |
 
 ## Docs

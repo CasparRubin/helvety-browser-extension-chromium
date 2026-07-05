@@ -39,7 +39,7 @@ const AUTH_ORIGIN_MISCONFIGURED_USER_ERROR =
 const PASSKEY_ORIGIN_MISCONFIGURED_USER_ERROR =
   "Passkey API URL is misconfigured. Sign in at helvety.com or reinstall the extension.";
 
-/** Maps legacy operator-oriented auth API errors to user-safe copy. */
+/** Maps server allowlist and other auth API errors to user-safe copy. */
 export function sanitizeExtensionAuthError(error: string): string {
   if (
     error.includes("HELVETY_CHROME_EXTENSION_ORIGINS") ||

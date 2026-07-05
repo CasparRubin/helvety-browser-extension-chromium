@@ -59,8 +59,9 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("clearAllKeys");
   });
 
-  it("documents v2-only entity encryption", () => {
-    expect(doc).toMatch(/v2-only/i);
+  it("documents field-bound entity encryption", () => {
+    expect(doc).toMatch(/field-bound AAD/i);
+    expect(doc).toContain("table:recordId:column");
     expect(doc).toContain("e2ee-entity-columns");
   });
 
@@ -68,6 +69,12 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toMatch(/Weekly proof vs web device trust/i);
     expect(doc).toContain("authenticateBearerRequest");
     expect(doc).toContain("X-Helvety-Weekly-Proof");
+  });
+
+  it("documents extension entity-link hook toasts and test coverage", () => {
+    expect(doc).toContain("extension-entity-links-hooks.test.tsx");
+    expect(doc).toContain("getE2eeHookErrorMessage");
+    expect(doc).toContain("<Toaster>");
   });
 
   it("documents server-enforced OTP and cross-app entity links", () => {

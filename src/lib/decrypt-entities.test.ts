@@ -7,17 +7,20 @@ import { describe, expect, it } from "vitest";
 import {
   decryptContactLabel,
   decryptContactRow,
+  decryptLinkFolderRow,
   decryptLinkName,
   decryptNoteRow,
   decryptNoteTitle,
   decryptTaskRow,
   decryptTaskTitle,
+  toLinkFolderListItem,
 } from "./decrypt-entities";
 
 const TASK_ID = "11111111-1111-4111-8111-111111111111";
 const NOTE_ID = "22222222-2222-4222-8222-222222222222";
 const CONTACT_ID = "33333333-3333-4333-8333-333333333333";
 const LINK_ID = "44444444-4444-4444-8444-444444444444";
+const FOLDER_ID = "55555555-5555-4555-8555-555555555555";
 
 /** AES-256-GCM test key for encrypt/decrypt roundtrips. */
 async function aes256GcmKey(): Promise<CryptoKey> {
@@ -37,7 +40,7 @@ const LIST_META = {
 };
 
 describe("decrypt-entities (client-side roundtrip)", () => {
-  it("decryptTaskTitle reverses v2 field-bound encrypt", async () => {
+  it("decryptTaskTitle reverses field-bound encrypt", async () => {
     const key = await aes256GcmKey();
     const plaintext = "Buy oat milk";
     const enc = await encryptEntityField(plaintext, key, {
@@ -141,7 +144,7 @@ describe("decrypt-entities (client-side roundtrip)", () => {
     await expect(decryptLinkName(row, key)).resolves.toBe(plaintext);
   });
 
-  it("fails when v2 ciphertext is decrypted with the wrong column context", async () => {
+  it("fails when ciphertext is decrypted with the wrong column context", async () => {
     const key = await aes256GcmKey();
     const enc = await encryptEntityField("555-0100", key, {
       table: "contacts",
@@ -296,5 +299,44 @@ describe("decrypt-entities (detail rows)", () => {
     const note = await decryptNoteRow(row, key);
     expect(note.title).toBe("Ideas");
     expect(note.description).toBe("Buy milk");
+  });
+
+  it("decryptLinkFolderRow decrypts folder name with link_folders AAD", async () => {
+    const key = await aes256GcmKey();
+    const enc = await encryptEntityField("Reading list", key, {
+      table: "link_folders",
+      recordId: FOLDER_ID,
+      column: "encrypted_name",
+    });
+    const row = {
+      id: FOLDER_ID,
+      user_id: "user-1",
+      encrypted_name: serializeEncryptedData(enc),
+      parent_folder_id: null,
+      sort_order: 0,
+      created_at: LIST_META.created_at,
+      updated_at: LIST_META.created_at,
+    };
+    const folder = await decryptLinkFolderRow(row, key);
+    expect(folder.name).toBe("Reading list");
+  });
+
+  it("toLinkFolderListItem maps decrypted folder name for list rows", async () => {
+    const key = await aes256GcmKey();
+    const enc = await encryptEntityField("Archive", key, {
+      table: "link_folders",
+      recordId: FOLDER_ID,
+      column: "encrypted_name",
+    });
+    const row = {
+      id: FOLDER_ID,
+      encrypted_name: serializeEncryptedData(enc),
+      parent_folder_id: null,
+      sort_order: 1,
+      created_at: LIST_META.created_at,
+    };
+    const item = await toLinkFolderListItem(row, key);
+    expect(item.name).toBe("Archive");
+    expect(item.sort_order).toBe(1);
   });
 });

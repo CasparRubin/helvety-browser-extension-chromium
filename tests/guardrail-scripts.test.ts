@@ -16,3 +16,14 @@ describe("extension auth consistency script", () => {
     expect(output).toContain("consistency:extension-auth OK");
   });
 });
+
+describe("extension E2EE consistency script", () => {
+  it("passes when extension E2EE wiring matches monorepo expectations", () => {
+    const output = execFileSync(
+      process.execPath,
+      [join(repoRoot, "scripts", "check-extension-e2ee-consistency.mjs")],
+      { cwd: repoRoot, encoding: "utf8" }
+    );
+    expect(output).toContain("consistency:extension-e2ee OK");
+  });
+});

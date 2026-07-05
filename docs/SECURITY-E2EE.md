@@ -5,7 +5,7 @@ What this extension is **designed** to do and what it **does not** guarantee. Sa
 Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
 URLs and API path constants: **`src/lib/config.ts`**.  
-Automated guards: **`entity-repository.test.ts`** (no star selects; ciphertext-only writes via `@helvety/shared/e2ee-write-guard`), **`encrypt-entities.test.ts`**, **`decrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body; shared `backfillKeyCheckValueIfMissing`), **`scripts/check-extension-e2ee-consistency.mjs`**, **`tests/supabase-auth-patterns.test.ts`** (`getUser()`-first session), **`tests/copy-accuracy.test.ts`**, **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap remount key + mount-only `content` parity with web `E2eeRichTextItemEditorShell`; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`** (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree). Shared package tests cover **`e2ee-entity-columns`**, **`e2ee-write-guard`**, and **`entity-links-client`**.
+Automated guards: **`entity-repository.test.ts`** (no star selects; ciphertext-only writes via `@helvety/shared/e2ee-write-guard`), **`encrypt-entities.test.ts`**, **`decrypt-entities.test.ts`**, **`extension-entity-links-hooks.test.tsx`** (entity-link load/link/unlink failures toast via `getE2eeHookErrorMessage`), **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body; shared `backfillKeyCheckValueIfMissing`), **`scripts/check-extension-e2ee-consistency.mjs`**, **`tests/supabase-auth-patterns.test.ts`** (`getUser()`-first session), **`tests/copy-accuracy.test.ts`**, **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap remount key + mount-only `content` parity with web `E2eeRichTextItemEditorShell`; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts(x)`** (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree). Shared package tests cover **`e2ee-entity-columns`**, **`e2ee-write-guard`**, and **`entity-links-client`**.
 
 ## Privacy summary
 
@@ -69,7 +69,7 @@ The extension **cannot** set helvety.com cookies. Extension OTP verify returns a
 
 **Implication:** A modified extension build could skip local proof checks for PostgREST UX, but **cannot forge** a valid HMAC weekly proof or Supabase JWT without re-authenticating via OTP. **RLS and JWT validity still gate PostgREST**; vault content still requires passkey + PRF.
 
-**Cross-app entity links:** edit forms include shared `EntityLinksPanel` sections (tasks ↔ notes ↔ contacts ↔ links). Link rows are stored in Supabase `entity_links` (structural metadata only); linked record titles are decrypted client-side for display.
+**Cross-app entity links:** edit forms include shared `EntityLinksPanel` sections (tasks ↔ notes ↔ contacts ↔ links). Link rows are stored in Supabase `entity_links` (structural metadata only); linked record titles are decrypted client-side for display. Load/link/unlink failures in `extension-entity-links-hooks.tsx` surface user-visible toasts (`getE2eeHookErrorMessage`); `<Toaster>` is mounted in `App.tsx`.
 
 ## Entity content (tasks, notes, contacts, links)
 
@@ -81,7 +81,7 @@ Passkey unlock params: `PASSKEY_PARAMS_SELECT` from `@helvety/shared/user-passke
 
 ### Decrypt
 
-`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with **v2-only field-bound AAD** (`table:recordId:column` per `encrypted_*` column). Plaintext exists in extension memory and React state while unlocked.
+`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with **field-bound AAD** (`table:recordId:column` per `encrypted_*` column). Plaintext exists in extension memory and React state while unlocked.
 
 **Vault lock vs sign-out (aligned with helvety.com):** idle vault lock calls `deleteMasterKey` + `clearAllKeys` and wipes decrypted list/form state (`App.tsx` `clearDecryptedEntityState`) but **keeps** the cached PRF salt for faster re-unlock. Sign-out calls `clearAllKeys` + `clearCachedPRFSalt`, clears weekly proof, and wipes decrypted state. The same in-memory wipe runs when `user_id` changes so another account never sees the previous user’s rows before the next fetch.
 
@@ -95,7 +95,7 @@ A master key unlocked on **helvety.com** is **not** available in this extension 
 
 ### Writes
 
-Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized v2 ciphertext** in `encrypted_*` columns; `assertEncryptedWritePayloadAuto` from `@helvety/shared/e2ee-write-guard` runs before every insert/update. Structural metadata and default ids come from `@helvety/shared/e2ee-entity-defaults`. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
+Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; `assertEncryptedWritePayloadAuto` from `@helvety/shared/e2ee-write-guard` runs before every insert/update. Structural metadata and default ids come from `@helvety/shared/e2ee-entity-defaults`. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
 
 **Cross-app links** (link/unlink between tasks, notes, contacts, and links) use `entity-link-repository.ts` and `@helvety/shared/entity-links-client` on the `entity_links` table — structural metadata only (no decrypted titles in link rows).
 

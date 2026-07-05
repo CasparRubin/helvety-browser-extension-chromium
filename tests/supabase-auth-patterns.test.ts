@@ -12,9 +12,6 @@ const GET_SESSION_ALLOWLIST = new Set(["src/lib/extension-session.ts"]);
 
 const FORBIDDEN_GET_SESSION = /\.auth\.getSession\s*\(/u;
 
-/**
- *
- */
 function listSourceFiles(directory: string): string[] {
   const entries = readdirSync(directory, { withFileTypes: true });
   const files: string[] = [];

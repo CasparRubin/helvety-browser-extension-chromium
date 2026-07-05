@@ -6,9 +6,6 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/**
- *
- */
 function readSource(relativePath: string): string {
   return readFileSync(join(repoRoot, relativePath), "utf8");
 }

@@ -48,4 +48,36 @@ describe("extension dead export cleanup guards", () => {
     expect(src).toContain("type HelvetyJsonResponse");
     expect(src).not.toMatch(/export type HelvetyJsonResponse/);
   });
+
+  it("entity-catalogs keeps catalogById internal", () => {
+    const src = readLibSource("entity-catalogs.ts");
+    expect(src).toContain("function catalogById");
+    expect(src).not.toMatch(/export function catalogById/);
+    expect(src).toContain("export function catalogColor");
+  });
+
+  it("decrypt-entities keeps decryptLinkFolderName internal", () => {
+    const src = readLibSource("decrypt-entities.ts");
+    expect(src).toContain("function decryptLinkFolderName");
+    expect(src).not.toMatch(/export async function decryptLinkFolderName/);
+    expect(src).toContain("export async function decryptLinkFolderRow");
+  });
+
+  it("catalog-picker keeps CatalogPicker internal", () => {
+    const src = readFileSync(
+      join(libRoot, "../popup/components/catalog-picker.tsx"),
+      "utf8"
+    );
+    expect(src).toContain("function CatalogPicker");
+    expect(src).not.toMatch(/export function CatalogPicker/);
+    expect(src).toContain("export function TaskStagePicker");
+  });
+
+  it("extension entity link hooks surface user-visible errors", () => {
+    const src = readLibSource("extension-entity-links-hooks.tsx");
+    expect(src).toContain("getE2eeHookErrorMessage");
+    expect(src).toContain("toast.error");
+    expect(src).toContain("ENTITY_LINKS_LOAD_ERROR");
+    expect(src).not.toMatch(/catch \{\s*\}/);
+  });
 });

@@ -191,4 +191,26 @@ describe("EntityRepository mutation payloads", () => {
     expect(payload).toMatchObject({ sort_order: 1 });
     expect(payload).toHaveProperty("updated_at");
   });
+
+  it("inserts link folders with encrypted_name only", async () => {
+    const key = await aes256GcmKey();
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      from: vi.fn(() => ({
+        insert,
+        update: vi.fn(),
+        delete: vi.fn(),
+        select: vi.fn(),
+      })),
+    };
+
+    const repo = new EntityRepository(supabase as never, "user-1", key);
+    await repo.createLinkFolder({ name: "Reading", parent_folder_id: null });
+
+    expect(insert).toHaveBeenCalledOnce();
+    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    assertNoPlaintextEntityFields(payload);
+    expect(payload).toHaveProperty("encrypted_name");
+    expect(String(payload.encrypted_name)).toMatch(/^\{/);
+  });
 });

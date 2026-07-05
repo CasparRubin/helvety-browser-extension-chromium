@@ -8,9 +8,6 @@ import { EXTENSION_DISPLAY_NAME } from "../src/popup/about-meta";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/**
- *
- */
 function readSource(relativePath: string): string {
   return readFileSync(join(repoRoot, relativePath), "utf8");
 }

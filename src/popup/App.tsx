@@ -17,6 +17,7 @@ import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog
 import { E2EE_UNSAVED_CHANGES_DIALOG } from "@helvety/ui/e2ee-form-layout";
 import { TooltipProvider } from "@helvety/ui/tooltip";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Toaster } from "sonner";
 
 import { HELVETY_AUTH_ORIGIN, HELVETY_GATEWAY } from "../lib/config";
 import { EntityLinkRepository } from "../lib/entity-link-repository";
@@ -914,15 +915,14 @@ export default function App() {
             onConfirm={() => confirmDiscardUnsaved()}
             isDeleting={false}
           />
+          <Toaster theme={themePreference} richColors position="top-center" />
         </div>
       </ExtensionLinksProvider>
     </TooltipProvider>
   );
 }
 
-/**
- *
- */
+/** Loads one decrypted entity for the edit form. */
 async function fetchEntity(
   repo: EntityRepository,
   kind: EntityKind,
@@ -942,9 +942,7 @@ async function fetchEntity(
   }
 }
 
-/**
- *
- */
+/** Empty form draft for a new entity of the given kind. */
 function draftForKind(kind: EntityKind): EntityFormDraft {
   switch (kind) {
     case "tasks":
@@ -960,9 +958,7 @@ function draftForKind(kind: EntityKind): EntityFormDraft {
   }
 }
 
-/**
- *
- */
+/** Maps a decrypted repository record into form draft state. */
 function draftFromRecord(
   kind: EntityKind,
   record: EntityRecord
@@ -984,9 +980,7 @@ function draftFromRecord(
   }
 }
 
-/**
- *
- */
+/** Returns a validation error message or null when the draft can be saved. */
 function validateDraft(draft: EntityFormDraft): string | null {
   switch (draft.kind) {
     case "tasks":
@@ -1005,9 +999,7 @@ function validateDraft(draft: EntityFormDraft): string | null {
   }
 }
 
-/**
- *
- */
+/** Persists a new entity and returns its id. */
 async function createEntity(
   repo: EntityRepository,
   draft: EntityFormDraft
@@ -1026,9 +1018,7 @@ async function createEntity(
   }
 }
 
-/**
- *
- */
+/** Persists edits to an existing entity. */
 async function updateEntity(
   repo: EntityRepository,
   kind: EntityKind,
@@ -1069,9 +1059,7 @@ async function updateEntity(
   }
 }
 
-/**
- *
- */
+/** Deletes one entity by kind and id. */
 async function deleteEntity(
   repo: EntityRepository,
   kind: EntityKind,
@@ -1096,9 +1084,7 @@ async function deleteEntity(
   }
 }
 
-/**
- *
- */
+/** Human-readable label for delete confirmation from the current draft. */
 function deleteLabelFromDraft(
   kind: EntityKind,
   draft: EntityFormDraft | null

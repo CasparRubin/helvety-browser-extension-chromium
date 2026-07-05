@@ -44,9 +44,7 @@ import type { ThemePreference } from "@helvety/extension-chrome/theme-preference
 /** Main entity tabs after unlock (links, tasks, notes, contacts, about). */
 export type EntityTabId = "links" | "tasks" | "notes" | "contacts" | "about";
 
-/**
- *
- */
+/** Icon-only tab trigger with tooltip and screen-reader label. */
 function TabIconTrigger({
   value,
   label,

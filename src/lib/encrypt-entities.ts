@@ -35,7 +35,7 @@ const ITEMS_TABLE = "items" as const;
 const LINKS_TABLE = "links" as const;
 const LINK_FOLDERS_TABLE = "link_folders" as const;
 
-/** v2 field-bound AAD context (`table`, `recordId`, `column`). */
+/** Field-bound AAD context (`table`, `recordId`, `column`). */
 type FieldContext = {
   table: string;
   recordId: string;

@@ -26,7 +26,7 @@ const PRIORITY_ICONS = [
 /**
  *
  */
-export function CatalogPicker({
+function CatalogPicker({
   label,
   entries,
   value,

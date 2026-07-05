@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   decryptContactRow,
+  decryptLinkFolderRow,
   decryptLinkRow,
   decryptNoteRow,
   decryptTaskTitle,
@@ -13,6 +14,7 @@ import {
 import {
   encryptContactCreate,
   encryptLinkCreate,
+  encryptLinkFolderCreate,
   encryptNoteCreate,
   encryptTaskCreate,
 } from "./encrypt-entities";
@@ -70,7 +72,7 @@ describe("encrypt-entities roundtrip", () => {
     expect(contact.description).toBe("Admiral");
   });
 
-  it("task create uses field-bound v2 encryption", async () => {
+  it("task create uses field-bound encryption", async () => {
     const key = await aes256GcmKey();
     const payload = await encryptTaskCreate({ title: "Ship feature" }, key);
     const parsed = parseEncryptedData(payload.encrypted_title);
@@ -133,5 +135,27 @@ describe("encrypt-entities roundtrip", () => {
       key
     );
     expect(link.url).toBe(normalized.url);
+  });
+
+  it("link folder create roundtrips through decryptLinkFolderRow", async () => {
+    const key = await aes256GcmKey();
+    const payload = await encryptLinkFolderCreate(
+      { name: "Work bookmarks", parent_folder_id: null },
+      key
+    );
+    const folder = await decryptLinkFolderRow(
+      {
+        id: payload.id,
+        user_id: "u",
+        encrypted_name: payload.encrypted_name,
+        parent_folder_id: payload.parent_folder_id,
+        sort_order: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      key
+    );
+    expect(folder.name).toBe("Work bookmarks");
+    expect(folder.parent_folder_id).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+import { getE2eeHookErrorMessage } from "@helvety/ui/auth-navigation";
 import {
   createContext,
   useCallback,
@@ -5,9 +6,19 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 import type { EntityLinkRepository } from "./entity-link-repository";
 import type { LinkEntityType } from "@helvety/shared/entity-links-client";
+
+const ENTITY_LINKS_LOAD_ERROR = "Failed to load entity links";
+const ENTITY_LINKS_LINK_ERROR = "Failed to link records";
+const ENTITY_LINKS_UNLINK_ERROR = "Failed to unlink records";
+
+/** Shows a user-visible toast for entity-link hook failures. */
+function reportEntityLinksFailure(err: unknown, fallback: string): void {
+  toast.error(getE2eeHookErrorMessage(err, fallback));
+}
 
 const ExtensionLinksContext = createContext<EntityLinkRepository | null>(null);
 
@@ -65,7 +76,8 @@ export function createExtensionEntityLinksHook(loadLinks: LoadLinksFn) {
         const result = await loadLinks(repo, entityId);
         setAllItems(result.allItems);
         setLinkedItems(result.linkedItems);
-      } catch {
+      } catch (err) {
+        reportEntityLinksFailure(err, ENTITY_LINKS_LOAD_ERROR);
         setAllItems([]);
         setLinkedItems([]);
       } finally {
@@ -93,7 +105,8 @@ export function createExtensionEntityLinksHook(loadLinks: LoadLinksFn) {
           await repo.linkEntities(sourceType, entityId, targetType, targetId);
           await reload();
           return true;
-        } catch {
+        } catch (err) {
+          reportEntityLinksFailure(err, ENTITY_LINKS_LINK_ERROR);
           return false;
         }
       },
@@ -108,7 +121,9 @@ export function createExtensionEntityLinksHook(loadLinks: LoadLinksFn) {
         try {
           await repo.unlink(linkId);
           await reload();
-        } catch {}
+        } catch (err) {
+          reportEntityLinksFailure(err, ENTITY_LINKS_UNLINK_ERROR);
+        }
       },
       [reload, repo]
     );
