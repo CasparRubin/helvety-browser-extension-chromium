@@ -282,6 +282,15 @@ describe("side panel chrome", () => {
     expect(tabChangeBlock).toContain("pendingTabChangeRef");
   });
 
+  it("App uses save-first create before switching to edit mode", () => {
+    const app = readSource("src/popup/App.tsx");
+    expect(app).toContain('formMode: "create"');
+    expect(app).toContain("crypto.randomUUID()");
+    expect(app).toContain("await createEntity(repo, formDraft, id)");
+    expect(app).toContain('formMode: "edit"');
+    expect(app).not.toContain("seedDraft");
+  });
+
   it("App guards cancel and tab discard with the same unsaved dialog", () => {
     const app = readSource("src/popup/App.tsx");
     expect(app).toContain("const handleCancelForm");

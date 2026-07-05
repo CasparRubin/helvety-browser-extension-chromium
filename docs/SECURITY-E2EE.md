@@ -95,7 +95,7 @@ A master key unlocked on **helvety.com** is **not** available in this extension 
 
 ### Writes
 
-Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; `assertEncryptedWritePayloadAuto` from `@helvety/shared/e2ee-write-guard` runs before every insert/update. Structural metadata and default ids come from `@helvety/shared/e2ee-entity-defaults`. **Create** may pass an optional `clientRecordId` so ciphertext AAD matches the row id (same contract as web zone open-first create); the side panel UI is still **save-then-edit** (empty form until Save), not instant sheet open. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
+Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; `assertEncryptedWritePayloadAuto` from `@helvety/shared/e2ee-write-guard` runs before every insert/update. Structural metadata and default ids come from `@helvety/shared/e2ee-entity-defaults`. Empty create forms use `@helvety/shared/e2ee-create-inputs` (same as web zones). **Create** passes an optional `clientRecordId` so ciphertext AAD matches the row id; the UI is **save-first** (empty form until Save, then edit mode). Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
 
 **Cross-app links** (link/unlink between tasks, notes, contacts, and links) use `entity-link-repository.ts` and `@helvety/shared/entity-links-client` on the `entity_links` table — structural metadata only (no decrypted titles in link rows).
 

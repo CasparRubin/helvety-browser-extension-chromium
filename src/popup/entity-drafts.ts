@@ -1,10 +1,10 @@
 import {
-  DEFAULT_CONTACT_CATEGORY_ID,
-  DEFAULT_NOTE_CATEGORY_ID,
-  DEFAULT_TASK_LABEL_ID,
-  DEFAULT_TASK_PRIORITY,
-  DEFAULT_TASK_STAGE_ID,
-} from "../lib/entity-defaults";
+  emptyContactInput,
+  emptyLinkFolderInput,
+  emptyLinkInput,
+  emptyNoteInput,
+  emptyTaskInput,
+} from "@helvety/shared/e2ee-create-inputs";
 
 import type {
   Contact,
@@ -19,21 +19,13 @@ import type {
   TaskInput,
 } from "../lib/entity-types";
 
-/**
- *
- */
-export function emptyContactInput(): ContactInput {
-  return {
-    first_name: "",
-    last_name: "",
-    description: null,
-    email: null,
-    phone: null,
-    birthday: null,
-    notes: null,
-    category_id: DEFAULT_CONTACT_CATEGORY_ID,
-  };
-}
+export {
+  emptyContactInput,
+  emptyLinkFolderInput,
+  emptyLinkInput,
+  emptyNoteInput,
+  emptyTaskInput,
+};
 
 /**
  *
@@ -54,37 +46,11 @@ export function contactToInput(contact: Contact): ContactInput {
 /**
  *
  */
-export function emptyNoteInput(): NoteInput {
-  return {
-    title: "",
-    description: null,
-    category_id: DEFAULT_NOTE_CATEGORY_ID,
-  };
-}
-
-/**
- *
- */
 export function noteToInput(note: Note): NoteInput {
   return {
     title: note.title,
     description: note.description,
     category_id: note.category_id,
-  };
-}
-
-/**
- *
- */
-export function emptyTaskInput(): TaskInput {
-  return {
-    title: "",
-    description: null,
-    start_date: null,
-    end_date: null,
-    stage_id: DEFAULT_TASK_STAGE_ID,
-    label_id: DEFAULT_TASK_LABEL_ID,
-    priority: DEFAULT_TASK_PRIORITY,
   };
 }
 
@@ -106,26 +72,12 @@ export function taskToInput(task: Task): TaskInput {
 /**
  *
  */
-export function emptyLinkInput(): LinkInput {
-  return { name: "", url: "", folder_id: null };
-}
-
-/**
- *
- */
 export function linkToInput(link: Link): LinkInput {
   return {
     name: link.name,
     url: link.url,
     folder_id: link.folder_id,
   };
-}
-
-/**
- *
- */
-export function emptyLinkFolderInput(): LinkFolderInput {
-  return { name: "", parent_folder_id: null };
 }
 
 /**

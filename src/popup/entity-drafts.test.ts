@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -29,8 +32,19 @@ import type {
   Task,
 } from "../lib/entity-types";
 
+const draftsPath = resolve(import.meta.dirname, "entity-drafts.ts");
+
+describe("entity-drafts wiring", () => {
+  it("re-exports empty create inputs from @helvety/shared/e2ee-create-inputs", () => {
+    const src = readFileSync(draftsPath, "utf8");
+    expect(src).toContain("@helvety/shared/e2ee-create-inputs");
+    expect(src).toContain("emptyContactInput");
+    expect(src).not.toMatch(/function emptyContactInput\(/);
+  });
+});
+
 describe("empty input factories", () => {
-  it("seeds a contact draft with the default category", () => {
+  it("emptyContactInput uses shared category default and empty names", () => {
     expect(emptyContactInput()).toEqual({
       first_name: "",
       last_name: "",
@@ -43,7 +57,7 @@ describe("empty input factories", () => {
     });
   });
 
-  it("seeds a note draft with the default category", () => {
+  it("emptyNoteInput uses shared category default", () => {
     expect(emptyNoteInput()).toEqual({
       title: "",
       description: null,
@@ -51,7 +65,7 @@ describe("empty input factories", () => {
     });
   });
 
-  it("seeds a task draft with default stage, label, and priority", () => {
+  it("emptyTaskInput uses default stage, label, and priority", () => {
     expect(emptyTaskInput()).toEqual({
       title: "",
       description: null,
@@ -63,7 +77,7 @@ describe("empty input factories", () => {
     });
   });
 
-  it("seeds empty link and link-folder drafts", () => {
+  it("emptyLinkInput and emptyLinkFolderInput start blank", () => {
     expect(emptyLinkInput()).toEqual({ name: "", url: "", folder_id: null });
     expect(emptyLinkFolderInput()).toEqual({
       name: "",

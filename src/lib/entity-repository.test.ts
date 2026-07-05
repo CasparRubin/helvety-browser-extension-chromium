@@ -128,6 +128,31 @@ describe("EntityRepository mutation payloads", () => {
     ).rejects.toThrow("Link not found");
   });
 
+  it("createTask uses clientRecordId as the inserted row id", async () => {
+    const key = await aes256GcmKey();
+    const clientId = "550e8400-e29b-41d4-a716-446655440000";
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      from: vi.fn(() => ({
+        insert,
+        update: vi.fn(),
+        delete: vi.fn(),
+        select: vi.fn(),
+      })),
+    };
+
+    const repo = new EntityRepository(supabase as never, "user-1", key);
+    const returnedId = await repo.createTask(
+      { title: "Save-first task" },
+      clientId
+    );
+
+    expect(returnedId).toBe(clientId);
+    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.id).toBe(clientId);
+    assertNoPlaintextEntityFields(payload);
+  });
+
   it("inserts tasks with encrypted_title only (no plaintext title)", async () => {
     const key = await aes256GcmKey();
     const insert = vi.fn().mockResolvedValue({ error: null });

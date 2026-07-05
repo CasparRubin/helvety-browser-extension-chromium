@@ -48,6 +48,14 @@ const FORBIDDEN_PHRASES = [
     label: "unlock screen encryption params preflight",
     re: /unlock UI shows.*ready|Preflight shows `Encryption params:/i,
   },
+  {
+    label: "E2EE create draft row persist-on-open",
+    re: /draft row and open/i,
+  },
+  {
+    label: "save-then-edit create flow",
+    re: /save-then-edit/i,
+  },
 ] as const;
 
 /** Line-level negations that make an otherwise forbidden phrase accurate. */
@@ -89,6 +97,8 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(readme).toMatch(/not direct Supabase OTP/i);
     expect(readme).toMatch(/not.*unlock this extension/i);
     expect(readme).toContain("supabase-auth-patterns");
+    expect(readme).toMatch(/save-first|empty form then saves/i);
+    expect(readme).not.toMatch(/draft row/i);
   });
 
   it("SECURITY-E2EE documents web vs extension device-trust split", () => {
@@ -104,6 +114,9 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(doc).toMatch(/edit \*\*header\*\* trash/i);
     expect(doc).toContain("Trash2Icon");
     expect(doc).toContain("extension-tokens.css");
+    expect(doc).toMatch(/save-first/i);
+    expect(doc).toContain("e2ee-create-inputs");
+    expect(doc).not.toMatch(/draft row/i);
   });
 
   it("webauthn doc documents getUser-first params load and KCV", () => {

@@ -28,4 +28,8 @@ describe("EntityFormView", () => {
     expect(src).not.toContain("Cancel");
     expect(src).not.toMatch(/Trash2/);
   });
+
+  it("shows cross-app link panels only in edit mode with a saved entity id", () => {
+    expect(src).toContain('formMode === "edit" && editingEntityId');
+  });
 });
