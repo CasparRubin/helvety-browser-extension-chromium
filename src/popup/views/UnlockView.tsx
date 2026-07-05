@@ -5,7 +5,7 @@ import { Loader2, Lock, LogOut } from "lucide-react";
 import { IconTooltipButton } from "../components/IconTooltipButton";
 import { PopupHeader } from "../components/PopupHeader";
 
-/** Supabase `user_passkey_params` preflight shown on the unlock screen. */
+/** Supabase `user_passkey_params` preflight state for unlock screen branching. */
 export type ParamsPreflight =
   | { status: "loading" }
   | { status: "ready" }
@@ -67,18 +67,6 @@ export function UnlockView({
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 p-3 pt-0">
-          {paramsPreflight ? (
-            <p className="text-muted-foreground text-xs">
-              Encryption params:{" "}
-              {paramsPreflight.status === "loading"
-                ? "checking…"
-                : paramsPreflight.status === "ready"
-                  ? "ready"
-                  : paramsPreflight.status === "not_setup"
-                    ? "not set up on this account"
-                    : `cannot load: ${paramsPreflight.message}`}
-            </p>
-          ) : null}
           {notSetup ? (
             <Button variant="default" onClick={onOpenEncryptionSetup}>
               Set up encryption on helvety.com

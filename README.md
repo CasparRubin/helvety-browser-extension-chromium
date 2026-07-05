@@ -12,11 +12,11 @@ You do **not** need the Helvety monorepo or a local auth server to **build** thi
 | Email OTP sign-in                                               | Yes — server routes on `helvety.com/auth/api/extension/otp/*` with EU/EEA attestation (not direct Supabase OTP from the client); **creates a Helvety account when the email is new** (same server path as helvety.com) |
 | Cross-app entity links                                          | Yes — link/unlink tasks, notes, contacts, and links in edit forms (`EntityLinksPanel`)                                                                                                                                 |
 | Open in web app (list + edit)                                   | Yes — list opens zone path on gateway; edit opens entity deep link (`buildE2eeDeepLink`)                                                                                                                               |
-| PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; unlock UI shows `ready` / `not set up` / `cannot load: …`                                                                                             |
+| PRF params read (preflight)                                     | **Usually yes** when signed in — Supabase `user_passkey_params`; status on **About** tab (`ready` / `not set up` / error message)                                                                                      |
 | Decrypted lists + CRUD (tasks, notes, contacts, links, folders) | **Only after full passkey unlock in the extension** — create, edit, and delete from the side panel (edit-first lists; links open URL on tap; up/down reorder within each list level)                                   |
 | Passkey unlock (WebAuthn on auth)                               | **Yes** when `helvety.com/auth` serves JSON on `options` / `verify` and Vercel `HELVETY_CHROME_EXTENSION_ORIGINS` includes your runtime extension id (Edge/Chrome unpacked ids differ)                                 |
 
-You can sign in and the extension will load PRF params when configured (preflight on the unlock screen). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: production auth must expose the passkey API routes and allowlist your extension id on `helvety-auth` (see monorepo [`apps/auth/docs/extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md)). Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
+You can sign in and the extension will load PRF params when configured (preflight runs in the background; see About tab for status). **Decrypted lists and CRUD** require a successful passkey unlock in this extension: production auth must expose the passkey API routes and allowlist your extension id on `helvety-auth` (see monorepo [`apps/auth/docs/extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md)). Unlocking on [helvety.com](https://helvety.com) does **not** unlock this extension — master keys are per browser context. See [docs/webauthn-extension.md](docs/webauthn-extension.md).
 
 ## What talks to what
 
@@ -126,7 +126,7 @@ The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvet
 ## Scripts
 
 ```bash
-pnpm test          # src/lib/*.test.ts + tests/*.test.ts
+pnpm test          # src/**/*.test.ts + tests/*.test.ts
 pnpm type-check
 pnpm ci:check
 pnpm ci:release   # check + build → dist/

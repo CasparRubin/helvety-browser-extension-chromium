@@ -54,4 +54,10 @@ describe("webauthn-extension.md", () => {
     expect(doc).toMatch(/verify KCV/i);
     expect(doc).toContain("passkey-unlock.ts");
   });
+
+  it("documents preflight on About tab, not the unlock screen", () => {
+    expect(doc).toMatch(/About.*tab.*Encryption preflight/i);
+    expect(doc).not.toMatch(/Preflight shows `Encryption params:/);
+    expect(doc).toMatch(/unlock screen.*user-facing copy/i);
+  });
 });

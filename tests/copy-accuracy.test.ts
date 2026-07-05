@@ -36,6 +36,10 @@ const FORBIDDEN_PHRASES = [
     label: "extension weekly email proof storage",
     re: /chrome\.storage\.local.*weekly email proof/i,
   },
+  {
+    label: "unlock screen encryption params preflight",
+    re: /unlock UI shows.*ready|Preflight shows `Encryption params:/i,
+  },
 ] as const;
 
 /** Line-level negations that make an otherwise forbidden phrase accurate. */
@@ -124,5 +128,24 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(authApiSource).not.toMatch(
       /Extension id is not allowlisted on helvety-auth/
     );
+  });
+
+  it("UnlockView does not expose operator preflight status", () => {
+    const unlockSource = readFileSync(
+      join(repoRoot, "src/popup/views/UnlockView.tsx"),
+      "utf8"
+    );
+
+    expect(unlockSource).not.toContain("Encryption params:");
+    expect(unlockSource).toContain("Unlock with passkey");
+    expect(unlockSource).toContain("cryptoError");
+  });
+
+  it("README documents preflight on About tab, not unlock screen", () => {
+    const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
+
+    expect(readme).toMatch(/About.*tab/i);
+    expect(readme).not.toMatch(/unlock UI shows.*ready/i);
+    expect(readme).not.toMatch(/preflight on the unlock screen/i);
   });
 });

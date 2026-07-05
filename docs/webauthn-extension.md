@@ -8,7 +8,7 @@ Monorepo references point at [CasparRubin/helvety on GitHub](https://github.com/
 
 | Step                               | Status                                                                                                                                                                                                                                                                                                                                              |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PRF params (`user_passkey_params`) | **Works** when signed in — extension reads via Supabase JWT ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)). Preflight: `ready` / `not set up` / `cannot load: …`.                                                                                                                                                        |
+| PRF params (`user_passkey_params`) | **Works** when signed in — extension reads via Supabase JWT ([`extension-passkey-params.ts`](../src/lib/extension-passkey-params.ts)). Preflight (About tab): `ready` / `not set up` / error message.                                                                                                                                               |
 | WebAuthn options / verify          | **Implemented** in monorepo (`apps/auth/app/api/extension/passkey/*`). Production must serve JSON on those routes (404/HTML → “Passkey API is not deployed…”; allowlist failures → user-safe “not authorized” message). `HELVETY_CHROME_EXTENSION_ORIGINS` on `helvety-auth` must include your extension id (bare id or `chrome-extension://<id>`). |
 
 This repo ships the **extension client**. Full unlock needs the live auth app at `HELVETY_AUTH_ORIGIN` (default `https://helvety.com/auth`) to serve those routes and allowlist your extension id — see monorepo [`extension-passkey-production.md`](https://github.com/CasparRubin/helvety/blob/main/apps/auth/docs/extension-passkey-production.md).
@@ -57,7 +57,7 @@ Dev builds log sanitized unlock steps as `[helvety-unlock]`; production builds a
 
 ## Troubleshooting: params errors or no QR
 
-Unlock stops before the passkey UI (QR, phone, security key) when an earlier step fails. Preflight shows `Encryption params: ready | not set up | cannot load: …`.
+Unlock stops before the passkey UI (QR, phone, security key) when an earlier step fails. Preflight status (`ready` / `not set up` / the error message) is shown on the **About** tab under **Encryption preflight**; the unlock screen itself only shows user-facing copy and errors after you tap **Unlock with passkey**.
 
 ### Causal chain
 
@@ -76,7 +76,7 @@ On **Unlock with passkey**:
 
 | Symptom                                        | Likely cause                                                 | What to do                                                                                                                                   |
 | ---------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cannot load:` + blocked network               | Ad blocker / privacy extension                               | Allow `*.supabase.co`                                                                                                                        |
+| `Network blocked…` params error                | Ad blocker / privacy extension                               | Allow `*.supabase.co`                                                                                                                        |
 | Session / JWT errors                           | Stale session                                                | Sign out and sign in again                                                                                                                   |
 | `not readable for this session`                | RLS                                                          | Confirm `auth.uid() = user_id` (web works → data exists)                                                                                     |
 | `ready` + API not deployed                     | Passkey routes return HTML/404 (not JSON errors)             | About tab: confirm Passkey API URL includes `/auth`; deploy `helvety-auth`; see production setup doc                                         |

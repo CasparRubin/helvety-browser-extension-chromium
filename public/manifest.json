@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Helvety",
   "description": "Helvety E2EE tasks, notes, contacts, links, and folders — create, edit, and delete in the side panel after passkey unlock",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "minimum_chrome_version": "114",
   "homepage_url": "https://helvety.com",
   "icons": {
