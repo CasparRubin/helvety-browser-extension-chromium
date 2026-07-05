@@ -25,10 +25,13 @@ describe("extension dead export cleanup guards", () => {
     expect(src).toContain("CatalogEntryLite");
   });
 
-  it("e2ee-privacy does not export unused structural field list", () => {
-    const src = readLibSource("e2ee-privacy.ts");
-    expect(src).toContain("PLAINTEXT_CONTENT_FIELD_NAMES");
-    expect(src).not.toContain("PLAINTEXT_STRUCTURAL_FIELD_NAMES");
+  it("entity-repository guards selects and plaintext write payloads", () => {
+    const repoSrc = readLibSource("entity-repository.ts");
+    const repoTestSrc = readLibSource("entity-repository.test.ts");
+    expect(repoSrc).not.toMatch(/\.select\s*\(\s*["'`]\*/);
+    expect(repoTestSrc).toContain("@helvety/shared/e2ee-write-guard");
+    expect(repoTestSrc).toContain("PLAINTEXT_CONTENT_FIELD_NAMES");
+    expect(repoTestSrc).toContain("never uses star selects");
   });
 
   it("weekly proof storage does not export retired OTP anchor aliases", () => {

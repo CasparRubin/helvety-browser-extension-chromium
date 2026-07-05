@@ -22,8 +22,9 @@ describe("SECURITY-E2EE.md", () => {
   });
 
   it("still documents client-side decrypt and privacy guards", () => {
-    expect(doc).toContain("e2ee-privacy");
+    expect(doc).toContain("e2ee-write-guard");
     expect(doc).toContain("decrypt-entities.ts");
+    expect(doc).toContain("entity-repository.test.ts");
     expect(doc).toContain("clearDecryptedEntityState");
     expect(doc).toContain("tests/security-e2ee-docs.test.ts");
   });
@@ -46,10 +47,21 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).toContain("onKeyEvent");
   });
 
-  it("documents KCV metadata and extension backfill on unlock", () => {
+  it("documents KCV metadata and shared backfill on unlock", () => {
     expect(doc).toContain("key_check_value");
-    expect(doc).toMatch(/backfills it via PostgREST/i);
+    expect(doc).toMatch(/backfillKeyCheckValueIfMissing/i);
     expect(doc).toContain("passkey-unlock");
+  });
+
+  it("documents vault lock vs sign-out PRF salt behavior", () => {
+    expect(doc).toMatch(/Vault lock vs sign-out/i);
+    expect(doc).toContain("clearCachedPRFSalt");
+    expect(doc).toContain("clearAllKeys");
+  });
+
+  it("documents v2-only entity encryption", () => {
+    expect(doc).toMatch(/v2-only/i);
+    expect(doc).toContain("e2ee-entity-columns");
   });
 
   it("documents extension vs web device-trust threat model", () => {
@@ -68,7 +80,7 @@ describe("SECURITY-E2EE.md", () => {
 
   it("describes edit-first side panel UX (not a read-only detail view)", () => {
     expect(doc).toMatch(/edit-first|Edit-first/i);
-    expect(doc).toMatch(/\*_DETAIL_SELECT.*edit/i);
+    expect(doc).toMatch(/E2EE_DETAIL_COLUMNS.*edit/i);
     expect(doc).not.toMatch(/read-only detail/i);
     expect(doc).not.toMatch(/list\/detail\/form state/i);
   });

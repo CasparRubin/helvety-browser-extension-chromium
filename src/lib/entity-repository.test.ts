@@ -1,7 +1,13 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { PLAINTEXT_CONTENT_FIELD_NAMES } from "@helvety/shared/e2ee-write-guard";
 import { describe, expect, it, vi } from "vitest";
 
-import { PLAINTEXT_CONTENT_FIELD_NAMES } from "./e2ee-privacy";
 import { EntityRepository } from "./entity-repository";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const PLAINTEXT_FIELD_KEYS = new Set<string>(PLAINTEXT_CONTENT_FIELD_NAMES);
 
@@ -24,6 +30,15 @@ async function aes256GcmKey(): Promise<CryptoKey> {
 }
 
 describe("EntityRepository mutation payloads", () => {
+  it("never uses star selects on entity tables", () => {
+    const source = readFileSync(
+      join(repoRoot, "src/lib/entity-repository.ts"),
+      "utf8"
+    );
+    expect(source).not.toMatch(/\.select\s*\(\s*["'`]\*/);
+    expect(source).not.toMatch(/\.select\s*\(\s*\*\s*\)/);
+  });
+
   it("inserts contacts with ciphertext keys only", async () => {
     const key = await aes256GcmKey();
     const insert = vi.fn().mockResolvedValue({ error: null });

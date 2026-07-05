@@ -5,7 +5,7 @@ What this extension is **designed** to do and what it **does not** guarantee. Sa
 Not a formal threat model or audit. Your Supabase RLS, extension packaging, browser updates, and host integrity still matter.
 
 URLs and API path constants: **`src/lib/config.ts`**.  
-Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`e2ee-data-select.test.ts`**, **`entity-repository.test.ts`**, **`encrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body; KCV backfill), **`tests/supabase-auth-patterns.test.ts`** (`getUser()`-first session), **`tests/copy-accuracy.test.ts`**, **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap remount key + mount-only `content` parity with web `E2eeRichTextItemEditorShell`; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`** (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree).
+Automated guards: **`entity-repository.test.ts`** (no star selects; ciphertext-only writes via `@helvety/shared/e2ee-write-guard`), **`encrypt-entities.test.ts`**, **`decrypt-entities.test.ts`**, **`unlock-dev-log.test.ts`**, **`passkey-unlock.test.ts`** (no PRF in verify body; shared `backfillKeyCheckValueIfMissing`), **`scripts/check-extension-e2ee-consistency.mjs`**, **`tests/supabase-auth-patterns.test.ts`** (`getUser()`-first session), **`tests/copy-accuracy.test.ts`**, **`tests/readme-vendor-docs.test.ts`** (README must not claim read-only MVP or a separate detail-view step), **`tests/security-e2ee-docs.test.ts`** (this doc stays aligned with manifest and side panel), **`entity-rich-text-editor.test.ts`** (TipTap remount key + mount-only `content` parity with web `E2eeRichTextItemEditorShell`; co-located with the side panel UI), plus other UI/data tests under **`src/**/\*.test.ts`** (catalogs, navigation including `entityFormSessionKey`, list grouping, link tree). Shared package tests cover **`e2ee-entity-columns`**, **`e2ee-write-guard`**, and **`entity-links-client`**.
 
 ## Privacy summary
 
@@ -24,7 +24,7 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 
 ## Plaintext on servers (by design)
 
-**Entity content** (task/note/contact/link **text**) is **not** sent to Helvety or Supabase as plaintext by this extension. Reads use **ciphertext columns** from `e2ee-data-select.ts`; decryption runs in the side panel.
+**Entity content** (task/note/contact/link **text**) is **not** sent to Helvety or Supabase as plaintext by this extension. Reads use **ciphertext columns** from `@helvety/shared/e2ee-entity-columns` (`E2EE_LIST_COLUMNS` / `E2EE_DETAIL_COLUMNS`); decryption runs in the side panel.
 
 **Allowed on infrastructure** (aligned with helvety.com web apps):
 
@@ -40,7 +40,7 @@ Automated guards: **`src/lib/e2ee-privacy.ts`**, **`e2ee-privacy.test.ts`**, **`
 | WebAuthn assertion                                                                               | Helvety auth (when deployed)          | Signatures / authenticator bytes            |
 | Access token (Bearer)                                                                            | Auth passkey routes + Supabase client | Session material                            |
 
-**PRF salt** is a public HKDF parameter; security comes from the passkey private key. **Key check value (KCV)** is an encrypted blob to detect a wrong derived key — not human-readable content. On first successful unlock when no KCV exists yet, the extension backfills it via PostgREST (`user_passkey_params.key_check_value`), matching the web auth app.
+**PRF salt** is a public HKDF parameter; security comes from the passkey private key. **Key check value (KCV)** is an encrypted blob to detect a wrong derived key — not human-readable content. On first successful unlock when no KCV exists yet, the extension backfills it via shared `backfillKeyCheckValueIfMissing` (PostgREST update on `user_passkey_params.key_check_value`), matching the web auth app login bootstrap.
 
 ## Hardcoded “public” config (not a leak)
 
@@ -75,13 +75,15 @@ The extension **cannot** set helvety.com cookies. Extension OTP verify returns a
 
 ### Fetch
 
-List and single-record (edit-form) queries use explicit projections in `e2ee-data-select.ts` — **no `select('*')`**. `*_LIST_SELECT` loads grouped list rows; `*_DETAIL_SELECT` loads the full ciphertext fields needed when opening the editor. Tests assert selects never include plaintext content column names (`e2ee-privacy.ts`).
+List and single-record (edit-form) queries use explicit projections from `@helvety/shared/e2ee-entity-columns` — **no `select('*')`**. `E2EE_LIST_COLUMNS` loads grouped list rows; `E2EE_DETAIL_COLUMNS` loads the full ciphertext fields needed when opening the editor. Tests assert selects never include plaintext content column names (shared `@helvety/shared/e2ee-write-guard`).
 
-Passkey unlock params: `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts` — crypto metadata only.
+Passkey unlock params: `PASSKEY_PARAMS_SELECT` from `@helvety/shared/user-passkey-params-client` (re-exported by `extension-passkey-params.ts`) — crypto metadata only.
 
 ### Decrypt
 
-`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with **v2 field-bound AAD** (`table:recordId:column` per `encrypted_*` column; v1 legacy ciphertext still decrypts). Plaintext exists in extension memory and React state while unlocked. Sign-out clears the cached master key (`deleteMasterKey`) and wipes decrypted list and form state in the side panel (`App.tsx` `clearDecryptedEntityState`). The same wipe runs when `user_id` changes so another account never sees the previous user’s in-memory rows before the next fetch.
+`decrypt-entities.ts` uses `@helvety/shared/crypto/encryption` with **v2-only field-bound AAD** (`table:recordId:column` per `encrypted_*` column). Plaintext exists in extension memory and React state while unlocked.
+
+**Vault lock vs sign-out (aligned with helvety.com):** idle vault lock calls `deleteMasterKey` + `clearAllKeys` and wipes decrypted list/form state (`App.tsx` `clearDecryptedEntityState`) but **keeps** the cached PRF salt for faster re-unlock. Sign-out calls `clearAllKeys` + `clearCachedPRFSalt`, clears weekly proof, and wipes decrypted state. The same in-memory wipe runs when `user_id` changes so another account never sees the previous user’s rows before the next fetch.
 
 **Limitation:** malware, a tampered build, or a debugger can read memory. “Client-side only” means **not sent as plaintext over the network by this code**, not “unextractable on a hostile machine.”
 
@@ -93,7 +95,7 @@ A master key unlocked on **helvety.com** is **not** available in this extension 
 
 ### Writes
 
-Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized ciphertext** in `encrypted_*` columns; structural metadata matches the web apps. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
+Create, update, and delete entity **content** use **direct Supabase PostgREST** (`entity-repository.ts`) with payloads from `encrypt-entities.ts`. Only **serialized v2 ciphertext** in `encrypted_*` columns; `assertEncryptedWritePayloadAuto` from `@helvety/shared/e2ee-write-guard` runs before every insert/update. Structural metadata and default ids come from `@helvety/shared/e2ee-entity-defaults`. Link URLs are normalized client-side before encryption (`link-url-normalize.ts`).
 
 **Cross-app links** (link/unlink between tasks, notes, contacts, and links) use `entity-link-repository.ts` and `@helvety/shared/entity-links-client` on the `entity_links` table — structural metadata only (no decrypted titles in link rows).
 

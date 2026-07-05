@@ -1,6 +1,6 @@
 import { mapPasskeyWebAuthnError } from "@helvety/shared/auth-flow-errors";
 import {
-  generateKeyCheckValue,
+  backfillKeyCheckValueIfMissing,
   verifyKeyCheckValue,
 } from "@helvety/shared/crypto/key-check";
 import { storeMasterKey } from "@helvety/shared/crypto/key-storage";
@@ -226,23 +226,15 @@ export async function unlockEncryptionWithPasskey(input: {
         };
       }
     } else {
-      try {
-        const newKeyCheckValue = await generateKeyCheckValue(masterKey);
-        const { error: kcvError } = await supabase
-          .from("user_passkey_params")
-          .update({ key_check_value: newKeyCheckValue })
-          .eq("user_id", userId);
-        if (kcvError) {
-          logUnlockFailure("prf_derive", {
-            reason: "kcv_backfill_failed",
-            message: kcvError.message,
-          });
-        }
-      } catch (kcvError) {
+      const backfill = await backfillKeyCheckValueIfMissing(
+        supabase,
+        userId,
+        masterKey
+      );
+      if (!backfill.ok) {
         logUnlockFailure("prf_derive", {
           reason: "kcv_backfill_failed",
-          message:
-            kcvError instanceof Error ? kcvError.message : "unknown error",
+          message: backfill.message,
         });
       }
     }

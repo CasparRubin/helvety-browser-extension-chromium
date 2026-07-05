@@ -1,6 +1,6 @@
+import { PLAINTEXT_CONTENT_FIELD_NAMES } from "@helvety/shared/e2ee-write-guard";
 import { describe, expect, it, vi } from "vitest";
 
-import { PLAINTEXT_CONTENT_FIELD_NAMES } from "./e2ee-privacy";
 import { EntityLinkRepository } from "./entity-link-repository";
 
 import type { EntityRepository } from "./entity-repository";

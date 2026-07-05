@@ -14,14 +14,13 @@ const startAuthentication = vi.hoisted(() => vi.fn());
 const deriveKeyFromPRF = vi.hoisted(() => vi.fn());
 const storeMasterKey = vi.hoisted(() => vi.fn());
 const verifyKeyCheckValue = vi.hoisted(() => vi.fn());
-const generateKeyCheckValue = vi.hoisted(() => vi.fn());
+const backfillKeyCheckValueIfMissing = vi.hoisted(() => vi.fn());
 const getCachedPRFSalt = vi.hoisted(() => vi.fn());
 const cachePRFSalt = vi.hoisted(() => vi.fn());
-const kcvUpdateEq = vi.hoisted(() => vi.fn());
 
 vi.mock("@helvety/shared/crypto/key-check", () => ({
   verifyKeyCheckValue,
-  generateKeyCheckValue,
+  backfillKeyCheckValueIfMissing,
 }));
 
 vi.mock("./extension-passkey-params", () => ({
@@ -60,11 +59,9 @@ vi.mock("./config", async (importOriginal) => {
 const USER_ID = "00000000-0000-4000-8000-000000000099";
 const ACCESS_TOKEN = "test-access-token";
 
-/** Supabase stub with `user_passkey_params` KCV update chain. */
+/** Minimal Supabase stub (KCV backfill is delegated to shared helper). */
 function createSupabaseMock() {
-  kcvUpdateEq.mockResolvedValue({ error: null });
-  const update = vi.fn().mockReturnValue({ eq: kcvUpdateEq });
-  const from = vi.fn().mockReturnValue({ update });
+  const from = vi.fn();
   return { from } as unknown as Parameters<
     typeof unlockEncryptionWithPasskey
   >[0]["supabase"];
@@ -128,9 +125,7 @@ describe("unlockEncryptionWithPasskey", () => {
     deriveKeyFromPRF.mockResolvedValue({});
     storeMasterKey.mockResolvedValue(undefined);
     verifyKeyCheckValue.mockResolvedValue(true);
-    generateKeyCheckValue.mockResolvedValue(
-      '{"iv":"x","ciphertext":"y","version":1}'
-    );
+    backfillKeyCheckValueIfMissing.mockResolvedValue({ ok: true });
   });
 
   afterEach(() => {
@@ -489,7 +484,7 @@ describe("unlockEncryptionWithPasskey", () => {
     expect(fetchPasskeyParamsForUser).toHaveBeenCalledTimes(2);
   });
 
-  it("backfills key_check_value via Supabase when missing after successful unlock", async () => {
+  it("backfills key_check_value via shared helper when missing after successful unlock", async () => {
     const masterKey = {} as CryptoKey;
     deriveKeyFromPRF.mockResolvedValue(masterKey);
 
@@ -501,9 +496,11 @@ describe("unlockEncryptionWithPasskey", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    expect(generateKeyCheckValue).toHaveBeenCalledWith(masterKey);
-    expect(supabase.from).toHaveBeenCalledWith("user_passkey_params");
-    expect(kcvUpdateEq).toHaveBeenCalledWith("user_id", USER_ID);
+    expect(backfillKeyCheckValueIfMissing).toHaveBeenCalledWith(
+      supabase,
+      USER_ID,
+      masterKey
+    );
     expect(verifyKeyCheckValue).not.toHaveBeenCalled();
   });
 });

@@ -37,6 +37,14 @@ const FORBIDDEN_PHRASES = [
     re: /chrome\.storage\.local.*weekly email proof/i,
   },
   {
+    label: "removed e2ee-privacy shim module",
+    re: /e2ee-privacy\.ts/i,
+  },
+  {
+    label: "removed e2ee-data-select shim module",
+    re: /e2ee-data-select\.ts/i,
+  },
+  {
     label: "unlock screen encryption params preflight",
     re: /unlock UI shows.*ready|Preflight shows `Encryption params:/i,
   },
@@ -44,7 +52,7 @@ const FORBIDDEN_PHRASES = [
 
 /** Line-level negations that make an otherwise forbidden phrase accurate. */
 const NEGATED_LINE_MARKERS =
-  /\bdoes not\b|\bnot receive\b|\*\*not\*\* receive\b|\bmust not claim\b|\bno `GET/i;
+  /\bdoes not\b|\bnot receive\b|\*\*not\*\* receive\b|\bmust not claim\b|\bno `GET\b|\bRemove legacy\b/i;
 
 /** Loads README and docs/*.md for copy-accuracy assertions. */
 function loadDocs(): { rel: string; text: string }[] {

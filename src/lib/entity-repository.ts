@@ -2,6 +2,13 @@
  * E2EE data access: PostgREST reads use narrow selects; writes spread only
  * `encrypt*` outputs plus `user_id` / structural metadata — never form plaintext.
  */
+import { ACTION_LIMITS } from "@helvety/shared/constants";
+import {
+  E2EE_DETAIL_COLUMNS,
+  E2EE_LIST_COLUMNS,
+} from "@helvety/shared/e2ee-entity-columns";
+import { assertEncryptedWritePayloadAuto } from "@helvety/shared/e2ee-write-guard";
+
 import {
   decryptContactRow,
   decryptLinkFolderRow,
@@ -15,18 +22,6 @@ import {
   toNoteListItem,
   toTaskListItem,
 } from "./decrypt-entities";
-import {
-  CONTACT_DETAIL_SELECT,
-  CONTACT_LIST_SELECT,
-  LINK_DETAIL_SELECT,
-  LINK_FOLDER_DETAIL_SELECT,
-  LINK_FOLDER_LIST_SELECT,
-  LINK_LIST_SELECT,
-  NOTE_DETAIL_SELECT,
-  NOTE_LIST_SELECT,
-  TASK_DETAIL_SELECT,
-  TASK_LIST_SELECT,
-} from "./e2ee-data-select";
 import {
   encryptContactCreate,
   encryptContactUpdate,
@@ -60,7 +55,19 @@ import type {
 } from "./entity-types";
 import type { ExtensionSupabaseClient } from "./extension-supabase";
 
-const LIST_LIMIT = 500;
+const LIST_LIMIT = ACTION_LIMITS.MAX_DASHBOARD_ROWS;
+
+function guardReorderLimit(count: number): void {
+  if (count > ACTION_LIMITS.MAX_REORDER_ITEMS) {
+    throw new Error(
+      `Cannot reorder more than ${ACTION_LIMITS.MAX_REORDER_ITEMS} items`
+    );
+  }
+}
+
+function guardEncryptedWrite(payload: Record<string, unknown>): void {
+  assertEncryptedWritePayloadAuto(payload);
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -76,7 +83,7 @@ export class EntityRepository {
   async listTasks(): Promise<TaskListRow[]> {
     const { data, error } = await this.supabase
       .from("items")
-      .select(TASK_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.items)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -91,7 +98,7 @@ export class EntityRepository {
   async getTask(id: string): Promise<Task> {
     const { data, error } = await this.supabase
       .from("items")
-      .select(TASK_DETAIL_SELECT)
+      .select(E2EE_DETAIL_COLUMNS.items)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
@@ -103,10 +110,9 @@ export class EntityRepository {
 
   async createTask(input: TaskInput): Promise<string> {
     const encrypted = await encryptTaskCreate(input, this.masterKey);
-    const { error } = await this.supabase.from("items").insert({
-      ...encrypted,
-      user_id: this.userId,
-    });
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from("items").insert(payload);
     if (error) {
       throw new Error(error.message);
     }
@@ -115,9 +121,11 @@ export class EntityRepository {
 
   async updateTask(id: string, input: Partial<TaskInput>): Promise<void> {
     const encrypted = await encryptTaskUpdate(id, input, this.masterKey);
+    const payload = { ...encrypted, updated_at: nowIso() };
+    guardEncryptedWrite(payload);
     const { error } = await this.supabase
       .from("items")
-      .update({ ...encrypted, updated_at: nowIso() })
+      .update(payload)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) {
@@ -139,6 +147,7 @@ export class EntityRepository {
   async reorderTasks(
     updates: { id: string; sort_order: number; stage_id?: string }[]
   ): Promise<void> {
+    guardReorderLimit(updates.length);
     for (const update of updates) {
       const patch: Record<string, unknown> = {
         sort_order: update.sort_order,
@@ -161,7 +170,7 @@ export class EntityRepository {
   async listNotes(): Promise<NoteListRow[]> {
     const { data, error } = await this.supabase
       .from("notes")
-      .select(NOTE_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.notes)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -176,7 +185,7 @@ export class EntityRepository {
   async getNote(id: string): Promise<Note> {
     const { data, error } = await this.supabase
       .from("notes")
-      .select(NOTE_DETAIL_SELECT)
+      .select(E2EE_DETAIL_COLUMNS.notes)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
@@ -188,10 +197,9 @@ export class EntityRepository {
 
   async createNote(input: NoteInput): Promise<string> {
     const encrypted = await encryptNoteCreate(input, this.masterKey);
-    const { error } = await this.supabase.from("notes").insert({
-      ...encrypted,
-      user_id: this.userId,
-    });
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from("notes").insert(payload);
     if (error) {
       throw new Error(error.message);
     }
@@ -200,9 +208,11 @@ export class EntityRepository {
 
   async updateNote(id: string, input: Partial<NoteInput>): Promise<void> {
     const encrypted = await encryptNoteUpdate(id, input, this.masterKey);
+    const payload = { ...encrypted, updated_at: nowIso() };
+    guardEncryptedWrite(payload);
     const { error } = await this.supabase
       .from("notes")
-      .update({ ...encrypted, updated_at: nowIso() })
+      .update(payload)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) {
@@ -224,6 +234,7 @@ export class EntityRepository {
   async reorderNotes(
     updates: { id: string; sort_order: number; category_id?: string }[]
   ): Promise<void> {
+    guardReorderLimit(updates.length);
     for (const update of updates) {
       const patch: Record<string, unknown> = {
         sort_order: update.sort_order,
@@ -246,7 +257,7 @@ export class EntityRepository {
   async listContacts(): Promise<ContactListRow[]> {
     const { data, error } = await this.supabase
       .from("contacts")
-      .select(CONTACT_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.contacts)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -261,7 +272,7 @@ export class EntityRepository {
   async getContact(id: string): Promise<Contact> {
     const { data, error } = await this.supabase
       .from("contacts")
-      .select(CONTACT_DETAIL_SELECT)
+      .select(E2EE_DETAIL_COLUMNS.contacts)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
@@ -273,10 +284,9 @@ export class EntityRepository {
 
   async createContact(input: ContactInput): Promise<string> {
     const encrypted = await encryptContactCreate(input, this.masterKey);
-    const { error } = await this.supabase.from("contacts").insert({
-      ...encrypted,
-      user_id: this.userId,
-    });
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from("contacts").insert(payload);
     if (error) {
       throw new Error(error.message);
     }
@@ -285,9 +295,11 @@ export class EntityRepository {
 
   async updateContact(id: string, input: Partial<ContactInput>): Promise<void> {
     const encrypted = await encryptContactUpdate(id, input, this.masterKey);
+    const payload = { ...encrypted, updated_at: nowIso() };
+    guardEncryptedWrite(payload);
     const { error } = await this.supabase
       .from("contacts")
-      .update({ ...encrypted, updated_at: nowIso() })
+      .update(payload)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) {
@@ -309,6 +321,7 @@ export class EntityRepository {
   async reorderContacts(
     updates: { id: string; sort_order: number; category_id?: string }[]
   ): Promise<void> {
+    guardReorderLimit(updates.length);
     for (const update of updates) {
       const patch: Record<string, unknown> = {
         sort_order: update.sort_order,
@@ -331,7 +344,7 @@ export class EntityRepository {
   async listLinks(): Promise<LinkListRow[]> {
     const { data, error } = await this.supabase
       .from("links")
-      .select(LINK_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.links)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -346,7 +359,7 @@ export class EntityRepository {
   async getLink(id: string): Promise<Link> {
     const { data, error } = await this.supabase
       .from("links")
-      .select(LINK_DETAIL_SELECT)
+      .select(E2EE_DETAIL_COLUMNS.links)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
@@ -361,10 +374,9 @@ export class EntityRepository {
       await this.assertFolderOwned(input.folder_id);
     }
     const encrypted = await encryptLinkCreate(input, this.masterKey);
-    const { error } = await this.supabase.from("links").insert({
-      ...encrypted,
-      user_id: this.userId,
-    });
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from("links").insert(payload);
     if (error) {
       throw new Error(error.message);
     }
@@ -376,9 +388,11 @@ export class EntityRepository {
       await this.assertFolderOwned(input.folder_id);
     }
     const encrypted = await encryptLinkUpdate(id, input, this.masterKey);
+    const payload = { ...encrypted, updated_at: nowIso() };
+    guardEncryptedWrite(payload);
     const { error } = await this.supabase
       .from("links")
-      .update({ ...encrypted, updated_at: nowIso() })
+      .update(payload)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) {
@@ -400,6 +414,7 @@ export class EntityRepository {
   async reorderLinks(
     updates: { id: string; sort_order: number }[]
   ): Promise<void> {
+    guardReorderLimit(updates.length);
     for (const update of updates) {
       const { error } = await this.supabase
         .from("links")
@@ -415,7 +430,7 @@ export class EntityRepository {
   async listLinkFolders(): Promise<LinkFolderListRow[]> {
     const { data, error } = await this.supabase
       .from("link_folders")
-      .select(LINK_FOLDER_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.link_folders)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -431,7 +446,7 @@ export class EntityRepository {
   async listLinkFolderPickerItems(): Promise<EntityListItem[]> {
     const { data, error } = await this.supabase
       .from("link_folders")
-      .select(LINK_FOLDER_LIST_SELECT)
+      .select(E2EE_LIST_COLUMNS.link_folders)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
@@ -446,6 +461,7 @@ export class EntityRepository {
   async reorderLinkFolders(
     updates: { id: string; sort_order: number }[]
   ): Promise<void> {
+    guardReorderLimit(updates.length);
     for (const update of updates) {
       const { error } = await this.supabase
         .from("link_folders")
@@ -461,7 +477,7 @@ export class EntityRepository {
   async getLinkFolder(id: string): Promise<LinkFolder> {
     const { data, error } = await this.supabase
       .from("link_folders")
-      .select(LINK_FOLDER_DETAIL_SELECT)
+      .select(E2EE_DETAIL_COLUMNS.link_folders)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
@@ -476,10 +492,9 @@ export class EntityRepository {
       await this.assertFolderOwned(input.parent_folder_id);
     }
     const encrypted = await encryptLinkFolderCreate(input, this.masterKey);
-    const { error } = await this.supabase.from("link_folders").insert({
-      ...encrypted,
-      user_id: this.userId,
-    });
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from("link_folders").insert(payload);
     if (error) {
       throw new Error(error.message);
     }
@@ -497,9 +512,11 @@ export class EntityRepository {
       await this.assertFolderOwned(input.parent_folder_id);
     }
     const encrypted = await encryptLinkFolderUpdate(id, input, this.masterKey);
+    const payload = { ...encrypted, updated_at: nowIso() };
+    guardEncryptedWrite(payload);
     const { error } = await this.supabase
       .from("link_folders")
-      .update({ ...encrypted, updated_at: nowIso() })
+      .update(payload)
       .eq("id", id)
       .eq("user_id", this.userId);
     if (error) {

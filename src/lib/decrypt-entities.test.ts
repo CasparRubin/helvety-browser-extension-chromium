@@ -1,6 +1,4 @@
 import {
-  buildAAD,
-  encrypt,
   encryptEntityField,
   serializeEncryptedData,
 } from "@helvety/shared/crypto/encryption";
@@ -8,8 +6,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   decryptContactLabel,
+  decryptContactRow,
   decryptLinkName,
+  decryptNoteRow,
   decryptNoteTitle,
+  decryptTaskRow,
   decryptTaskTitle,
 } from "./decrypt-entities";
 
@@ -44,20 +45,6 @@ describe("decrypt-entities (client-side roundtrip)", () => {
       recordId: TASK_ID,
       column: "encrypted_title",
     });
-    const row = {
-      id: TASK_ID,
-      encrypted_title: serializeEncryptedData(enc),
-      stage_id: LIST_META.stage_id,
-      sort_order: LIST_META.sort_order,
-      created_at: LIST_META.created_at,
-    };
-    await expect(decryptTaskTitle(row, key)).resolves.toBe(plaintext);
-  });
-
-  it("decryptTaskTitle decrypts legacy v1 ciphertext", async () => {
-    const key = await aes256GcmKey();
-    const plaintext = "Legacy task title";
-    const enc = await encrypt(plaintext, key, buildAAD("items", TASK_ID));
     const row = {
       id: TASK_ID,
       encrypted_title: serializeEncryptedData(enc),
@@ -178,9 +165,13 @@ describe("decrypt-entities (client-side roundtrip)", () => {
     await expect(decryptContactLabel(row, key)).rejects.toThrow();
   });
 
-  it("fails when ciphertext was sealed with a different AAD (wrong table)", async () => {
+  it("fails when ciphertext was sealed with a different field AAD", async () => {
     const key = await aes256GcmKey();
-    const enc = await encrypt("secret", key, buildAAD("notes", NOTE_ID));
+    const enc = await encryptEntityField("secret", key, {
+      table: "notes",
+      recordId: NOTE_ID,
+      column: "encrypted_title",
+    });
     const row = {
       id: NOTE_ID,
       encrypted_title: serializeEncryptedData(enc),
@@ -207,5 +198,103 @@ describe("decrypt-entities (client-side roundtrip)", () => {
       created_at: LIST_META.created_at,
     };
     await expect(decryptTaskTitle(row, keyB)).rejects.toThrow();
+  });
+});
+
+describe("decrypt-entities (detail rows)", () => {
+  it("decryptTaskRow decrypts description and date fields", async () => {
+    const key = await aes256GcmKey();
+    const ctx = { table: "items", recordId: TASK_ID };
+    const encTitle = await encryptEntityField("Ship release", key, {
+      ...ctx,
+      column: "encrypted_title",
+    });
+    const encDescription = await encryptEntityField("Final QA pass", key, {
+      ...ctx,
+      column: "encrypted_description",
+    });
+    const row = {
+      id: TASK_ID,
+      user_id: "user-1",
+      encrypted_title: serializeEncryptedData(encTitle),
+      encrypted_description: serializeEncryptedData(encDescription),
+      encrypted_start_date: null,
+      encrypted_end_date: null,
+      stage_id: LIST_META.stage_id,
+      label_id: "default-item-label",
+      priority: 0,
+      sort_order: LIST_META.sort_order,
+      created_at: LIST_META.created_at,
+      updated_at: LIST_META.created_at,
+    };
+    const task = await decryptTaskRow(row, key);
+    expect(task.title).toBe("Ship release");
+    expect(task.description).toBe("Final QA pass");
+  });
+
+  it("decryptContactRow decrypts email and phone detail fields", async () => {
+    const key = await aes256GcmKey();
+    const ctx = { table: "contacts", recordId: CONTACT_ID };
+    const encFirst = await encryptEntityField("Grace", key, {
+      ...ctx,
+      column: "encrypted_first_name",
+    });
+    const encLast = await encryptEntityField("Hopper", key, {
+      ...ctx,
+      column: "encrypted_last_name",
+    });
+    const encEmail = await encryptEntityField("grace@example.com", key, {
+      ...ctx,
+      column: "encrypted_email",
+    });
+    const encPhone = await encryptEntityField("555-0100", key, {
+      ...ctx,
+      column: "encrypted_phone",
+    });
+    const row = {
+      id: CONTACT_ID,
+      user_id: "user-1",
+      encrypted_first_name: serializeEncryptedData(encFirst),
+      encrypted_last_name: serializeEncryptedData(encLast),
+      encrypted_description: null,
+      encrypted_email: serializeEncryptedData(encEmail),
+      encrypted_phone: serializeEncryptedData(encPhone),
+      encrypted_birthday: null,
+      encrypted_notes: null,
+      category_id: LIST_META.category_id,
+      sort_order: LIST_META.sort_order,
+      created_at: LIST_META.created_at,
+      updated_at: LIST_META.created_at,
+    };
+    const contact = await decryptContactRow(row, key);
+    expect(contact.first_name).toBe("Grace");
+    expect(contact.email).toBe("grace@example.com");
+    expect(contact.phone).toBe("555-0100");
+  });
+
+  it("decryptNoteRow decrypts description", async () => {
+    const key = await aes256GcmKey();
+    const ctx = { table: "notes", recordId: NOTE_ID };
+    const encTitle = await encryptEntityField("Ideas", key, {
+      ...ctx,
+      column: "encrypted_title",
+    });
+    const encDescription = await encryptEntityField("Buy milk", key, {
+      ...ctx,
+      column: "encrypted_description",
+    });
+    const row = {
+      id: NOTE_ID,
+      user_id: "user-1",
+      encrypted_title: serializeEncryptedData(encTitle),
+      encrypted_description: serializeEncryptedData(encDescription),
+      category_id: LIST_META.category_id,
+      sort_order: LIST_META.sort_order,
+      created_at: LIST_META.created_at,
+      updated_at: LIST_META.created_at,
+    };
+    const note = await decryptNoteRow(row, key);
+    expect(note.title).toBe("Ideas");
+    expect(note.description).toBe("Buy milk");
   });
 });

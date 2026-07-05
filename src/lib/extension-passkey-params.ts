@@ -1,15 +1,15 @@
+import {
+  fetchPasskeyParamsForUser as fetchPasskeyParamsCore,
+  PASSKEY_PARAMS_SELECT,
+} from "@helvety/shared/user-passkey-params-client";
+
 import { ensureExtensionAuthReady } from "./extension-session";
 import { logUnlockFailure } from "./unlock-dev-log";
 
 import type { UserPasskeyParams } from "@helvety/shared/types/entities";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Ciphertext/crypto metadata only — no `select('*')` (see `e2ee-data-select.ts`).
- * Includes `key_check_value` for wrong-passkey detection on unlock.
- */
-export const PASSKEY_PARAMS_SELECT =
-  "prf_salt, version, credential_id, key_check_value" as const;
+export { PASSKEY_PARAMS_SELECT };
 
 /** Result of loading `user_passkey_params` for unlock. */
 export type PasskeyParamsResult =
@@ -76,11 +76,7 @@ async function ensureAuthReady(
 
 /**
  * Client read of `user_passkey_params` for the signed-in user.
- * Mirrors `fetchUserPasskeyParamsForUser` in the Helvety monorepo
- * (`packages/shared/src/user-passkey-params-db.ts` — server-only, not imported here).
- *
- * Returns crypto/unlock metadata only (PRF salt, KCV, credential id) — not entity
- * plaintext. Same rows the web app reads via `getPasskeyParams`.
+ * Delegates the PostgREST projection to `@helvety/shared/user-passkey-params-client`.
  */
 export async function fetchPasskeyParamsForUser(
   supabase: SupabaseClient,
@@ -91,17 +87,28 @@ export async function fetchPasskeyParamsForUser(
     return authReady;
   }
 
-  let data: UserPasskeyParams | null = null;
-  let error: PostgrestError | null = null;
-
   try {
-    const result = await supabase
-      .from("user_passkey_params")
-      .select(PASSKEY_PARAMS_SELECT)
-      .eq("user_id", userId)
-      .single();
-    data = result.data as UserPasskeyParams | null;
-    error = result.error;
+    const result = await fetchPasskeyParamsCore(supabase, userId);
+    if (!result.ok) {
+      const error = result.error;
+      if (error.code === "PGRST116") {
+        if (/multiple/i.test(error.message ?? "")) {
+          return {
+            ok: false,
+            error:
+              "Multiple encryption param rows for this account. Contact support.",
+          };
+        }
+        return { ok: true, params: null };
+      }
+      logUnlockFailure("passkey_params", {
+        code: error.code,
+        message: error.message,
+      });
+      return { ok: false, error: mapPasskeyParamsError(error) };
+    }
+
+    return { ok: true, params: result.params };
   } catch (caught) {
     const msg =
       caught instanceof Error ? caught.message : "Network request failed";
@@ -126,24 +133,4 @@ export async function fetchPasskeyParamsForUser(
         "Failed to load encryption params. Check the extension Network tab.",
     };
   }
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      if (/multiple/i.test(error.message ?? "")) {
-        return {
-          ok: false,
-          error:
-            "Multiple encryption param rows for this account. Contact support.",
-        };
-      }
-      return { ok: true, params: null };
-    }
-    logUnlockFailure("passkey_params", {
-      code: error.code,
-      message: error.message,
-    });
-    return { ok: false, error: mapPasskeyParamsError(error) };
-  }
-
-  return { ok: true, params: data };
 }

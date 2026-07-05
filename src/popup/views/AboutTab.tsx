@@ -154,7 +154,8 @@ export function AboutTab({
               </li>
               <li>
                 Unlock with a passkey (PRF) to derive the master key in this
-                extension only.
+                extension only. Export encrypted data as JSON from the Helvety
+                web apps when you need an offline backup.
               </li>
               <li>
                 Grouped lists open straight into the editor; links open in your

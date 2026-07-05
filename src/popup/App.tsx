@@ -3,12 +3,14 @@ import { POPUP_SHELL_CLASS } from "@helvety/extension-chrome/popup-shell";
 import { usePopupTheme } from "@helvety/extension-chrome/use-popup-theme";
 import { resolveRateLimitedAuthError } from "@helvety/shared/auth-flow-errors";
 import {
+  clearAllKeys,
   deleteMasterKey,
   getCachedMasterKey,
   getMasterKey,
   onKeyEvent,
   touchVaultSessionInStorage,
 } from "@helvety/shared/crypto/key-storage";
+import { clearCachedPRFSalt } from "@helvety/shared/crypto/prf-salt-cache";
 import { useVaultIdleLock } from "@helvety/shared/crypto/use-vault-idle-lock";
 import { buildE2eeDeepLink } from "@helvety/shared/e2ee-deep-link";
 import { DeleteConfirmationDialog } from "@helvety/ui/delete-confirmation-dialog";
@@ -183,6 +185,7 @@ export default function App() {
   const handleVaultLock = useCallback(
     async (activeUserId: string) => {
       await deleteMasterKey(activeUserId);
+      await clearAllKeys();
       clearDecryptedEntityState();
       setMasterKey(null);
       setVaultUnlockedAt(null);
@@ -399,9 +402,12 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (userId) {
-      await deleteMasterKey(userId);
+    try {
+      await clearAllKeys();
+    } catch {
+      // Continue logout even if local key cleanup fails.
     }
+    clearCachedPRFSalt();
     clearDecryptedEntityState();
     setMasterKey(null);
     setVaultUnlockedAt(null);
