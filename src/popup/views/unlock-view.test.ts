@@ -34,6 +34,11 @@ describe("UnlockView passkey screen", () => {
     expect(unlockSource).toContain('role="alert"');
     expect(unlockSource).toContain("text-destructive");
   });
+
+  it("uses ghost sign-out chrome aligned with web auth", () => {
+    expect(unlockSource).toContain('variant="ghost"');
+    expect(unlockSource).toContain('label="Sign out"');
+  });
 });
 
 describe("AboutTab encryption preflight diagnostics", () => {

@@ -270,7 +270,7 @@ export function AboutTab({
                 Developer
               </p>
               <a
-                className="hover:bg-muted/60 -mx-1 flex items-center gap-2.5 rounded-sm p-1.5 transition-colors"
+                className="hover:bg-muted/60 -mx-1 flex items-center gap-2.5 rounded-none p-1.5 transition-colors"
                 href={DEVELOPER_URL}
                 target="_blank"
                 rel="noopener noreferrer"

@@ -1,8 +1,10 @@
+import { cn } from "@helvety/shared/utils";
+import { ICON_SIZE_CLASS } from "@helvety/ui/icon-size";
 import {
   BoxIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  TrashIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { memo } from "react";
 
@@ -43,7 +45,7 @@ export const EntityRow = memo(
         }}
       >
         <BoxIcon
-          className="size-4 shrink-0"
+          className={cn(ICON_SIZE_CLASS, "shrink-0")}
           style={accentColor ? { color: accentColor } : undefined}
         />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -63,7 +65,7 @@ export const EntityRow = memo(
                   onMoveUp?.();
                 }}
               >
-                <ChevronUpIcon className="size-4" />
+                <ChevronUpIcon className={ICON_SIZE_CLASS} />
               </IconTooltipButton>
               <IconTooltipButton
                 label="Move down"
@@ -76,7 +78,7 @@ export const EntityRow = memo(
                   onMoveDown?.();
                 }}
               >
-                <ChevronDownIcon className="size-4" />
+                <ChevronDownIcon className={ICON_SIZE_CLASS} />
               </IconTooltipButton>
             </div>
           )}
@@ -91,7 +93,7 @@ export const EntityRow = memo(
                 onDelete();
               }}
             >
-              <TrashIcon className="size-4" />
+              <Trash2Icon className={ICON_SIZE_CLASS} />
             </IconTooltipButton>
           ) : null}
         </div>

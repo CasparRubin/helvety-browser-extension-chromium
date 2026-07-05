@@ -36,12 +36,12 @@ The legacy `EXTENSION_PASSKEY_PARAMS_PATH` constant is **documentation for auth 
 
 Workspace packages supply **extension chrome**, **UI primitives**, **brand assets**, and **cryptography** aligned with helvety.com:
 
-| Package                     | Role in this extension                                                                                         |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities                         |
-| `@helvety/ui`               | Base UI shadcn primitives (`base-vega`): tabs, buttons, inputs, tooltips, list states (flat PP-style surfaces) |
-| `@helvety/shared`           | E2EE crypto and shared utilities                                                                               |
-| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                                |
+| Package                     | Role in this extension                                                                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@helvety/extension-chrome` | Side panel shell, theme boot / `usePopupTheme`, shared `PopupHeader`, scroll utilities                                                                                               |
+| `@helvety/ui`               | Base UI shadcn primitives (`base-vega`): tabs, buttons, inputs, tooltips, list states, `row-action-button`, `form-field`, `icon-size`, `public-tool-workspace`, `@helvety/ui/sonner` |
+| `@helvety/shared`           | E2EE crypto and shared utilities                                                                                                                                                     |
+| `@helvety/brand`            | Helvety mark in the About **Developer** section                                                                                                                                      |
 
 Auth HTTP routes stay on the deployed auth service (not in these packages). `preinstall` runs `scripts/ensure-helvety.mjs`:
 
@@ -61,9 +61,11 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Lists: `src/popup/components/lists/` — stage/category groups and links tree (mobile-style rows); row tap opens the edit form (links: tap opens URL, pencil opens edit); up/down reorder for tasks, notes, contacts, links, and folders.
 - **Open in web app**: list mode opens the zone path on the gateway; edit mode opens an entity deep link (`buildE2eeDeepLink`).
 - **Unsaved changes**: switching tabs or canceling an edit form with a dirty draft shows the shared discard dialog (`isFormDraftDirty`).
-- Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles aligned with web apps.
-- Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text).
-- Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Edit / Save); sharp borders via `extension-tokens.css`.
+- Metadata pickers: `catalog-picker.tsx` — colored stage/label/category/priority toggles (`@helvety/ui/Button`) aligned with web apps.
+- Row actions: `IconTooltipButton` wraps `@helvety/ui/row-action-button` with `showTooltip`; list delete uses `Trash2Icon` + `ICON_SIZE_CLASS`.
+- Forms: `@helvety/ui/form-field` + `E2EE_EDITOR_FORM_FIELDS_STACK_CLASS`; save is dirty-gated in edit mode; delete lives in the edit **header** (`DataTabsView`), not the form footer.
+- Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text). Unlock sign-out uses `variant="ghost"`.
+- Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Save only); OKLCH tokens via `@helvety/extension-chrome/extension-tokens.css` and `popup.css` (imported from `src/globals.css`, not a local fork).
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (shared `@helvety/ui/tiptap-editor`) for task/note descriptions and contact notes. Remount key is `entityFormSessionKey` (record identity), never serialized draft text; `content` is mount-only so TipTap v3 does not reset on each keystroke. Web apps mirror this in `E2eeRichTextItemEditorShell` (`editorSessionKey`). `@helvety/ui/input`, `@helvety/ui/textarea`, and `@helvety/ui/native-select` for other fields.
 - E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`, `encrypt-entities.ts`, `decrypt-entities.ts` under `src/lib/`.
 - Entity links UI: `extension-entity-links-hooks.tsx`, `ExtensionEntityLinkPanels.tsx` in edit forms.
@@ -151,4 +153,4 @@ pnpm ci:release   # check + build → dist/
 
 ## E2EE writes (after unlock)
 
-Create, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the side panel. Lists are **edit-first**: tapping a row opens the editor (links open the URL on tap; use the pencil to edit). Tasks, notes, contacts, links, and folders support **up/down reorder** within their list level. **Open in web app** opens the zone path from list mode or an entity deep link from edit mode. Switching tabs with an unsaved edit shows the discard dialog. Deletes are available from list rows (tasks, notes, contacts) or the edit form (including links and folders). Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
+Create, edit, and delete tasks (`items`), notes, contacts, links, and link folders from the side panel. Lists are **edit-first**: tapping a row opens the editor (links open the URL on tap; use the pencil to edit). Tasks, notes, contacts, links, and folders support **up/down reorder** within their list level. **Open in web app** opens the zone path from list mode or an entity deep link from edit mode. Switching tabs with an unsaved edit shows the discard dialog. **Delete:** list rows for tasks, notes, and contacts; when editing any entity, delete is in the **header command bar** (back + title + trash), not the form footer. Writes go to Supabase with the same field-level encryption as the web apps (no Next.js server actions). Structural fields (category, stage, folder, priority) are stored in plaintext on Supabase like the web apps — see [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).

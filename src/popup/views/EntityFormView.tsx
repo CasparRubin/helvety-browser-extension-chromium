@@ -1,9 +1,10 @@
 import { Button } from "@helvety/ui/button";
+import { E2EE_EDITOR_FORM_FIELDS_STACK_CLASS } from "@helvety/ui/e2ee-form-layout";
+import { FormField } from "@helvety/ui/form-field";
 import { Input } from "@helvety/ui/input";
-import { Label } from "@helvety/ui/label";
 import { NativeSelect } from "@helvety/ui/native-select";
 import { Textarea } from "@helvety/ui/textarea";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import {
   CONTACT_CATEGORIES,
@@ -61,9 +62,8 @@ export function EntityFormView({
   editingFolderId,
   mutationBusy,
   mutationError,
+  hasUnsavedChanges,
   onSave,
-  onCancel,
-  onDelete,
 }: {
   kind: EntityKind;
   formMode: "create" | "edit";
@@ -77,9 +77,8 @@ export function EntityFormView({
   editingFolderId?: string;
   mutationBusy: boolean;
   mutationError: string | null;
+  hasUnsavedChanges: boolean;
   onSave: () => void;
-  onCancel: () => void;
-  onDelete?: () => void;
 }): React.JSX.Element {
   const parentFolderOptions = linkFolders.filter(
     (f) => f.id !== editingFolderId
@@ -94,45 +93,45 @@ export function EntityFormView({
           onDraftChange({ kind: "contacts", value: { ...value, ...patch } });
         return (
           <>
-            <Field label="First name" required>
+            <FormField label="First name" required>
               <Input
                 value={value.first_name}
                 onChange={(e) => set({ first_name: e.target.value })}
               />
-            </Field>
-            <Field label="Last name">
+            </FormField>
+            <FormField label="Last name">
               <Input
                 value={value.last_name}
                 onChange={(e) => set({ last_name: e.target.value })}
               />
-            </Field>
-            <Field label="Description">
+            </FormField>
+            <FormField label="Description">
               <Textarea
                 value={value.description ?? ""}
                 onChange={(e) => set({ description: e.target.value || null })}
               />
-            </Field>
-            <Field label="Email">
+            </FormField>
+            <FormField label="Email">
               <Input
                 type="email"
                 value={value.email ?? ""}
                 onChange={(e) => set({ email: e.target.value || null })}
               />
-            </Field>
-            <Field label="Phone">
+            </FormField>
+            <FormField label="Phone">
               <Input
                 value={value.phone ?? ""}
                 onChange={(e) => set({ phone: e.target.value || null })}
               />
-            </Field>
-            <Field label="Birthday">
+            </FormField>
+            <FormField label="Birthday">
               <Input
                 type="date"
                 value={value.birthday ?? ""}
                 onChange={(e) => set({ birthday: e.target.value || null })}
               />
-            </Field>
-            <Field label="Notes">
+            </FormField>
+            <FormField label="Notes">
               <EntityRichTextEditor
                 sessionKey={formSessionKey}
                 value={value.notes ?? null}
@@ -140,7 +139,7 @@ export function EntityFormView({
                 disabled={mutationBusy}
                 onChange={(notes) => set({ notes })}
               />
-            </Field>
+            </FormField>
             <CategoryPicker
               entries={CONTACT_CATEGORIES}
               value={value.category_id ?? CONTACT_CATEGORIES[0].id}
@@ -155,13 +154,13 @@ export function EntityFormView({
           onDraftChange({ kind: "notes", value: { ...value, ...patch } });
         return (
           <>
-            <Field label="Title" required>
+            <FormField label="Title" required>
               <Input
                 value={value.title}
                 onChange={(e) => set({ title: e.target.value })}
               />
-            </Field>
-            <Field label="Description">
+            </FormField>
+            <FormField label="Description">
               <EntityRichTextEditor
                 sessionKey={formSessionKey}
                 value={value.description ?? null}
@@ -169,7 +168,7 @@ export function EntityFormView({
                 disabled={mutationBusy}
                 onChange={(description) => set({ description })}
               />
-            </Field>
+            </FormField>
             <CategoryPicker
               entries={NOTE_CATEGORIES}
               value={value.category_id ?? NOTE_CATEGORIES[0].id}
@@ -184,13 +183,13 @@ export function EntityFormView({
           onDraftChange({ kind: "tasks", value: { ...value, ...patch } });
         return (
           <>
-            <Field label="Title" required>
+            <FormField label="Title" required>
               <Input
                 value={value.title}
                 onChange={(e) => set({ title: e.target.value })}
               />
-            </Field>
-            <Field label="Description">
+            </FormField>
+            <FormField label="Description">
               <EntityRichTextEditor
                 sessionKey={formSessionKey}
                 value={value.description ?? null}
@@ -198,21 +197,21 @@ export function EntityFormView({
                 disabled={mutationBusy}
                 onChange={(description) => set({ description })}
               />
-            </Field>
-            <Field label="Start date">
+            </FormField>
+            <FormField label="Start date">
               <Input
                 type="date"
                 value={value.start_date ?? ""}
                 onChange={(e) => set({ start_date: e.target.value || null })}
               />
-            </Field>
-            <Field label="End date">
+            </FormField>
+            <FormField label="End date">
               <Input
                 type="date"
                 value={value.end_date ?? ""}
                 onChange={(e) => set({ end_date: e.target.value || null })}
               />
-            </Field>
+            </FormField>
             <TaskStagePicker
               value={value.stage_id ?? TASK_STAGES[0].id}
               onChange={(stageId) => set({ stage_id: stageId })}
@@ -235,20 +234,20 @@ export function EntityFormView({
           onDraftChange({ kind: "links", value: { ...value, ...patch } });
         return (
           <>
-            <Field label="Name" required>
+            <FormField label="Name" required>
               <Input
                 value={value.name}
                 onChange={(e) => set({ name: e.target.value })}
               />
-            </Field>
-            <Field label="URL" required>
+            </FormField>
+            <FormField label="URL" required>
               <Input
                 type="url"
                 value={value.url}
                 onChange={(e) => set({ url: e.target.value })}
               />
-            </Field>
-            <Field label="Folder">
+            </FormField>
+            <FormField label="Folder">
               <NativeSelect
                 value={value.folder_id ?? ""}
                 onChange={(e) =>
@@ -264,7 +263,7 @@ export function EntityFormView({
                   </option>
                 ))}
               </NativeSelect>
-            </Field>
+            </FormField>
           </>
         );
       }
@@ -280,13 +279,13 @@ export function EntityFormView({
           });
         return (
           <>
-            <Field label="Name" required>
+            <FormField label="Name" required>
               <Input
                 value={value.name}
                 onChange={(e) => set({ name: e.target.value })}
               />
-            </Field>
-            <Field label="Parent folder">
+            </FormField>
+            <FormField label="Parent folder">
               <NativeSelect
                 value={value.parent_folder_id ?? ""}
                 onChange={(e) =>
@@ -303,12 +302,15 @@ export function EntityFormView({
                   </option>
                 ))}
               </NativeSelect>
-            </Field>
+            </FormField>
           </>
         );
       }
     }
   })();
+
+  const canSave =
+    formMode === "create" ? !mutationBusy : hasUnsavedChanges && !mutationBusy;
 
   return (
     <EntityScreenLayout
@@ -319,48 +321,25 @@ export function EntityFormView({
               {mutationError}
             </p>
           ) : null}
-          {formMode === "edit" && onDelete ? (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              className="text-destructive hover:text-destructive mb-2 w-full"
-              onClick={onDelete}
-              disabled={mutationBusy}
-            >
-              <Trash2 className="size-4" />
-              Delete
-            </Button>
-          ) : null}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              className="flex-1"
-              onClick={onCancel}
-              disabled={mutationBusy}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              type="button"
-              className="flex-1"
-              onClick={onSave}
-              disabled={mutationBusy}
-            >
-              {mutationBusy ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            type="button"
+            className="w-full"
+            onClick={onSave}
+            disabled={!canSave}
+          >
+            {mutationBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : formMode === "edit" && hasUnsavedChanges ? (
+              "Save changes"
+            ) : (
+              "Save"
+            )}
+          </Button>
         </>
       }
     >
-      <div className="flex flex-col gap-3 pb-2">
+      <div className={E2EE_EDITOR_FORM_FIELDS_STACK_CLASS}>
         {fields}
         {formMode === "edit" && editingEntityId ? (
           kind === "tasks" ? (
@@ -375,28 +354,5 @@ export function EntityFormView({
         ) : null}
       </div>
     </EntityScreenLayout>
-  );
-}
-
-/**
- *
- */
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs">
-        {label}
-        {required ? " *" : null}
-      </Label>
-      {children}
-    </div>
   );
 }

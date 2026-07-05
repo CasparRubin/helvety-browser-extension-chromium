@@ -1,4 +1,5 @@
 import { cn } from "@helvety/shared/utils";
+import { Button } from "@helvety/ui/button";
 import { renderIcon } from "@helvety/ui/icon-renderer";
 import {
   ArrowDownIcon,
@@ -43,14 +44,14 @@ export function CatalogPicker({
         {entries.map((entry) => {
           const selected = entry.id === value;
           return (
-            <button
+            <Button
               key={entry.id}
               type="button"
+              variant="outline"
+              size="sm"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-                selected
-                  ? "border-transparent"
-                  : "border-border hover:bg-muted/60"
+                "h-auto gap-1.5 px-2 py-1 text-xs font-medium",
+                selected ? "border-transparent" : ""
               )}
               style={
                 selected
@@ -63,7 +64,7 @@ export function CatalogPicker({
                 color: entry.color,
               })}
               {entry.name}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -130,14 +131,14 @@ export function PriorityPicker({
           const color = PRIORITY_COLORS[priority] ?? "#6b7280";
           const Icon = PRIORITY_ICONS[index] ?? MinusIcon;
           return (
-            <button
+            <Button
               key={p.id}
               type="button"
+              variant="outline"
+              size="sm"
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
-                selected
-                  ? "border-transparent"
-                  : "border-border hover:bg-muted/60"
+                "h-auto gap-1.5 px-2 py-1 text-xs font-medium",
+                selected ? "border-transparent" : ""
               )}
               style={
                 selected ? { backgroundColor: `${color}18`, color } : undefined
@@ -146,7 +147,7 @@ export function PriorityPicker({
             >
               <Icon className="size-3.5 shrink-0" style={{ color }} />
               {p.name}
-            </button>
+            </Button>
           );
         })}
       </div>

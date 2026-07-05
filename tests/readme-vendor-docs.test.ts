@@ -26,6 +26,11 @@ describe("README vendor and side panel documentation", () => {
     expect(panelSection).not.toMatch(/key=\{value/);
     expect(panelSection).toContain("edit-first");
     expect(panelSection).toContain("IconTooltipButton");
+    expect(panelSection).toContain("row-action-button");
+    expect(panelSection).toContain("form-field");
+    expect(panelSection).toContain("extension-tokens.css");
+    expect(panelSection).toContain("dirty-gated");
+    expect(panelSection).toContain("edit **header**");
     expect(panelSection).toContain("components/lists/");
     expect(panelSection).toContain("up/down reorder");
     expect(panelSection).toContain("buildE2eeDeepLink");
@@ -89,6 +94,8 @@ describe("README vendor and side panel documentation", () => {
     expect(e2eeSection).toMatch(/up\/down reorder/i);
     expect(e2eeSection).toMatch(/Open in web app/i);
     expect(e2eeSection).toMatch(/unsaved edit shows the discard dialog/i);
+    expect(e2eeSection).toMatch(/header command bar/i);
+    expect(e2eeSection).not.toMatch(/edit form \(including links/i);
   });
 
   it("describes CRUD and does not claim read-only MVP", () => {

@@ -41,6 +41,8 @@ describe("DataTabsView edit command bar", () => {
     expect(commandBar).toContain("onClick={onCancelForm}");
     expect(commandBar).toContain("<ArrowLeft");
     expect(commandBar).toContain("{title}");
+    expect(commandBar).toContain("onDeleteForm");
+    expect(commandBar).toContain("Trash2");
   });
 
   it("optically nudges the back arrow up to align with the title cap height", () => {
@@ -64,5 +66,9 @@ describe("App default tab", () => {
   it("opens on the Links tab by default", () => {
     expect(appSource).toContain('useState<EntityTabId>("links")');
     expect(appSource).not.toContain('useState<EntityTabId>("tasks")');
+  });
+
+  it("passes dirty form state into DataTabsView for save gating", () => {
+    expect(appSource).toContain("hasUnsavedChanges={isFormDraftDirty()}");
   });
 });

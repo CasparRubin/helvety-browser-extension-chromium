@@ -858,6 +858,7 @@ export default function App() {
               onAddFolder={handleAddFolder}
               onCancelForm={handleCancelForm}
               onSave={() => void handleSave()}
+              hasUnsavedChanges={isFormDraftDirty()}
               onTaskClick={(task) => void openEdit("tasks", task.id)}
               onNoteClick={(note) => void openEdit("notes", note.id)}
               onContactClick={(contact) =>

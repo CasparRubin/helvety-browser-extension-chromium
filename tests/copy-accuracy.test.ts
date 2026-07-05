@@ -93,6 +93,9 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(doc).toMatch(/field-bound AAD|table:recordId:column/i);
     expect(doc).toContain("key_check_value");
     expect(doc).toContain("getUser()");
+    expect(doc).toMatch(/edit \*\*header\*\* trash/i);
+    expect(doc).toContain("Trash2Icon");
+    expect(doc).toContain("extension-tokens.css");
   });
 
   it("webauthn doc documents getUser-first params load and KCV", () => {

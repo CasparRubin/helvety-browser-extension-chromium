@@ -1,9 +1,21 @@
+"use client";
+
 import { EXTENSION_EMAIL_OTP_SIGNIN_HELPER } from "@helvety/shared/user-facing-errors";
 import { Button } from "@helvety/ui/button";
 import { Card, CardContent, CardHeader } from "@helvety/ui/card";
 import { Checkbox } from "@helvety/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@helvety/ui/dialog";
 import { Input } from "@helvety/ui/input";
-import { Loader2 } from "lucide-react";
+import { Label } from "@helvety/ui/label";
+import { Loader2, Mail } from "lucide-react";
 
 import { PopupHeader } from "../components/PopupHeader";
 
@@ -49,19 +61,23 @@ export function SignInView({
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 p-3 pt-0">
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={emailInput}
-            onChange={(e) => onEmailChange(e.target.value)}
-            disabled={otpSent || authBusy}
-          />
+          <div className="grid gap-2">
+            <Label htmlFor="extension-email">Email address</Label>
+            <Input
+              id="extension-email"
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={emailInput}
+              onChange={(e) => onEmailChange(e.target.value)}
+              disabled={otpSent || authBusy}
+            />
+          </div>
           {!otpSent ? (
             <>
               <label
                 htmlFor="non-eu-eea-confirmation"
-                className="flex cursor-pointer items-start gap-2 rounded-lg border p-2.5 select-none"
+                className="flex cursor-pointer items-start gap-3 border p-3 select-none"
               >
                 <Checkbox
                   id="non-eu-eea-confirmation"
@@ -72,21 +88,56 @@ export function SignInView({
                   disabled={authBusy}
                   className="mt-0.5"
                 />
-                <span className="text-foreground text-xs leading-relaxed">
+                <span className="text-foreground text-sm leading-relaxed">
                   I confirm that I am <strong>not</strong> located in the
                   European Union (EU) or European Economic Area (EEA).
                 </span>
               </label>
+              <Dialog>
+                <DialogTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="text-primary mx-auto block text-xs underline underline-offset-4 hover:opacity-90"
+                    />
+                  }
+                  nativeButton={false}
+                >
+                  Why can&apos;t Helvety currently serve EU/EEA customers?
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      Why EU/EEA access is currently restricted
+                    </DialogTitle>
+                    <DialogDescription>
+                      Helvety is a Swiss sole proprietorship. For now, we do not
+                      have the legal/compliance capacity required to offer
+                      account-based services to users located in the EU/EEA.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogDescription>
+                    We would like to serve EU/EEA customers in the future, but
+                    at the moment we must restrict access until we can meet
+                    those legal requirements safely and responsibly.
+                  </DialogDescription>
+                  <DialogFooter showCloseButton />
+                </DialogContent>
+              </Dialog>
               <Button
+                size="lg"
+                className="w-full"
                 disabled={authBusy || !emailInput.trim() || !nonEUEEAConfirmed}
                 onClick={onSendOtp}
               >
                 {authBusy ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Sending…
+                    <Loader2 className="size-4 animate-spin" /> Sending...
                   </>
                 ) : (
-                  "Send code"
+                  <>
+                    <Mail className="size-4" /> Send code
+                  </>
                 )}
               </Button>
             </>
@@ -103,10 +154,15 @@ export function SignInView({
                 onChange={(e) => onOtpChange(e.target.value)}
                 disabled={authBusy}
               />
-              <Button disabled={authBusy} onClick={onVerifyOtp}>
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={authBusy}
+                onClick={onVerifyOtp}
+              >
                 {authBusy ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Verifying…
+                    <Loader2 className="size-4 animate-spin" /> Verifying...
                   </>
                 ) : (
                   "Verify code"
@@ -124,7 +180,7 @@ export function SignInView({
             </>
           )}
           {authError ? (
-            <p role="alert" className="text-destructive text-sm">
+            <p role="alert" className="text-destructive text-center text-sm">
               {authError}
             </p>
           ) : null}

@@ -13,6 +13,7 @@ import {
   LogOut,
   NotebookPen,
   Plus,
+  Trash2,
   Users,
 } from "lucide-react";
 
@@ -103,6 +104,7 @@ export function DataTabsView({
   onAddFolder,
   onCancelForm,
   onSave,
+  hasUnsavedChanges,
   onTaskClick,
   onNoteClick,
   onContactClick,
@@ -146,6 +148,7 @@ export function DataTabsView({
   onAddFolder: () => void;
   onCancelForm: () => void;
   onSave: () => void;
+  hasUnsavedChanges: boolean;
   onTaskClick: (task: TaskListRow) => void;
   onNoteClick: (note: NoteListRow) => void;
   onContactClick: (contact: ContactListRow) => void;
@@ -186,7 +189,7 @@ export function DataTabsView({
       if (screen.loading || (!formDraft && !screen.loadError)) {
         return (
           <EntityScreenLayout>
-            <ListLoadingState message="Loading…" />
+            <ListLoadingState message="Loading..." />
           </EntityScreenLayout>
         );
       }
@@ -217,11 +220,8 @@ export function DataTabsView({
           }
           mutationBusy={mutationBusy}
           mutationError={mutationError}
+          hasUnsavedChanges={hasUnsavedChanges}
           onSave={onSave}
-          onCancel={onCancelForm}
-          onDelete={
-            screen.formMode === "edit" && screen.id ? onDeleteForm : undefined
-          }
         />
       );
     }
@@ -401,7 +401,22 @@ export function DataTabsView({
           >
             <ArrowLeft className="size-4 -translate-y-px" />
           </IconTooltipButton>
-          <h2 className="px-0.5 text-base font-semibold">{title}</h2>
+          <h2 className="min-w-0 flex-1 truncate px-0.5 text-base font-semibold">
+            {title}
+          </h2>
+          {screen.formMode === "edit" && screen.id ? (
+            <IconTooltipButton
+              label="Delete"
+              variant="ghost"
+              size="icon-sm"
+              type="button"
+              className="text-muted-foreground hover:text-destructive shrink-0"
+              onClick={onDeleteForm}
+              disabled={mutationBusy}
+            >
+              <Trash2 className="size-4" />
+            </IconTooltipButton>
+          ) : null}
         </div>
       ) : (
         <h2 className="px-0.5 pt-2 pb-1 text-base font-semibold">{title}</h2>

@@ -156,6 +156,30 @@ describe("side panel chrome", () => {
     expect(entityRow).toContain("IconTooltipButton");
     expect(entityRow).toContain('label="Move up"');
     expect(entityRow).toContain('label="Delete"');
+    expect(entityRow).toContain("Trash2Icon");
+    expect(entityRow).toContain("@helvety/ui/icon-size");
+    expect(entityRow).toContain("ICON_SIZE_CLASS");
+  });
+
+  it("extension list rows do not use legacy TrashIcon", () => {
+    for (const file of ["entity-row.tsx", "contact-row.tsx"]) {
+      const src = readSource(`src/popup/components/lists/${file}`);
+      expect(src).toContain("Trash2Icon");
+      expect(src).not.toContain("TrashIcon");
+    }
+  });
+
+  it("globals import canonical extension tokens from the monorepo package", () => {
+    const globals = readSource("src/globals.css");
+    expect(globals).toContain("@helvety/extension-chrome/extension-tokens.css");
+    expect(globals).toContain("@helvety/extension-chrome/popup.css");
+    expect(globals).not.toContain("./popup/extension-tokens.css");
+  });
+
+  it("catalog picker components use shared Button primitive", () => {
+    const picker = readSource("src/popup/components/catalog-picker.tsx");
+    expect(picker).toContain("@helvety/ui/button");
+    expect(picker).not.toMatch(/<button[\s>]/);
   });
 
   it("LinksTreeList uses normalizeBookmarkUrl (no inline normalizeUrl)", () => {
@@ -180,11 +204,15 @@ describe("side panel chrome", () => {
     expect(nav).not.toContain('"detail"');
   });
 
-  it("EntityFormView exposes delete in edit mode", () => {
+  it("form edit mode exposes delete in header chrome", () => {
+    const tabs = readSource("src/popup/views/DataTabsView.tsx");
+    expect(tabs).toContain("onDeleteForm");
+    expect(tabs).toContain('formMode === "edit"');
+    expect(tabs).toContain("Trash2");
+    expect(tabs).toContain('message="Loading..."');
     const form = readSource("src/popup/views/EntityFormView.tsx");
-    expect(form).toContain("onDelete");
-    expect(form).toContain('formMode === "edit"');
-    expect(form).toContain("Delete");
+    expect(form).toContain("hasUnsavedChanges");
+    expect(form).not.toMatch(/footer[\s\S]*Trash2/);
   });
 
   it("UnlockView hides session email except in sign-out tooltip", () => {

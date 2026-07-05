@@ -48,7 +48,7 @@ export function UnlockView({
               </span>
             </span>
           }
-          variant="outline"
+          variant="ghost"
           size="sm"
           type="button"
           className="absolute top-0 right-0"
