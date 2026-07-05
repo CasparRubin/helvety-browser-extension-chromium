@@ -319,12 +319,11 @@ describe("unlockEncryptionWithPasskey", () => {
     expect(startAuthentication).not.toHaveBeenCalled();
   });
 
-  it("passes through allowlist errors from the auth server", async () => {
-    const allowlistError =
-      "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS). Add the id from About → Extension ID on Vercel, then redeploy.";
+  it("returns sanitized allowlist errors from the auth server", async () => {
     helvetyAuthFetch.mockResolvedValueOnce({
       success: false,
-      error: allowlistError,
+      error:
+        "This extension is not authorized to sign in yet. Sign in at helvety.com or contact support if this persists.",
     });
 
     const result = await unlockEncryptionWithPasskey({
@@ -334,7 +333,11 @@ describe("unlockEncryptionWithPasskey", () => {
       userId: USER_ID,
     });
 
-    expect(result).toEqual({ ok: false, error: allowlistError });
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "This extension is not authorized to sign in yet. Sign in at helvety.com or contact support if this persists.",
+    });
     expect(startAuthentication).not.toHaveBeenCalled();
   });
 

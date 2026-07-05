@@ -58,11 +58,15 @@ assertPatterns("src/lib/extension-weekly-proof-storage.ts", [
 assertPatterns("src/lib/helvety-auth-api.ts", [
   "EXTENSION_WEEKLY_PROOF_HEADER",
   "weeklyProof",
+  "sanitizeExtensionAuthError",
+  "@helvety/shared/user-facing-errors",
 ]);
 
 assertNoPatterns("src/lib/helvety-auth-api.ts", [
   "helvety_extension_last_email_verified",
   "jwt-session-lifetime",
+  "About → Extension ID",
+  "Extension id is not allowlisted",
 ]);
 
 assertPatterns("src/popup/App.tsx", [

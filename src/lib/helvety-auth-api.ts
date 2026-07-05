@@ -4,13 +4,14 @@
  * PRF params use Supabase (`extension-passkey-params.ts`), not this module.
  * Responses use `@helvety/shared/parse-action-response` (`ActionResponse` shape).
  * Undeployed routes (404 or HTML) map to passkey- or auth-specific “not deployed” messages.
- * JSON errors from a deployed auth app (allowlist, rate limit, server faults) pass through unchanged.
+ * JSON errors from a deployed auth app (allowlist, rate limit, server faults) are sanitized for end users.
  */
 
 import {
   isActionResponsePayload,
   parseActionResponse,
 } from "@helvety/shared/parse-action-response";
+import { EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR } from "@helvety/shared/user-facing-errors";
 import { EXTENSION_WEEKLY_PROOF_HEADER } from "@helvety/shared/weekly-proof-token";
 
 import {
@@ -29,6 +30,30 @@ import type { ActionResponse } from "@helvety/shared/types/entities";
 type HelvetyJsonResponse<T> = ActionResponse<T>;
 
 const DEFAULT_AUTH_ERROR = "Request to Helvety auth failed";
+
+export { EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR };
+
+const AUTH_ORIGIN_MISCONFIGURED_USER_ERROR =
+  "Auth API URL is misconfigured. Sign in at helvety.com or reinstall the extension.";
+
+const PASSKEY_ORIGIN_MISCONFIGURED_USER_ERROR =
+  "Passkey API URL is misconfigured. Sign in at helvety.com or reinstall the extension.";
+
+export function sanitizeExtensionAuthError(error: string): string {
+  if (
+    error.includes("HELVETY_CHROME_EXTENSION_ORIGINS") ||
+    error.includes("not authorized to sign in yet") ||
+    error === EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR
+  ) {
+    return EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR;
+  }
+  if (error.includes("Check About → Auth origin")) {
+    return error.startsWith("Passkey")
+      ? PASSKEY_ORIGIN_MISCONFIGURED_USER_ERROR
+      : AUTH_ORIGIN_MISCONFIGURED_USER_ERROR;
+  }
+  return error;
+}
 
 /** Shown when passkey routes return 404 or HTML instead of JSON (misconfigured URL or missing deploy). */
 export const PASSKEY_API_NOT_DEPLOYED_MESSAGE =
@@ -130,7 +155,7 @@ export async function helvetyAuthFetch<T>(
 
   if (isExtensionPasskeyApiPath(path) && looksLikeHtmlBody(raw, contentType)) {
     const error = looksLikeMissingAuthBasePath(url)
-      ? "Passkey API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
+      ? PASSKEY_ORIGIN_MISCONFIGURED_USER_ERROR
       : PASSKEY_API_NOT_DEPLOYED_MESSAGE;
     logPasskeyAuthFetchFailure({
       url,
@@ -163,7 +188,9 @@ export async function helvetyAuthFetch<T>(
   const parsed = await parseActionResponse<T>(synthetic, DEFAULT_AUTH_ERROR);
 
   if (!parsed.success) {
-    const error = normalizeAuthError(response, parsed.error);
+    const error = sanitizeExtensionAuthError(
+      normalizeAuthError(response, parsed.error)
+    );
     if (isExtensionPasskeyApiPath(path)) {
       logPasskeyAuthFetchFailure({
         url,
@@ -230,7 +257,7 @@ export async function helvetyPublicAuthFetch<T>(
 
   if (isExtensionAuthApiPath(path) && looksLikeHtmlBody(raw, contentType)) {
     const error = looksLikeMissingAuthBasePath(url)
-      ? "Auth API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
+      ? AUTH_ORIGIN_MISCONFIGURED_USER_ERROR
       : "Auth API is not deployed on the Helvety auth server yet.";
     return { success: false, error };
   }
@@ -251,7 +278,9 @@ export async function helvetyPublicAuthFetch<T>(
   if (!parsed.success) {
     return {
       success: false,
-      error: normalizeAuthError(response, parsed.error),
+      error: sanitizeExtensionAuthError(
+        normalizeAuthError(response, parsed.error)
+      ),
     };
   }
   return parsed;

@@ -11,9 +11,11 @@ import {
   HELVETY_AUTH_ORIGIN,
 } from "./config";
 import {
+  EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR,
   helvetyAuthFetch,
   helvetyPublicAuthFetch,
   PASSKEY_API_NOT_DEPLOYED_MESSAGE,
+  sanitizeExtensionAuthError,
   sendExtensionOtp,
   verifyExtensionOtp,
 } from "./helvety-auth-api";
@@ -226,7 +228,7 @@ describe("helvetyAuthFetch", () => {
     });
   });
 
-  it("passes through allowlist errors from the auth server on passkey routes", async () => {
+  it("sanitizes legacy allowlist errors from the auth server on passkey routes", async () => {
     const allowlistError =
       "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS). Add the id from About → Extension ID on Vercel, then redeploy.";
     const fetchMock = vi.fn().mockResolvedValue(
@@ -244,7 +246,25 @@ describe("helvetyAuthFetch", () => {
       body: JSON.stringify({ origin: "chrome-extension://x" }),
     });
 
-    expect(result).toEqual({ success: false, error: allowlistError });
+    expect(result).toEqual({
+      success: false,
+      error: EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR,
+    });
+  });
+
+  it("sanitizeExtensionAuthError maps legacy operator copy", () => {
+    expect(
+      sanitizeExtensionAuthError(
+        "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS)."
+      )
+    ).toBe(EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR);
+    expect(
+      sanitizeExtensionAuthError(
+        "Passkey API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
+      )
+    ).toBe(
+      "Passkey API URL is misconfigured. Sign in at helvety.com or reinstall the extension."
+    );
   });
 
   it("maps 401 HTML on passkey routes to not deployed (gateway HTML)", async () => {
