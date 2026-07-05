@@ -118,6 +118,10 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toMatch(/passkey API URL/i);
   });
 
+  it("documents extension OTP creates accounts for new emails", () => {
+    expect(readme).toMatch(/creates a Helvety account when the email is new/i);
+  });
+
   it("documents session and vault policy aligned with helvety.com", () => {
     const policySection = readme.slice(
       readme.indexOf("## Session and vault policy")

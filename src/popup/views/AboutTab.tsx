@@ -149,8 +149,8 @@ export function AboutTab({
             </p>
             <ul className="flex list-disc flex-col gap-1 pl-4">
               <li>
-                Sign in with email OTP via the Helvety auth API (EU/EEA
-                attestation required).
+                Email OTP sign-in via the Helvety auth API — new or existing
+                Helvety account (EU/EEA attestation required).
               </li>
               <li>
                 Unlock with a passkey (PRF) to derive the master key in this

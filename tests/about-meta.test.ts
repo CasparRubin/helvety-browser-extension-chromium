@@ -43,6 +43,7 @@ describe("about-meta", () => {
     expect(aboutSource).toMatch(/edit-first|straight into the editor/i);
     expect(aboutSource).toMatch(/decryption happens only in your browser/i);
     expect(aboutSource).toMatch(/side panel/i);
+    expect(aboutSource).toMatch(/new or existing/i);
     expect(aboutSource).not.toMatch(/read-only MVP/i);
     expect(aboutSource).not.toMatch(/lists? only/i);
     expect(aboutSource).not.toMatch(/\bthis popup\b/i);

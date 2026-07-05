@@ -1,3 +1,4 @@
+import { EXTENSION_EMAIL_OTP_SIGNIN_HELPER } from "@helvety/shared/user-facing-errors";
 import { Button } from "@helvety/ui/button";
 import { Card, CardContent, CardHeader } from "@helvety/ui/card";
 import { Checkbox } from "@helvety/ui/checkbox";
@@ -43,8 +44,8 @@ export function SignInView({
         <CardHeader className="p-3 pb-2">
           <p className="text-sm font-medium">Email sign-in</p>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Sign in with a one-time code (same account as helvety.com). EU/EEA
-            attestation is required before we send a code.
+            {EXTENSION_EMAIL_OTP_SIGNIN_HELPER} EU/EEA attestation is required
+            before we send a code.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 p-3 pt-0">

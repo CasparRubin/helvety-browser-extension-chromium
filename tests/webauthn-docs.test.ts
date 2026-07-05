@@ -23,6 +23,7 @@ describe("webauthn-extension.md", () => {
   it("troubleshooting covers missing allowlist not only missing deploy", () => {
     expect(doc).toContain("HELVETY_CHROME_EXTENSION_ORIGINS");
     expect(doc).toMatch(/origin errors|allowlist/i);
+    expect(doc).toMatch(/not authorized to sign in yet|user-safe/i);
     expect(doc).not.toMatch(/Auth not redeployed/i);
   });
 

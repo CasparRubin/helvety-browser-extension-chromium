@@ -102,4 +102,27 @@ describe("extension copy accuracy (README + docs)", () => {
     expect(doc).toMatch(/PRF derive \+ KCV|verify KCV/i);
     expect(doc).toMatch(/no.*GET.*encryption\/passkey-params/i);
   });
+
+  it("SignInView uses shared extension OTP helper and does not imply existing-account-only", () => {
+    const signInSource = readFileSync(
+      join(repoRoot, "src/popup/views/SignInView.tsx"),
+      "utf8"
+    );
+
+    expect(signInSource).toContain("EXTENSION_EMAIL_OTP_SIGNIN_HELPER");
+    expect(signInSource).not.toMatch(/same account as helvety\.com/i);
+  });
+
+  it("user-facing auth module does not ship operator allowlist copy", () => {
+    const authApiSource = readFileSync(
+      join(repoRoot, "src/lib/helvety-auth-api.ts"),
+      "utf8"
+    );
+
+    expect(authApiSource).toContain("sanitizeExtensionAuthError");
+    expect(authApiSource).not.toContain("About → Extension ID");
+    expect(authApiSource).not.toMatch(
+      /Extension id is not allowlisted on helvety-auth/
+    );
+  });
 });

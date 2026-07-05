@@ -69,6 +69,15 @@ assertNoPatterns("src/lib/helvety-auth-api.ts", [
   "Extension id is not allowlisted",
 ]);
 
+assertNoPatterns("src/popup/views/SignInView.tsx", [
+  "same account as helvety.com",
+  "About → Extension ID",
+]);
+
+assertPatterns("src/popup/views/SignInView.tsx", [
+  "EXTENSION_EMAIL_OTP_SIGNIN_HELPER",
+]);
+
 assertPatterns("src/popup/App.tsx", [
   "onKeyEvent",
   "useVaultIdleLock",

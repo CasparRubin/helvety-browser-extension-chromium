@@ -265,6 +265,39 @@ describe("helvetyAuthFetch", () => {
     ).toBe(
       "Passkey API URL is misconfigured. Sign in at helvety.com or reinstall the extension."
     );
+    expect(
+      sanitizeExtensionAuthError(
+        "Auth API URL is misconfigured (auth origin must include /auth). Check About → Auth origin."
+      )
+    ).toBe(
+      "Auth API URL is misconfigured. Sign in at helvety.com or reinstall the extension."
+    );
+  });
+
+  it("maps passkey HTML without /auth base path to misconfigured user error", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("<!DOCTYPE html><html>gateway</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(config, "buildHelvetyAuthApiUrl").mockReturnValue(
+      `https://helvety.com${EXTENSION_PASSKEY_OPTIONS_PATH}`
+    );
+
+    const result = await helvetyAuthFetch(EXTENSION_PASSKEY_OPTIONS_PATH, {
+      method: "POST",
+      accessToken: "token",
+      weeklyProof: "test-weekly-proof",
+      body: JSON.stringify({ origin: "chrome-extension://x" }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Passkey API URL is misconfigured. Sign in at helvety.com or reinstall the extension.",
+    });
   });
 
   it("maps 401 HTML on passkey routes to not deployed (gateway HTML)", async () => {
@@ -522,10 +555,37 @@ describe("helvetyPublicAuthFetch and extension OTP helpers", () => {
       body: "{}",
     });
 
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error).toContain("misconfigured");
-    }
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Auth API URL is misconfigured. Sign in at helvety.com or reinstall the extension.",
+    });
+  });
+
+  it("sanitizes legacy allowlist errors from OTP public fetch", async () => {
+    const allowlistError =
+      "Extension id is not allowlisted on helvety-auth (HELVETY_CHROME_EXTENSION_ORIGINS). Add the id from About → Extension ID on Vercel, then redeploy.";
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: false, error: allowlistError }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await helvetyPublicAuthFetch(EXTENSION_OTP_SEND_PATH, {
+      method: "POST",
+      body: JSON.stringify({
+        email: "user@example.com",
+        nonEUEEAConfirmed: true,
+        origin: "chrome-extension://x",
+      }),
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: EXTENSION_ORIGIN_NOT_ALLOWLISTED_USER_ERROR,
+    });
   });
 
   it("passes through JSON OTP errors including rate limits", async () => {
