@@ -1,11 +1,13 @@
 import { getE2eeListTitle } from "@helvety/shared/e2ee-draft";
 import {
+  NOTE_CATEGORIES,
+  catalogColor,
+} from "@helvety/shared/e2ee-entity-catalogs";
+import {
   ListEmptyState,
   ListErrorState,
   ListLoadingState,
 } from "@helvety/ui/list-states";
-
-import { NOTE_CATEGORIES, catalogColor } from "../../../lib/entity-catalogs";
 
 import { EntityRow } from "./entity-row";
 import { CategoryGroup } from "./group-headers";

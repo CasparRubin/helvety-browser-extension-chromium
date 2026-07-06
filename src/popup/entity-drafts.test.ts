@@ -40,6 +40,13 @@ describe("entity-drafts wiring", () => {
     expect(src).toContain("emptyContactInput");
     expect(src).not.toMatch(/function emptyContactInput\(/);
   });
+
+  it("re-exports record-to-input mappers from @helvety/shared/e2ee-record-to-input", () => {
+    const src = readFileSync(draftsPath, "utf8");
+    expect(src).toContain("@helvety/shared/e2ee-record-to-input");
+    expect(src).toContain("contactToInput");
+    expect(src).not.toMatch(/function contactToInput\(/);
+  });
 });
 
 describe("empty input factories", () => {

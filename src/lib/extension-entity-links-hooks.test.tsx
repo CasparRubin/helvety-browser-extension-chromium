@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 
 const toastError = vi.hoisted(() => vi.fn());
 
-vi.mock("sonner", () => ({
+vi.mock("@helvety/ui/sonner", () => ({
   toast: {
     error: (...args: unknown[]) => toastError(...args),
   },

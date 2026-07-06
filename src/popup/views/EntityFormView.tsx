@@ -1,3 +1,9 @@
+import {
+  CONTACT_CATEGORIES,
+  NOTE_CATEGORIES,
+  TASK_LABELS,
+  TASK_STAGES,
+} from "@helvety/shared/e2ee-entity-catalogs";
 import { Button } from "@helvety/ui/button";
 import { E2EE_EDITOR_FORM_FIELDS_STACK_CLASS } from "@helvety/ui/e2ee-form-layout";
 import { FormField } from "@helvety/ui/form-field";
@@ -6,12 +12,6 @@ import { NativeSelect } from "@helvety/ui/native-select";
 import { Textarea } from "@helvety/ui/textarea";
 import { Loader2 } from "lucide-react";
 
-import {
-  CONTACT_CATEGORIES,
-  NOTE_CATEGORIES,
-  TASK_LABELS,
-  TASK_STAGES,
-} from "../../lib/entity-catalogs";
 import {
   CategoryPicker,
   PriorityPicker,
@@ -31,22 +31,18 @@ import { emptyContactInput } from "../entity-drafts";
 import type {
   ContactInput,
   EntityListItem,
+  EntityKind,
   LinkFolderInput,
   LinkInput,
   NoteInput,
   TaskInput,
-  EntityKind,
 } from "../../lib/entity-types";
+import type { E2eeFormDraft } from "@helvety/shared/validate-e2ee-draft";
 
 /**
  *
  */
-export type EntityFormDraft =
-  | { kind: "tasks"; value: TaskInput }
-  | { kind: "notes"; value: NoteInput }
-  | { kind: "contacts"; value: ContactInput }
-  | { kind: "links"; value: LinkInput }
-  | { kind: "link_folder"; value: LinkFolderInput };
+export type EntityFormDraft = E2eeFormDraft;
 
 /**
  * Create / edit form for one entity kind inside the side panel shell.

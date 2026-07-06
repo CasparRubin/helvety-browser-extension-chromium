@@ -1,4 +1,5 @@
 import { getE2eeHookErrorMessage } from "@helvety/ui/auth-navigation";
+import { toast } from "@helvety/ui/sonner";
 import {
   createContext,
   useCallback,
@@ -6,7 +7,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import { toast } from "sonner";
 
 import type { EntityLinkRepository } from "./entity-link-repository";
 import type { LinkEntityType } from "@helvety/shared/entity-links-client";

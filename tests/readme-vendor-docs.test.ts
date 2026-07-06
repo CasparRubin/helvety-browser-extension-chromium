@@ -36,7 +36,11 @@ describe("README vendor and side panel documentation", () => {
     expect(panelSection).toContain("buildE2eeDeepLink");
     expect(panelSection).toContain("Open in web app");
     expect(panelSection).toContain("isFormDraftDirty");
-    expect(panelSection).toContain("clears decrypted state");
+    expect(panelSection).toContain("use-extension-entities");
+    expect(panelSection).toContain("use-extension-vault");
+    expect(panelSection).toContain("use-extension-auth");
+    expect(panelSection).toContain("use-extension-entity-form");
+    expect(panelSection).toContain("e2ee-entity-crypto");
     expect(panelSection).toContain("openPanelOnActionClick");
     expect(panelSection).toContain("pending-otp-storage.ts");
     expect(readme).toContain("Chrome 114+");
@@ -51,11 +55,11 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).not.toMatch(/default_popup/i);
   });
 
-  it("documents sonner toasts (not @helvety/ui/sonner) for extension runtime", () => {
+  it("documents sonner toasts through the shared UI wrapper", () => {
     expect(readme).toContain("sonner");
+    expect(readme).toContain("@helvety/ui/sonner");
     expect(readme).toContain("Toaster");
     expect(readme).toContain("getE2eeHookErrorMessage");
-    expect(readme).not.toMatch(/\| `@helvety\/ui`[^\n]*@helvety\/ui\/sonner/);
   });
 
   it("documents tests/ layout contract suites", () => {
@@ -69,16 +73,18 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("webauthn-docs");
     expect(readme).toContain("supabase-auth-patterns");
     expect(readme).toContain("copy-accuracy");
-    expect(readme).toContain("entity-catalog-drift");
+    expect(readme).toContain("e2ee-catalog-wiring");
     expect(readme).toContain("dependency-pins");
     expect(readme).toContain("tsconfig-build");
     expect(readme).toContain("src/**/*.test.ts");
     expect(readme).toMatch(/src\/\*\*\/\*\.test\.ts\(x\)/);
     expect(readme).toContain("extension-entity-links-hooks");
-    expect(readme).toContain("entity-catalogs");
+    expect(readme).toContain("e2ee-entity-catalogs");
     expect(readme).toContain("entity-link-repository");
     expect(readme).toContain("helvety-auth-api");
-    expect(readme).toContain("list-group-utils");
+    expect(readme).toContain("e2ee-crypto-wiring");
+    expect(readme).toContain("e2ee-forms-wiring");
+    expect(readme).toContain("e2ee-types-wiring");
   });
 
   it("documents auth API OTP sign-in (not direct Supabase OTP client)", () => {

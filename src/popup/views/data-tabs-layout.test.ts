@@ -13,6 +13,9 @@ function readSource(rel: string): string {
 const dataTabsSource = readSource("src/popup/views/DataTabsView.tsx");
 const entityFormSource = readSource("src/popup/views/EntityFormView.tsx");
 const appSource = readSource("src/popup/App.tsx");
+const entitiesHookSource = readSource(
+  "src/popup/hooks/use-extension-entities.ts"
+);
 
 describe("DataTabsView tab order", () => {
   it("renders Links as the first tab, before the other entity tabs", () => {
@@ -64,11 +67,11 @@ describe("DataTabsView edit command bar", () => {
 
 describe("App default tab", () => {
   it("opens on the Links tab by default", () => {
-    expect(appSource).toContain('useState<EntityTabId>("links")');
-    expect(appSource).not.toContain('useState<EntityTabId>("tasks")');
+    expect(entitiesHookSource).toContain('useState<EntityTabId>("links")');
+    expect(entitiesHookSource).not.toContain('useState<EntityTabId>("tasks")');
   });
 
   it("passes dirty form state into DataTabsView for save gating", () => {
-    expect(appSource).toContain("hasUnsavedChanges={isFormDraftDirty()}");
+    expect(appSource).toContain("hasUnsavedChanges={form.isFormDraftDirty()}");
   });
 });

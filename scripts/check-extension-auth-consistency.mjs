@@ -78,9 +78,12 @@ assertPatterns("src/popup/views/SignInView.tsx", [
   "EXTENSION_EMAIL_OTP_SIGNIN_HELPER",
 ]);
 
-assertPatterns("src/popup/App.tsx", [
+assertPatterns("src/popup/hooks/use-extension-vault.ts", [
   "onKeyEvent",
   "useVaultIdleLock",
+]);
+
+assertPatterns("src/popup/hooks/use-extension-auth.ts", [
   "writeExtensionWeeklyProof",
   "clearExtensionWeeklyProof",
 ]);

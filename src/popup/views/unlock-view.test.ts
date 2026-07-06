@@ -13,6 +13,7 @@ function readSource(rel: string): string {
 const unlockSource = readSource("src/popup/views/UnlockView.tsx");
 const aboutSource = readSource("src/popup/views/AboutTab.tsx");
 const appSource = readSource("src/popup/App.tsx");
+const vaultHookSource = readSource("src/popup/hooks/use-extension-vault.ts");
 
 describe("UnlockView passkey screen", () => {
   it("does not show encryption params preflight status to end users", () => {
@@ -50,20 +51,17 @@ describe("AboutTab encryption preflight diagnostics", () => {
 });
 
 describe("App unlock wiring", () => {
-  it("routes handleUnlock preflight failures to cryptoError for UnlockView", () => {
-    const unlockBlock = appSource.slice(
-      appSource.indexOf("const handleUnlock"),
-      appSource.indexOf("const handleRetryList")
-    );
-
-    expect(unlockBlock).toContain("fetchPasskeyParamsForUser");
-    expect(unlockBlock).toContain("setCryptoError(preflight.error)");
-    expect(unlockBlock).toContain(
+  it("routes unlock preflight failures to cryptoError for UnlockView", () => {
+    expect(vaultHookSource).toContain("fetchPasskeyParamsForUser");
+    expect(vaultHookSource).toContain("setCryptoError(preflight.error)");
+    expect(vaultHookSource).toContain(
       'setCryptoError("Encryption is not set up for this account.")'
     );
   });
 
   it("passes cryptoError into UnlockView for user-visible unlock failures", () => {
-    expect(appSource).toMatch(/<UnlockView[\s\S]*cryptoError=\{cryptoError\}/);
+    expect(appSource).toMatch(
+      /<UnlockView[\s\S]*cryptoError=\{vault\.cryptoError\}/
+    );
   });
 });

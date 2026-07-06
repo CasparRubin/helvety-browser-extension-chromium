@@ -2,7 +2,7 @@ import { renderIcon } from "@helvety/ui/icon-renderer";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import React, { useState } from "react";
 
-import type { CatalogEntry } from "../../../lib/entity-catalogs";
+import type { CatalogEntry } from "@helvety/shared/e2ee-entity-catalogs";
 
 /** Collapsible stage group header (extension side panel, no DnD). */
 export function StageGroup({

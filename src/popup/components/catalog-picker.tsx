@@ -1,3 +1,10 @@
+import {
+  PRIORITY_COLORS,
+  TASK_LABELS,
+  TASK_PRIORITIES,
+  TASK_STAGES,
+  type CatalogEntry,
+} from "@helvety/shared/e2ee-entity-catalogs";
 import { cn } from "@helvety/shared/utils";
 import { Button } from "@helvety/ui/button";
 import { renderIcon } from "@helvety/ui/icon-renderer";
@@ -7,14 +14,6 @@ import {
   ArrowUpIcon,
   MinusIcon,
 } from "lucide-react";
-
-import {
-  PRIORITY_COLORS,
-  TASK_LABELS,
-  TASK_PRIORITIES,
-  TASK_STAGES,
-  type CatalogEntry,
-} from "../../lib/entity-catalogs";
 
 const PRIORITY_ICONS = [
   ArrowDownIcon,
@@ -26,6 +25,11 @@ const PRIORITY_ICONS = [
 /**
  *
  */
+type CatalogPickerEntry = Pick<CatalogEntry, "id" | "name" | "color" | "icon">;
+
+/**
+ *
+ */
 function CatalogPicker({
   label,
   entries,
@@ -33,7 +37,7 @@ function CatalogPicker({
   onChange,
 }: {
   label: string;
-  entries: CatalogEntry[];
+  entries: readonly CatalogPickerEntry[];
   value: string;
   onChange: (id: string) => void;
 }): React.JSX.Element {

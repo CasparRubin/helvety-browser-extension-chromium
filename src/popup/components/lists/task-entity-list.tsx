@@ -1,11 +1,13 @@
 import { getE2eeListTitle } from "@helvety/shared/e2ee-draft";
 import {
+  TASK_STAGES,
+  catalogColor,
+} from "@helvety/shared/e2ee-entity-catalogs";
+import {
   ListEmptyState,
   ListErrorState,
   ListLoadingState,
 } from "@helvety/ui/list-states";
-
-import { TASK_STAGES, catalogColor } from "../../../lib/entity-catalogs";
 
 import { EntityRow } from "./entity-row";
 import { StageGroup } from "./group-headers";

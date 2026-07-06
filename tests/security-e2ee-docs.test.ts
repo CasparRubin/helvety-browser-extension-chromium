@@ -23,8 +23,10 @@ describe("SECURITY-E2EE.md", () => {
 
   it("still documents client-side decrypt and privacy guards", () => {
     expect(doc).toContain("e2ee-write-guard");
+    expect(doc).toContain("e2ee-entity-crypto");
     expect(doc).toContain("decrypt-entities.ts");
     expect(doc).toContain("entity-repository.test.ts");
+    expect(doc).toContain("use-extension-entities");
     expect(doc).toContain("clearDecryptedEntityState");
     expect(doc).toContain("tests/security-e2ee-docs.test.ts");
   });

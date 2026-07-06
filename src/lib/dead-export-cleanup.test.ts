@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const libRoot = join(dirname(fileURLToPath(import.meta.url)));
+const repoRoot = join(libRoot, "../..");
 
 function readLibSource(relativePath: string): string {
   return readFileSync(join(libRoot, relativePath), "utf8");
@@ -19,10 +20,13 @@ describe("extension dead export cleanup guards", () => {
     expect(src).not.toContain("export function isRichTextField");
   });
 
-  it("entity-catalogs does not export removed catalogName helper", () => {
-    const src = readLibSource("entity-catalogs.ts");
-    expect(src).not.toMatch(/export function catalogName/);
-    expect(src).toContain("CatalogEntryLite");
+  it("shared e2ee-entity-catalogs exports catalogColor", () => {
+    const src = readFileSync(
+      join(repoRoot, ".helvety/packages/shared/src/e2ee-entity-catalogs.ts"),
+      "utf8"
+    );
+    expect(src).toContain("export function catalogColor");
+    expect(src).not.toMatch(/export function catalogById/);
   });
 
   it("entity-repository guards selects and plaintext write payloads", () => {
@@ -49,18 +53,10 @@ describe("extension dead export cleanup guards", () => {
     expect(src).not.toMatch(/export type HelvetyJsonResponse/);
   });
 
-  it("entity-catalogs keeps catalogById internal", () => {
-    const src = readLibSource("entity-catalogs.ts");
-    expect(src).toContain("function catalogById");
-    expect(src).not.toMatch(/export function catalogById/);
-    expect(src).toContain("export function catalogColor");
-  });
-
-  it("decrypt-entities keeps decryptLinkFolderName internal", () => {
+  it("decrypt-entities delegates shared crypto helpers", () => {
     const src = readLibSource("decrypt-entities.ts");
-    expect(src).toContain("function decryptLinkFolderName");
-    expect(src).not.toMatch(/export async function decryptLinkFolderName/);
-    expect(src).toContain("export async function decryptLinkFolderRow");
+    expect(src).toContain("@helvety/shared/crypto/e2ee-entity-crypto");
+    expect(src).not.toMatch(/function decryptLinkFolderName/);
   });
 
   it("catalog-picker keeps CatalogPicker internal", () => {

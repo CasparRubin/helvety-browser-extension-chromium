@@ -1,10 +1,12 @@
 import {
+  CONTACT_CATEGORIES,
+  catalogColor,
+} from "@helvety/shared/e2ee-entity-catalogs";
+import {
   ListEmptyState,
   ListErrorState,
   ListLoadingState,
 } from "@helvety/ui/list-states";
-
-import { CONTACT_CATEGORIES, catalogColor } from "../../../lib/entity-catalogs";
 
 import { ContactRow } from "./contact-row";
 import { CategoryGroup } from "./group-headers";

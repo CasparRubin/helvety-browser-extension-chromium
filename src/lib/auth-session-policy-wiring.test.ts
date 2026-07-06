@@ -7,12 +7,19 @@ import { describe, expect, it } from "vitest";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("auth session policy wiring (extension)", () => {
-  it("App.tsx uses shared vault idle lock, key events, and weekly proof storage", () => {
-    const src = readFileSync(join(repoRoot, "src/popup/App.tsx"), "utf8");
-    expect(src).toContain("useVaultIdleLock");
-    expect(src).toContain("touchVaultSessionInStorage");
-    expect(src).toContain("onKeyEvent");
-    expect(src).toContain("writeExtensionWeeklyProof");
+  it("auth and vault hooks use shared idle lock, key events, and weekly proof storage", () => {
+    const vaultSrc = readFileSync(
+      join(repoRoot, "src/popup/hooks/use-extension-vault.ts"),
+      "utf8"
+    );
+    const authSrc = readFileSync(
+      join(repoRoot, "src/popup/hooks/use-extension-auth.ts"),
+      "utf8"
+    );
+    expect(vaultSrc).toContain("useVaultIdleLock");
+    expect(vaultSrc).toContain("touchVaultSessionInStorage");
+    expect(vaultSrc).toContain("onKeyEvent");
+    expect(authSrc).toContain("writeExtensionWeeklyProof");
   });
 
   it("extension weekly proof storage uses shared token module", () => {

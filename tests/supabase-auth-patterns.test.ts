@@ -55,11 +55,14 @@ describe("supabase auth patterns (extension)", () => {
     expect(violations).toEqual([]);
   });
 
-  it("App.tsx resolves session via resolveVerifiedExtensionSession", () => {
-    const app = readFileSync(join(repoRoot, "src/popup/App.tsx"), "utf8");
-    expect(app).toContain("resolveVerifiedExtensionSession");
-    expect(app).toContain("hasNoAuthenticatedUser");
-    expect(app).not.toMatch(/supabase\.auth\.getSession\s*\(/);
+  it("auth hook resolves session via resolveVerifiedExtensionSession", () => {
+    const authHook = readFileSync(
+      join(repoRoot, "src/popup/hooks/use-extension-auth.ts"),
+      "utf8"
+    );
+    expect(authHook).toContain("resolveVerifiedExtensionSession");
+    expect(authHook).toContain("hasNoAuthenticatedUser");
+    expect(authHook).not.toMatch(/supabase\.auth\.getSession\s*\(/);
   });
 
   it("extension-passkey-params uses ensureExtensionAuthReady (getUser-first)", () => {

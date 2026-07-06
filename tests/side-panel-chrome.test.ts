@@ -34,41 +34,37 @@ describe("side panel chrome", () => {
     expect(app).toContain("usePopupTheme");
     expect(app).toContain("STORAGE_KEY_POPUP_THEME");
     expect(app).toContain("@helvety/extension-chrome/use-popup-theme");
-    expect(app).toContain("readPendingOtp");
-    expect(app).toContain("writePendingOtp");
-    expect(app).toContain("clearPendingOtp");
+    expect(app).toContain("useExtensionAuth");
+    expect(app).toContain("useExtensionVault");
+    expect(app).toContain("useExtensionEntities");
     expect(app).toContain("DataTabsView");
   });
 
-  it("App hydrates pending OTP only when no authenticated user is present", () => {
-    const app = readSource("src/popup/App.tsx");
-    expect(app).toContain("hasNoAuthenticatedUser");
-    expect(app).toMatch(/readPendingOtp/);
+  it("auth hook hydrates pending OTP only when no authenticated user is present", () => {
+    const authHook = readSource("src/popup/hooks/use-extension-auth.ts");
+    expect(authHook).toContain("hasNoAuthenticatedUser");
+    expect(authHook).toMatch(/readPendingOtp/);
   });
 
-  it("App wires pending OTP storage into OTP handlers", () => {
-    const app = readSource("src/popup/App.tsx");
-    const sendBlock = app.slice(
-      app.indexOf("const handleSendOtp"),
-      app.indexOf("const handleVerifyOtp")
+  it("auth hook wires pending OTP storage into OTP handlers", () => {
+    const authHook = readSource("src/popup/hooks/use-extension-auth.ts");
+    const sendBlock = authHook.slice(
+      authHook.indexOf("const handleSendOtp"),
+      authHook.indexOf("const handleVerifyOtp")
     );
-    const verifyBlock = app.slice(
-      app.indexOf("const handleVerifyOtp"),
-      app.indexOf("const handleLogout")
+    const verifyBlock = authHook.slice(
+      authHook.indexOf("const handleVerifyOtp"),
+      authHook.indexOf("const handleUseDifferentEmail")
     );
     expect(sendBlock).toContain("writePendingOtp");
     expect(verifyBlock).toContain("clearPendingOtp");
   });
 
-  it("App clears auth form state on sign-out", () => {
-    const app = readSource("src/popup/App.tsx");
-    const logoutBlock = app.slice(
-      app.indexOf("const handleLogout"),
-      app.indexOf("const handleUnlock")
-    );
-    expect(logoutBlock).toContain('setEmailInput("")');
-    expect(logoutBlock).toContain("setOtpSent(false)");
-    expect(logoutBlock).toContain("clearPendingOtp");
+  it("auth hook clears auth form state on sign-out", () => {
+    const authHook = readSource("src/popup/hooks/use-extension-auth.ts");
+    expect(authHook).toContain('setEmailInput("")');
+    expect(authHook).toContain("setOtpSent(false)");
+    expect(authHook).toContain("clearPendingOtp");
   });
 
   it("index.html uses full-height shell (not fixed 800×600 box)", () => {
@@ -269,37 +265,39 @@ describe("side panel chrome", () => {
 
   it("App wires openInApp deep links and tab unsaved guard", () => {
     const app = readSource("src/popup/App.tsx");
+    const formHook = readSource("src/popup/hooks/use-extension-entity-form.ts");
     expect(app).toContain("buildE2eeDeepLink");
     expect(app).toContain("openInApp");
-    expect(app).toContain("isFormDraftDirty");
-    expect(app).toContain("handleReorderLinks");
-    expect(app).toContain("handleReorderLinkFolders");
-    const tabChangeBlock = app.slice(
-      app.indexOf("const handleTabChange"),
-      app.indexOf("const handleCancelForm")
+    expect(app).toContain("form.isFormDraftDirty");
+    expect(app).toContain("form.handleReorderLinks");
+    expect(app).toContain("form.handleReorderLinkFolders");
+    const tabChangeBlock = formHook.slice(
+      formHook.indexOf("const handleTabChange"),
+      formHook.indexOf("const handleCancelForm")
     );
     expect(tabChangeBlock).toContain("isFormDraftDirty");
     expect(tabChangeBlock).toContain("pendingTabChangeRef");
   });
 
   it("App uses save-first create before switching to edit mode", () => {
-    const app = readSource("src/popup/App.tsx");
-    expect(app).toContain('formMode: "create"');
-    expect(app).toContain("crypto.randomUUID()");
-    expect(app).toContain("await createEntity(repo, formDraft, id)");
-    expect(app).toContain('formMode: "edit"');
-    expect(app).not.toContain("seedDraft");
+    const formHook = readSource("src/popup/hooks/use-extension-entity-form.ts");
+    expect(formHook).toContain('formMode: "create"');
+    expect(formHook).toContain("crypto.randomUUID()");
+    expect(formHook).toContain("await createEntity(repo, formDraft, id)");
+    expect(formHook).toContain('formMode: "edit"');
+    expect(formHook).not.toContain("seedDraft");
   });
 
   it("App guards cancel and tab discard with the same unsaved dialog", () => {
     const app = readSource("src/popup/App.tsx");
-    expect(app).toContain("const handleCancelForm");
-    expect(app).toContain("const confirmDiscardUnsaved");
-    expect(app).toContain("onConfirm={() => confirmDiscardUnsaved()}");
+    const formHook = readSource("src/popup/hooks/use-extension-entity-form.ts");
+    expect(formHook).toContain("const handleCancelForm");
+    expect(formHook).toContain("const confirmDiscardUnsaved");
+    expect(app).toContain("onConfirm={form.confirmDiscardUnsaved}");
 
-    const cancelBlock = app.slice(
-      app.indexOf("const handleCancelForm"),
-      app.indexOf("const openCreate")
+    const cancelBlock = formHook.slice(
+      formHook.indexOf("const handleCancelForm"),
+      formHook.indexOf("const openCreate")
     );
     expect(cancelBlock).toContain("isFormDraftDirty");
     expect(cancelBlock).toContain("setUnsavedDialogOpen(true)");
@@ -332,6 +330,8 @@ describe("side panel chrome", () => {
 
   it("App wraps unlock screen in TooltipProvider", () => {
     const app = readSource("src/popup/App.tsx");
-    expect(app).toMatch(/!masterKey[\s\S]*TooltipProvider[\s\S]*UnlockView/);
+    expect(app).toMatch(
+      /!vault\.masterKey[\s\S]*TooltipProvider[\s\S]*UnlockView/
+    );
   });
 });
