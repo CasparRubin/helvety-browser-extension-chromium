@@ -85,6 +85,17 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("e2ee-crypto-wiring");
     expect(readme).toContain("e2ee-forms-wiring");
     expect(readme).toContain("e2ee-types-wiring");
+    expect(readme).toContain("automation-policy-consistency");
+  });
+
+  it("documents local-only validation in Scripts section", () => {
+    const scriptsSection = readme.slice(readme.indexOf("## Scripts"));
+    expect(scriptsSection).toContain("pnpm ci:check");
+    expect(scriptsSection).toContain("pnpm ci:release");
+    expect(scriptsSection).toMatch(/local only/i);
+    expect(scriptsSection).toMatch(/no remote automation/i);
+    expect(scriptsSection).not.toContain("GitHub Actions");
+    expect(scriptsSection).not.toContain(".github/workflows/");
   });
 
   it("documents auth API OTP sign-in (not direct Supabase OTP client)", () => {

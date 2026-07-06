@@ -74,5 +74,6 @@ describe("extension dependency pins", () => {
     expect(readme).toContain("copy-accuracy");
     expect(readme).toContain("security-e2ee-docs");
     expect(readme).toContain("guardrail-scripts");
+    expect(readme).toContain("automation-policy-consistency");
   });
 });
