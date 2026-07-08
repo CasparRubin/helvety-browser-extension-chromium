@@ -89,32 +89,132 @@ export class EntityRepository {
     private readonly masterKey: CryptoKey
   ) {}
 
-  async listTasks(): Promise<TaskListRow[]> {
+  private async listOwnedRows<TRow, TResult>({
+    tableName,
+    selectColumns,
+    mapRow,
+  }: {
+    tableName: string;
+    selectColumns: string;
+    mapRow: (row: TRow) => Promise<TResult>;
+  }): Promise<TResult[]> {
     const { data, error } = await this.supabase
-      .from("items")
-      .select(E2EE_LIST_COLUMNS.items)
+      .from(tableName)
+      .select(selectColumns)
       .eq("user_id", this.userId)
       .order("sort_order", { ascending: true })
       .limit(LIST_LIMIT);
     if (error) {
       throw new Error(error.message);
     }
-    return Promise.all(
-      (data ?? []).map((row) => toTaskListItem(row, this.masterKey))
-    );
+    return Promise.all((data ?? []).map((row) => mapRow(row as TRow)));
   }
 
-  async getTask(id: string): Promise<Task> {
+  private async getOwnedRow<TRow, TResult>({
+    tableName,
+    selectColumns,
+    id,
+    mapRow,
+  }: {
+    tableName: string;
+    selectColumns: string;
+    id: string;
+    mapRow: (row: TRow) => TResult;
+  }): Promise<TResult> {
     const { data, error } = await this.supabase
-      .from("items")
-      .select(E2EE_DETAIL_COLUMNS.items)
+      .from(tableName)
+      .select(selectColumns)
       .eq("id", id)
       .eq("user_id", this.userId)
       .single();
     if (error) {
       throw new Error(error.message);
     }
-    return decryptTaskRow(data, this.masterKey);
+    return mapRow(data as TRow);
+  }
+
+  private async insertOwnedEncryptedRow(
+    tableName: string,
+    encrypted: Record<string, unknown>
+  ): Promise<void> {
+    const payload = { ...encrypted, user_id: this.userId };
+    guardEncryptedWrite(payload);
+    const { error } = await this.supabase.from(tableName).insert(payload);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  private async updateOwnedEncryptedRow(
+    tableName: string,
+    id: string,
+    payload: Record<string, unknown>,
+    entityLabel: string
+  ): Promise<void> {
+    guardEncryptedWrite(payload);
+    const { data, error } = await this.supabase
+      .from(tableName)
+      .update(payload)
+      .eq("id", id)
+      .eq("user_id", this.userId)
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      throw new Error(error.message);
+    }
+    assertOwnedRowUpdated(data, entityLabel);
+  }
+
+  private async deleteOwnedRow(tableName: string, id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from(tableName)
+      .delete()
+      .eq("id", id)
+      .eq("user_id", this.userId);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  private async reorderOwnedRows<TUpdate extends { id: string }>({
+    tableName,
+    updates,
+    buildPatch,
+  }: {
+    tableName: string;
+    updates: TUpdate[];
+    buildPatch: (update: TUpdate, nowIso: string) => Record<string, unknown>;
+  }): Promise<void> {
+    guardReorderLimit(updates.length);
+    for (const update of updates) {
+      const { error } = await this.supabase
+        .from(tableName)
+        .update(buildPatch(update, nowIso()))
+        .eq("id", update.id)
+        .eq("user_id", this.userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+  }
+
+  async listTasks(): Promise<TaskListRow[]> {
+    return this.listOwnedRows({
+      tableName: "items",
+      selectColumns: E2EE_LIST_COLUMNS.items,
+      mapRow: (row: Parameters<typeof toTaskListItem>[0]) =>
+        toTaskListItem(row, this.masterKey),
+    });
+  }
+
+  async getTask(id: string): Promise<Task> {
+    return this.getOwnedRow({
+      tableName: "items",
+      selectColumns: E2EE_DETAIL_COLUMNS.items,
+      id,
+      mapRow: (row: Parameters<typeof decryptTaskRow>[0]) =>
+        decryptTaskRow(row, this.masterKey),
+    });
   }
 
   async createTask(input: TaskInput, clientRecordId?: string): Promise<string> {
@@ -123,92 +223,55 @@ export class EntityRepository {
       this.masterKey,
       clientRecordId
     );
-    const payload = { ...encrypted, user_id: this.userId };
-    guardEncryptedWrite(payload);
-    const { error } = await this.supabase.from("items").insert(payload);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.insertOwnedEncryptedRow("items", encrypted);
     return encrypted.id;
   }
 
   async updateTask(id: string, input: Partial<TaskInput>): Promise<void> {
     const encrypted = await encryptTaskUpdate(id, input, this.masterKey);
-    const payload = { ...encrypted, updated_at: nowIso() };
-    guardEncryptedWrite(payload);
-    const { data, error } = await this.supabase
-      .from("items")
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      throw new Error(error.message);
-    }
-    assertOwnedRowUpdated(data, "Task");
+    await this.updateOwnedEncryptedRow(
+      "items",
+      id,
+      { ...encrypted, updated_at: nowIso() },
+      "Task"
+    );
   }
 
   async deleteTask(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("items")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.deleteOwnedRow("items", id);
   }
 
   async reorderTasks(
     updates: { id: string; sort_order: number; stage_id?: string }[]
   ): Promise<void> {
-    guardReorderLimit(updates.length);
-    for (const update of updates) {
-      const patch: Record<string, unknown> = {
+    await this.reorderOwnedRows({
+      tableName: "items",
+      updates,
+      buildPatch: (update, updatedAt) => ({
         sort_order: update.sort_order,
-        updated_at: nowIso(),
-      };
-      if (update.stage_id !== undefined) {
-        patch.stage_id = update.stage_id;
-      }
-      const { error } = await this.supabase
-        .from("items")
-        .update(patch)
-        .eq("id", update.id)
-        .eq("user_id", this.userId);
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+        updated_at: updatedAt,
+        ...(update.stage_id !== undefined ? { stage_id: update.stage_id } : {}),
+      }),
+    });
   }
 
   async listNotes(): Promise<NoteListRow[]> {
-    const { data, error } = await this.supabase
-      .from("notes")
-      .select(E2EE_LIST_COLUMNS.notes)
-      .eq("user_id", this.userId)
-      .order("sort_order", { ascending: true })
-      .limit(LIST_LIMIT);
-    if (error) {
-      throw new Error(error.message);
-    }
-    return Promise.all(
-      (data ?? []).map((row) => toNoteListItem(row, this.masterKey))
-    );
+    return this.listOwnedRows({
+      tableName: "notes",
+      selectColumns: E2EE_LIST_COLUMNS.notes,
+      mapRow: (row: Parameters<typeof toNoteListItem>[0]) =>
+        toNoteListItem(row, this.masterKey),
+    });
   }
 
   async getNote(id: string): Promise<Note> {
-    const { data, error } = await this.supabase
-      .from("notes")
-      .select(E2EE_DETAIL_COLUMNS.notes)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .single();
-    if (error) {
-      throw new Error(error.message);
-    }
-    return decryptNoteRow(data, this.masterKey);
+    return this.getOwnedRow({
+      tableName: "notes",
+      selectColumns: E2EE_DETAIL_COLUMNS.notes,
+      id,
+      mapRow: (row: Parameters<typeof decryptNoteRow>[0]) =>
+        decryptNoteRow(row, this.masterKey),
+    });
   }
 
   async createNote(input: NoteInput, clientRecordId?: string): Promise<string> {
@@ -217,92 +280,57 @@ export class EntityRepository {
       this.masterKey,
       clientRecordId
     );
-    const payload = { ...encrypted, user_id: this.userId };
-    guardEncryptedWrite(payload);
-    const { error } = await this.supabase.from("notes").insert(payload);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.insertOwnedEncryptedRow("notes", encrypted);
     return encrypted.id;
   }
 
   async updateNote(id: string, input: Partial<NoteInput>): Promise<void> {
     const encrypted = await encryptNoteUpdate(id, input, this.masterKey);
-    const payload = { ...encrypted, updated_at: nowIso() };
-    guardEncryptedWrite(payload);
-    const { data, error } = await this.supabase
-      .from("notes")
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      throw new Error(error.message);
-    }
-    assertOwnedRowUpdated(data, "Note");
+    await this.updateOwnedEncryptedRow(
+      "notes",
+      id,
+      { ...encrypted, updated_at: nowIso() },
+      "Note"
+    );
   }
 
   async deleteNote(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("notes")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.deleteOwnedRow("notes", id);
   }
 
   async reorderNotes(
     updates: { id: string; sort_order: number; category_id?: string }[]
   ): Promise<void> {
-    guardReorderLimit(updates.length);
-    for (const update of updates) {
-      const patch: Record<string, unknown> = {
+    await this.reorderOwnedRows({
+      tableName: "notes",
+      updates,
+      buildPatch: (update, updatedAt) => ({
         sort_order: update.sort_order,
-        updated_at: nowIso(),
-      };
-      if (update.category_id !== undefined) {
-        patch.category_id = update.category_id;
-      }
-      const { error } = await this.supabase
-        .from("notes")
-        .update(patch)
-        .eq("id", update.id)
-        .eq("user_id", this.userId);
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+        updated_at: updatedAt,
+        ...(update.category_id !== undefined
+          ? { category_id: update.category_id }
+          : {}),
+      }),
+    });
   }
 
   async listContacts(): Promise<ContactListRow[]> {
-    const { data, error } = await this.supabase
-      .from("contacts")
-      .select(E2EE_LIST_COLUMNS.contacts)
-      .eq("user_id", this.userId)
-      .order("sort_order", { ascending: true })
-      .limit(LIST_LIMIT);
-    if (error) {
-      throw new Error(error.message);
-    }
-    return Promise.all(
-      (data ?? []).map((row) => toContactListItem(row, this.masterKey))
-    );
+    return this.listOwnedRows({
+      tableName: "contacts",
+      selectColumns: E2EE_LIST_COLUMNS.contacts,
+      mapRow: (row: Parameters<typeof toContactListItem>[0]) =>
+        toContactListItem(row, this.masterKey),
+    });
   }
 
   async getContact(id: string): Promise<Contact> {
-    const { data, error } = await this.supabase
-      .from("contacts")
-      .select(E2EE_DETAIL_COLUMNS.contacts)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .single();
-    if (error) {
-      throw new Error(error.message);
-    }
-    return decryptContactRow(data, this.masterKey);
+    return this.getOwnedRow({
+      tableName: "contacts",
+      selectColumns: E2EE_DETAIL_COLUMNS.contacts,
+      id,
+      mapRow: (row: Parameters<typeof decryptContactRow>[0]) =>
+        decryptContactRow(row, this.masterKey),
+    });
   }
 
   async createContact(
@@ -314,92 +342,57 @@ export class EntityRepository {
       this.masterKey,
       clientRecordId
     );
-    const payload = { ...encrypted, user_id: this.userId };
-    guardEncryptedWrite(payload);
-    const { error } = await this.supabase.from("contacts").insert(payload);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.insertOwnedEncryptedRow("contacts", encrypted);
     return encrypted.id;
   }
 
   async updateContact(id: string, input: Partial<ContactInput>): Promise<void> {
     const encrypted = await encryptContactUpdate(id, input, this.masterKey);
-    const payload = { ...encrypted, updated_at: nowIso() };
-    guardEncryptedWrite(payload);
-    const { data, error } = await this.supabase
-      .from("contacts")
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      throw new Error(error.message);
-    }
-    assertOwnedRowUpdated(data, "Contact");
+    await this.updateOwnedEncryptedRow(
+      "contacts",
+      id,
+      { ...encrypted, updated_at: nowIso() },
+      "Contact"
+    );
   }
 
   async deleteContact(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("contacts")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.deleteOwnedRow("contacts", id);
   }
 
   async reorderContacts(
     updates: { id: string; sort_order: number; category_id?: string }[]
   ): Promise<void> {
-    guardReorderLimit(updates.length);
-    for (const update of updates) {
-      const patch: Record<string, unknown> = {
+    await this.reorderOwnedRows({
+      tableName: "contacts",
+      updates,
+      buildPatch: (update, updatedAt) => ({
         sort_order: update.sort_order,
-        updated_at: nowIso(),
-      };
-      if (update.category_id !== undefined) {
-        patch.category_id = update.category_id;
-      }
-      const { error } = await this.supabase
-        .from("contacts")
-        .update(patch)
-        .eq("id", update.id)
-        .eq("user_id", this.userId);
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+        updated_at: updatedAt,
+        ...(update.category_id !== undefined
+          ? { category_id: update.category_id }
+          : {}),
+      }),
+    });
   }
 
   async listLinks(): Promise<LinkListRow[]> {
-    const { data, error } = await this.supabase
-      .from("links")
-      .select(E2EE_LIST_COLUMNS.links)
-      .eq("user_id", this.userId)
-      .order("sort_order", { ascending: true })
-      .limit(LIST_LIMIT);
-    if (error) {
-      throw new Error(error.message);
-    }
-    return Promise.all(
-      (data ?? []).map((row) => toLinkListItem(row, this.masterKey))
-    );
+    return this.listOwnedRows({
+      tableName: "links",
+      selectColumns: E2EE_LIST_COLUMNS.links,
+      mapRow: (row: Parameters<typeof toLinkListItem>[0]) =>
+        toLinkListItem(row, this.masterKey),
+    });
   }
 
   async getLink(id: string): Promise<Link> {
-    const { data, error } = await this.supabase
-      .from("links")
-      .select(E2EE_DETAIL_COLUMNS.links)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .single();
-    if (error) {
-      throw new Error(error.message);
-    }
-    return decryptLinkRow(data, this.masterKey);
+    return this.getOwnedRow({
+      tableName: "links",
+      selectColumns: E2EE_DETAIL_COLUMNS.links,
+      id,
+      mapRow: (row: Parameters<typeof decryptLinkRow>[0]) =>
+        decryptLinkRow(row, this.masterKey),
+    });
   }
 
   async createLink(input: LinkInput, clientRecordId?: string): Promise<string> {
@@ -411,12 +404,7 @@ export class EntityRepository {
       this.masterKey,
       clientRecordId
     );
-    const payload = { ...encrypted, user_id: this.userId };
-    guardEncryptedWrite(payload);
-    const { error } = await this.supabase.from("links").insert(payload);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.insertOwnedEncryptedRow("links", encrypted);
     return encrypted.id;
   }
 
@@ -425,106 +413,71 @@ export class EntityRepository {
       await this.assertFolderOwned(input.folder_id);
     }
     const encrypted = await encryptLinkUpdate(id, input, this.masterKey);
-    const payload = { ...encrypted, updated_at: nowIso() };
-    guardEncryptedWrite(payload);
-    const { data, error } = await this.supabase
-      .from("links")
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      throw new Error(error.message);
-    }
-    assertOwnedRowUpdated(data, "Link");
+    await this.updateOwnedEncryptedRow(
+      "links",
+      id,
+      { ...encrypted, updated_at: nowIso() },
+      "Link"
+    );
   }
 
   async deleteLink(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("links")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.deleteOwnedRow("links", id);
   }
 
   async reorderLinks(
     updates: { id: string; sort_order: number }[]
   ): Promise<void> {
-    guardReorderLimit(updates.length);
-    for (const update of updates) {
-      const { error } = await this.supabase
-        .from("links")
-        .update({ sort_order: update.sort_order, updated_at: nowIso() })
-        .eq("id", update.id)
-        .eq("user_id", this.userId);
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+    await this.reorderOwnedRows({
+      tableName: "links",
+      updates,
+      buildPatch: (update, updatedAt) => ({
+        sort_order: update.sort_order,
+        updated_at: updatedAt,
+      }),
+    });
   }
 
   async listLinkFolders(): Promise<LinkFolderListRow[]> {
-    const { data, error } = await this.supabase
-      .from("link_folders")
-      .select(E2EE_LIST_COLUMNS.link_folders)
-      .eq("user_id", this.userId)
-      .order("sort_order", { ascending: true })
-      .limit(LIST_LIMIT);
-    if (error) {
-      throw new Error(error.message);
-    }
-    return Promise.all(
-      (data ?? []).map((row) => toLinkFolderListItem(row, this.masterKey))
-    );
+    return this.listOwnedRows({
+      tableName: "link_folders",
+      selectColumns: E2EE_LIST_COLUMNS.link_folders,
+      mapRow: (row: Parameters<typeof toLinkFolderListItem>[0]) =>
+        toLinkFolderListItem(row, this.masterKey),
+    });
   }
 
   /** Flat folder names for link form parent picker. */
   async listLinkFolderPickerItems(): Promise<EntityListItem[]> {
-    const { data, error } = await this.supabase
-      .from("link_folders")
-      .select(E2EE_LIST_COLUMNS.link_folders)
-      .eq("user_id", this.userId)
-      .order("sort_order", { ascending: true })
-      .limit(LIST_LIMIT);
-    if (error) {
-      throw new Error(error.message);
-    }
-    return Promise.all(
-      (data ?? []).map((row) => toLinkFolderPickerItem(row, this.masterKey))
-    );
+    return this.listOwnedRows({
+      tableName: "link_folders",
+      selectColumns: E2EE_LIST_COLUMNS.link_folders,
+      mapRow: (row: Parameters<typeof toLinkFolderPickerItem>[0]) =>
+        toLinkFolderPickerItem(row, this.masterKey),
+    });
   }
 
   async reorderLinkFolders(
     updates: { id: string; sort_order: number }[]
   ): Promise<void> {
-    guardReorderLimit(updates.length);
-    for (const update of updates) {
-      const { error } = await this.supabase
-        .from("link_folders")
-        .update({ sort_order: update.sort_order, updated_at: nowIso() })
-        .eq("id", update.id)
-        .eq("user_id", this.userId);
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
+    await this.reorderOwnedRows({
+      tableName: "link_folders",
+      updates,
+      buildPatch: (update, updatedAt) => ({
+        sort_order: update.sort_order,
+        updated_at: updatedAt,
+      }),
+    });
   }
 
   async getLinkFolder(id: string): Promise<LinkFolder> {
-    const { data, error } = await this.supabase
-      .from("link_folders")
-      .select(E2EE_DETAIL_COLUMNS.link_folders)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .single();
-    if (error) {
-      throw new Error(error.message);
-    }
-    return decryptLinkFolderRow(data, this.masterKey);
+    return this.getOwnedRow({
+      tableName: "link_folders",
+      selectColumns: E2EE_DETAIL_COLUMNS.link_folders,
+      id,
+      mapRow: (row: Parameters<typeof decryptLinkFolderRow>[0]) =>
+        decryptLinkFolderRow(row, this.masterKey),
+    });
   }
 
   async createLinkFolder(
@@ -539,12 +492,7 @@ export class EntityRepository {
       this.masterKey,
       clientRecordId
     );
-    const payload = { ...encrypted, user_id: this.userId };
-    guardEncryptedWrite(payload);
-    const { error } = await this.supabase.from("link_folders").insert(payload);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.insertOwnedEncryptedRow("link_folders", encrypted);
     return encrypted.id;
   }
 
@@ -559,30 +507,16 @@ export class EntityRepository {
       await this.assertFolderOwned(input.parent_folder_id);
     }
     const encrypted = await encryptLinkFolderUpdate(id, input, this.masterKey);
-    const payload = { ...encrypted, updated_at: nowIso() };
-    guardEncryptedWrite(payload);
-    const { data, error } = await this.supabase
-      .from("link_folders")
-      .update(payload)
-      .eq("id", id)
-      .eq("user_id", this.userId)
-      .select("id")
-      .maybeSingle();
-    if (error) {
-      throw new Error(error.message);
-    }
-    assertOwnedRowUpdated(data, "Folder");
+    await this.updateOwnedEncryptedRow(
+      "link_folders",
+      id,
+      { ...encrypted, updated_at: nowIso() },
+      "Folder"
+    );
   }
 
   async deleteLinkFolder(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from("link_folders")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", this.userId);
-    if (error) {
-      throw new Error(error.message);
-    }
+    await this.deleteOwnedRow("link_folders", id);
   }
 
   private async assertFolderOwned(folderId: string): Promise<void> {

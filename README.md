@@ -73,7 +73,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Hooks: `src/popup/hooks/use-extension-{auth,vault,entities,entity-form}.ts` — session, vault lock, decrypted lists, and form/draft state (orchestrated by `App.tsx`).
 - Entity links UI: `extension-entity-links-hooks.tsx` (load/link/unlink failures surface `toast.error` via `getE2eeHookErrorMessage`), `ExtensionEntityLinkPanels.tsx` in edit forms.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header; icon URL from `extension-icon.ts` → `assets/icon-48.png`).
-- Theme: `chrome.storage.local` key `helvetyPopupThemePreference` via `usePopupTheme` (not `next-themes`).
+- Theme: `usePopupTheme` persists the side-panel preference under `STORAGE_KEY_SIDE_PANEL_THEME` (current storage value: `helvetyPopupThemePreference`; not `next-themes`).
 - OTP mid-flow: persisted in `chrome.storage.local` (`pending-otp-storage.ts`) when the panel is closed before verification.
 - About tab: version, extension ID, auth origin, passkey API URL, security doc links; **no** session tokens or OTP in the DOM.
 

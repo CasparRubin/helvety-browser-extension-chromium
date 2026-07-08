@@ -202,63 +202,237 @@ function ExtensionEntityLinksSection<
 }
 
 /** Link panels shown when editing a task. */
+const PANEL_CONFIG_BY_SOURCE = {
+  tasks: [
+    {
+      key: "contacts",
+      targetApp: "contacts",
+      useLinks: useTaskContactLinks,
+      formatName: formatContactName,
+      labels: {
+        searchPlaceholder: "Search contacts…",
+        emptyCatalog: "No contacts found",
+        emptySearch: "No matching contacts",
+        allLinked: "All contacts are already linked",
+        noLinkedYet: "No contacts linked yet",
+        unlinkTitle: "Unlink contact",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this task? The contact will not be deleted.`,
+      },
+    },
+    {
+      key: "notes",
+      targetApp: "notes",
+      useLinks: useTaskNoteLinks,
+      formatName: formatNoteName,
+      labels: {
+        searchPlaceholder: "Search notes…",
+        emptyCatalog: "No notes found",
+        emptySearch: "No matching notes",
+        allLinked: "All notes are already linked",
+        noLinkedYet: "No notes linked yet",
+        unlinkTitle: "Unlink note",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this task? The note will not be deleted.`,
+      },
+    },
+    {
+      key: "links",
+      targetApp: "links",
+      useLinks: useTaskLinkEntityLinks,
+      formatName: formatLinkName,
+      labels: {
+        searchPlaceholder: "Search links…",
+        emptyCatalog: "No links found",
+        emptySearch: "No matching links",
+        allLinked: "All links are already linked",
+        noLinkedYet: "No links linked yet",
+        unlinkTitle: "Unlink link",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this task? The link will not be deleted.`,
+      },
+    },
+  ],
+  notes: [
+    {
+      key: "tasks",
+      targetApp: "tasks",
+      useLinks: useNoteTaskLinks,
+      formatName: formatTaskName,
+      labels: {
+        searchPlaceholder: "Search tasks…",
+        emptyCatalog: "No tasks found",
+        emptySearch: "No matching tasks",
+        allLinked: "All tasks are already linked",
+        noLinkedYet: "No tasks linked yet",
+        unlinkTitle: "Unlink task",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this note? The task will not be deleted.`,
+      },
+    },
+    {
+      key: "contacts",
+      targetApp: "contacts",
+      useLinks: useNoteContactLinks,
+      formatName: formatContactName,
+      labels: {
+        searchPlaceholder: "Search contacts…",
+        emptyCatalog: "No contacts found",
+        emptySearch: "No matching contacts",
+        allLinked: "All contacts are already linked",
+        noLinkedYet: "No contacts linked yet",
+        unlinkTitle: "Unlink contact",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this note? The contact will not be deleted.`,
+      },
+    },
+    {
+      key: "links",
+      targetApp: "links",
+      useLinks: useNoteLinkEntityLinks,
+      formatName: formatLinkName,
+      labels: {
+        searchPlaceholder: "Search links…",
+        emptyCatalog: "No links found",
+        emptySearch: "No matching links",
+        allLinked: "All links are already linked",
+        noLinkedYet: "No links linked yet",
+        unlinkTitle: "Unlink link",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this note? The link will not be deleted.`,
+      },
+    },
+  ],
+  contacts: [
+    {
+      key: "tasks",
+      targetApp: "tasks",
+      useLinks: useContactTaskLinks,
+      formatName: formatTaskName,
+      labels: {
+        searchPlaceholder: "Search tasks…",
+        emptyCatalog: "No tasks found",
+        emptySearch: "No matching tasks",
+        allLinked: "All tasks are already linked",
+        noLinkedYet: "No tasks linked yet",
+        unlinkTitle: "Unlink task",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this contact? The task will not be deleted.`,
+      },
+    },
+    {
+      key: "notes",
+      targetApp: "notes",
+      useLinks: useContactNoteLinks,
+      formatName: formatNoteName,
+      labels: {
+        searchPlaceholder: "Search notes…",
+        emptyCatalog: "No notes found",
+        emptySearch: "No matching notes",
+        allLinked: "All notes are already linked",
+        noLinkedYet: "No notes linked yet",
+        unlinkTitle: "Unlink note",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this contact? The note will not be deleted.`,
+      },
+    },
+    {
+      key: "links",
+      targetApp: "links",
+      useLinks: useContactLinkEntityLinks,
+      formatName: formatLinkName,
+      labels: {
+        searchPlaceholder: "Search links…",
+        emptyCatalog: "No links found",
+        emptySearch: "No matching links",
+        allLinked: "All links are already linked",
+        noLinkedYet: "No links linked yet",
+        unlinkTitle: "Unlink link",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this contact? The link will not be deleted.`,
+      },
+    },
+  ],
+  links: [
+    {
+      key: "tasks",
+      targetApp: "tasks",
+      useLinks: useLinkTaskLinks,
+      formatName: formatTaskName,
+      labels: {
+        searchPlaceholder: "Search tasks…",
+        emptyCatalog: "No tasks found",
+        emptySearch: "No matching tasks",
+        allLinked: "All tasks are already linked",
+        noLinkedYet: "No tasks linked yet",
+        unlinkTitle: "Unlink task",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this link? The task will not be deleted.`,
+      },
+    },
+    {
+      key: "notes",
+      targetApp: "notes",
+      useLinks: useLinkNoteLinks,
+      formatName: formatNoteName,
+      labels: {
+        searchPlaceholder: "Search notes…",
+        emptyCatalog: "No notes found",
+        emptySearch: "No matching notes",
+        allLinked: "All notes are already linked",
+        noLinkedYet: "No notes linked yet",
+        unlinkTitle: "Unlink note",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this link? The note will not be deleted.`,
+      },
+    },
+    {
+      key: "contacts",
+      targetApp: "contacts",
+      useLinks: useLinkContactLinks,
+      formatName: formatContactName,
+      labels: {
+        searchPlaceholder: "Search contacts…",
+        emptyCatalog: "No contacts found",
+        emptySearch: "No matching contacts",
+        allLinked: "All contacts are already linked",
+        noLinkedYet: "No contacts linked yet",
+        unlinkTitle: "Unlink contact",
+        unlinkDescription: (name: string) =>
+          `Unlink "${name}" from this link? The contact will not be deleted.`,
+      },
+    },
+  ],
+} as const;
+
+/** Renders the configured cross-app link panel sections for one entity. */
+function renderLinkPanels(
+  source: keyof typeof PANEL_CONFIG_BY_SOURCE,
+  entityId: string
+): React.JSX.Element {
+  return (
+    <div className="flex flex-col gap-4 border-t pt-4">
+      {PANEL_CONFIG_BY_SOURCE[source].map((panel) => (
+        <ExtensionEntityLinksSection
+          key={panel.key}
+          entityId={entityId}
+          targetApp={panel.targetApp}
+          useLinks={panel.useLinks as never}
+          formatName={panel.formatName as never}
+          labels={panel.labels}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Link panels shown when editing a task. */
 export function TaskEntityLinkPanels({
   taskId,
 }: {
   taskId: string;
 }): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-4 border-t pt-4">
-      <ExtensionEntityLinksSection
-        entityId={taskId}
-        targetApp="contacts"
-        useLinks={useTaskContactLinks}
-        formatName={formatContactName}
-        labels={{
-          searchPlaceholder: "Search contacts…",
-          emptyCatalog: "No contacts found",
-          emptySearch: "No matching contacts",
-          allLinked: "All contacts are already linked",
-          noLinkedYet: "No contacts linked yet",
-          unlinkTitle: "Unlink contact",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this task? The contact will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={taskId}
-        targetApp="notes"
-        useLinks={useTaskNoteLinks}
-        formatName={formatNoteName}
-        labels={{
-          searchPlaceholder: "Search notes…",
-          emptyCatalog: "No notes found",
-          emptySearch: "No matching notes",
-          allLinked: "All notes are already linked",
-          noLinkedYet: "No notes linked yet",
-          unlinkTitle: "Unlink note",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this task? The note will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={taskId}
-        targetApp="links"
-        useLinks={useTaskLinkEntityLinks}
-        formatName={formatLinkName}
-        labels={{
-          searchPlaceholder: "Search links…",
-          emptyCatalog: "No links found",
-          emptySearch: "No matching links",
-          allLinked: "All links are already linked",
-          noLinkedYet: "No links linked yet",
-          unlinkTitle: "Unlink link",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this task? The link will not be deleted.`,
-        }}
-      />
-    </div>
-  );
+  return renderLinkPanels("tasks", taskId);
 }
 
 /** Link panels shown when editing a note. */
@@ -267,58 +441,7 @@ export function NoteEntityLinkPanels({
 }: {
   noteId: string;
 }): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-4 border-t pt-4">
-      <ExtensionEntityLinksSection
-        entityId={noteId}
-        targetApp="tasks"
-        useLinks={useNoteTaskLinks}
-        formatName={formatTaskName}
-        labels={{
-          searchPlaceholder: "Search tasks…",
-          emptyCatalog: "No tasks found",
-          emptySearch: "No matching tasks",
-          allLinked: "All tasks are already linked",
-          noLinkedYet: "No tasks linked yet",
-          unlinkTitle: "Unlink task",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this note? The task will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={noteId}
-        targetApp="contacts"
-        useLinks={useNoteContactLinks}
-        formatName={formatContactName}
-        labels={{
-          searchPlaceholder: "Search contacts…",
-          emptyCatalog: "No contacts found",
-          emptySearch: "No matching contacts",
-          allLinked: "All contacts are already linked",
-          noLinkedYet: "No contacts linked yet",
-          unlinkTitle: "Unlink contact",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this note? The contact will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={noteId}
-        targetApp="links"
-        useLinks={useNoteLinkEntityLinks}
-        formatName={formatLinkName}
-        labels={{
-          searchPlaceholder: "Search links…",
-          emptyCatalog: "No links found",
-          emptySearch: "No matching links",
-          allLinked: "All links are already linked",
-          noLinkedYet: "No links linked yet",
-          unlinkTitle: "Unlink link",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this note? The link will not be deleted.`,
-        }}
-      />
-    </div>
-  );
+  return renderLinkPanels("notes", noteId);
 }
 
 /** Link panels shown when editing a contact. */
@@ -327,58 +450,7 @@ export function ContactEntityLinkPanels({
 }: {
   contactId: string;
 }): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-4 border-t pt-4">
-      <ExtensionEntityLinksSection
-        entityId={contactId}
-        targetApp="tasks"
-        useLinks={useContactTaskLinks}
-        formatName={formatTaskName}
-        labels={{
-          searchPlaceholder: "Search tasks…",
-          emptyCatalog: "No tasks found",
-          emptySearch: "No matching tasks",
-          allLinked: "All tasks are already linked",
-          noLinkedYet: "No tasks linked yet",
-          unlinkTitle: "Unlink task",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this contact? The task will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={contactId}
-        targetApp="notes"
-        useLinks={useContactNoteLinks}
-        formatName={formatNoteName}
-        labels={{
-          searchPlaceholder: "Search notes…",
-          emptyCatalog: "No notes found",
-          emptySearch: "No matching notes",
-          allLinked: "All notes are already linked",
-          noLinkedYet: "No notes linked yet",
-          unlinkTitle: "Unlink note",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this contact? The note will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={contactId}
-        targetApp="links"
-        useLinks={useContactLinkEntityLinks}
-        formatName={formatLinkName}
-        labels={{
-          searchPlaceholder: "Search links…",
-          emptyCatalog: "No links found",
-          emptySearch: "No matching links",
-          allLinked: "All links are already linked",
-          noLinkedYet: "No links linked yet",
-          unlinkTitle: "Unlink link",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this contact? The link will not be deleted.`,
-        }}
-      />
-    </div>
-  );
+  return renderLinkPanels("contacts", contactId);
 }
 
 /** Link panels shown when editing a link. */
@@ -387,56 +459,5 @@ export function LinkEntityLinkPanels({
 }: {
   linkId: string;
 }): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-4 border-t pt-4">
-      <ExtensionEntityLinksSection
-        entityId={linkId}
-        targetApp="tasks"
-        useLinks={useLinkTaskLinks}
-        formatName={formatTaskName}
-        labels={{
-          searchPlaceholder: "Search tasks…",
-          emptyCatalog: "No tasks found",
-          emptySearch: "No matching tasks",
-          allLinked: "All tasks are already linked",
-          noLinkedYet: "No tasks linked yet",
-          unlinkTitle: "Unlink task",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this link? The task will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={linkId}
-        targetApp="notes"
-        useLinks={useLinkNoteLinks}
-        formatName={formatNoteName}
-        labels={{
-          searchPlaceholder: "Search notes…",
-          emptyCatalog: "No notes found",
-          emptySearch: "No matching notes",
-          allLinked: "All notes are already linked",
-          noLinkedYet: "No notes linked yet",
-          unlinkTitle: "Unlink note",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this link? The note will not be deleted.`,
-        }}
-      />
-      <ExtensionEntityLinksSection
-        entityId={linkId}
-        targetApp="contacts"
-        useLinks={useLinkContactLinks}
-        formatName={formatContactName}
-        labels={{
-          searchPlaceholder: "Search contacts…",
-          emptyCatalog: "No contacts found",
-          emptySearch: "No matching contacts",
-          allLinked: "All contacts are already linked",
-          noLinkedYet: "No contacts linked yet",
-          unlinkTitle: "Unlink contact",
-          unlinkDescription: (name) =>
-            `Unlink "${name}" from this link? The contact will not be deleted.`,
-        }}
-      />
-    </div>
-  );
+  return renderLinkPanels("links", linkId);
 }

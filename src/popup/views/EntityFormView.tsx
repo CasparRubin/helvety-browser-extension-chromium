@@ -138,7 +138,7 @@ export function EntityFormView({
             </FormField>
             <CategoryPicker
               entries={CONTACT_CATEGORIES}
-              value={value.category_id ?? CONTACT_CATEGORIES[0].id}
+              value={value.category_id ?? CONTACT_CATEGORIES[0]?.id ?? ""}
               onChange={(id) => set({ category_id: id })}
             />
           </>
@@ -167,7 +167,7 @@ export function EntityFormView({
             </FormField>
             <CategoryPicker
               entries={NOTE_CATEGORIES}
-              value={value.category_id ?? NOTE_CATEGORIES[0].id}
+              value={value.category_id ?? NOTE_CATEGORIES[0]?.id ?? ""}
               onChange={(id) => set({ category_id: id })}
             />
           </>
@@ -209,11 +209,11 @@ export function EntityFormView({
               />
             </FormField>
             <TaskStagePicker
-              value={value.stage_id ?? TASK_STAGES[0].id}
+              value={value.stage_id ?? TASK_STAGES[0]?.id ?? ""}
               onChange={(stageId) => set({ stage_id: stageId })}
             />
             <TaskLabelPicker
-              value={value.label_id ?? TASK_LABELS[0].id}
+              value={value.label_id ?? TASK_LABELS[0]?.id ?? ""}
               onChange={(labelId) => set({ label_id: labelId })}
             />
             <PriorityPicker

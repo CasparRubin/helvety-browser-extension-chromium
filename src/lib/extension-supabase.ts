@@ -49,8 +49,8 @@ const chromeSplitStorageAdapter = {
  * Uses public URL + publishable key from `config.ts` (safe to ship — see file header).
  *
  * Resilience: shares the web browser client's fetch timeout so auth requests do
- * not hang indefinitely on flaky networks or after popup/side-panel suspend and
- * resume (mirrors `@helvety/shared/supabase/client`).
+ * not hang indefinitely on flaky networks or after extension UI suspend/resume
+ * cycles (mirrors `@helvety/shared/supabase/client`).
  */
 export function createExtensionSupabaseClient() {
   return createClient(HELVETY_SUPABASE_URL, HELVETY_SUPABASE_PUBLISHABLE_KEY, {

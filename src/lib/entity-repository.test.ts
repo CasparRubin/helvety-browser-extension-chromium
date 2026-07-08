@@ -73,7 +73,7 @@ describe("EntityRepository mutation payloads", () => {
     });
 
     expect(insert).toHaveBeenCalledOnce();
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    const payload = insert.mock.calls[0]![0] as Record<string, unknown>;
     assertNoPlaintextEntityFields(payload);
     expect(payload).toHaveProperty("encrypted_first_name");
     expect(payload).toHaveProperty("user_id", "user-1");
@@ -101,7 +101,7 @@ describe("EntityRepository mutation payloads", () => {
     });
 
     expect(update).toHaveBeenCalledOnce();
-    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    const payload = update.mock.calls[0]![0] as Record<string, unknown>;
     assertNoPlaintextEntityFields(payload);
     expect(payload).toHaveProperty("encrypted_url");
     expect(payload).toHaveProperty("updated_at");
@@ -148,7 +148,7 @@ describe("EntityRepository mutation payloads", () => {
     );
 
     expect(returnedId).toBe(clientId);
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    const payload = insert.mock.calls[0]![0] as Record<string, unknown>;
     expect(payload.id).toBe(clientId);
     assertNoPlaintextEntityFields(payload);
   });
@@ -168,7 +168,7 @@ describe("EntityRepository mutation payloads", () => {
     const repo = new EntityRepository(supabase as never, "user-1", key);
     await repo.createTask({ title: "Secret task name" });
 
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    const payload = insert.mock.calls[0]![0] as Record<string, unknown>;
     assertNoPlaintextEntityFields(payload);
     expect(payload).toHaveProperty("encrypted_title");
     expect(String(payload.encrypted_title)).toMatch(/^\{/);
@@ -195,7 +195,7 @@ describe("EntityRepository mutation payloads", () => {
     ]);
 
     expect(update).toHaveBeenCalledOnce();
-    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    const payload = update.mock.calls[0]![0] as Record<string, unknown>;
     expect(payload).toMatchObject({
       sort_order: 2,
       stage_id: "default-item-ready",
@@ -222,7 +222,7 @@ describe("EntityRepository mutation payloads", () => {
     await repo.reorderLinks([{ id: "link-1", sort_order: 3 }]);
 
     expect(update).toHaveBeenCalledOnce();
-    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    const payload = update.mock.calls[0]![0] as Record<string, unknown>;
     expect(payload).toMatchObject({ sort_order: 3 });
     expect(payload).toHaveProperty("updated_at");
   });
@@ -246,7 +246,7 @@ describe("EntityRepository mutation payloads", () => {
     await repo.reorderLinkFolders([{ id: "folder-1", sort_order: 1 }]);
 
     expect(update).toHaveBeenCalledOnce();
-    const payload = update.mock.calls[0][0] as Record<string, unknown>;
+    const payload = update.mock.calls[0]![0] as Record<string, unknown>;
     expect(payload).toMatchObject({ sort_order: 1 });
     expect(payload).toHaveProperty("updated_at");
   });
@@ -267,7 +267,7 @@ describe("EntityRepository mutation payloads", () => {
     await repo.createLinkFolder({ name: "Reading", parent_folder_id: null });
 
     expect(insert).toHaveBeenCalledOnce();
-    const payload = insert.mock.calls[0][0] as Record<string, unknown>;
+    const payload = insert.mock.calls[0]![0] as Record<string, unknown>;
     assertNoPlaintextEntityFields(payload);
     expect(payload).toHaveProperty("encrypted_name");
     expect(String(payload.encrypted_name)).toMatch(/^\{/);

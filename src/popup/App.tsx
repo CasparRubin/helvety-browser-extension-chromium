@@ -14,7 +14,7 @@ import { HELVETY_AUTH_ORIGIN, HELVETY_GATEWAY } from "../lib/config";
 import { ExtensionLinksProvider } from "../lib/extension-entity-links-hooks";
 import { createExtensionSupabaseClient } from "../lib/extension-supabase";
 
-import { STORAGE_KEY_POPUP_THEME } from "./constants";
+import { STORAGE_KEY_SIDE_PANEL_THEME } from "./constants";
 import { useExtensionAuth } from "./hooks/use-extension-auth";
 import { useExtensionEntities } from "./hooks/use-extension-entities";
 import {
@@ -54,7 +54,9 @@ function deepLinkZoneForScreen(screen: EntityScreen): E2eeDeepLinkZone | null {
 /** Root side panel: OTP sign-in, passkey unlock, E2EE CRUD for Helvety entities. */
 export default function App() {
   const supabase = useMemo(() => createExtensionSupabaseClient(), []);
-  const { themePreference, saveTheme } = usePopupTheme(STORAGE_KEY_POPUP_THEME);
+  const { themePreference, saveTheme } = usePopupTheme(
+    STORAGE_KEY_SIDE_PANEL_THEME
+  );
   const extensionVersion = useMemo(() => readExtensionVersion(), []);
   const clearUnlockedUiRef = useRef<() => void>(() => {});
 

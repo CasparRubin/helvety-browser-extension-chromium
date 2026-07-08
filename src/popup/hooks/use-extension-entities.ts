@@ -55,6 +55,41 @@ export interface UseExtensionEntitiesResult {
   handleRetryList: () => void;
 }
 
+/** Decrypted collections returned when one extension tab is loaded. */
+interface LoadedTabData {
+  tasks?: TaskListRow[];
+  notes?: NoteListRow[];
+  contacts?: ContactListRow[];
+  links?: LinkListRow[];
+  linkFolders?: LinkFolderListRow[];
+  linkFolderPickerItems?: EntityListItem[];
+}
+
+/**
+ * Loads one tab's decrypted collections so the hook can stay thin and testable.
+ */
+export async function loadExtensionEntitiesTab(
+  repo: EntityRepository,
+  target: Exclude<EntityTabId, "about">,
+  touchVaultActivity: () => Promise<void>
+): Promise<LoadedTabData> {
+  await touchVaultActivity();
+  switch (target) {
+    case "tasks":
+      return { tasks: await repo.listTasks() };
+    case "notes":
+      return { notes: await repo.listNotes() };
+    case "contacts":
+      return { contacts: await repo.listContacts() };
+    case "links":
+      return {
+        links: await repo.listLinks(),
+        linkFolders: await repo.listLinkFolders(),
+        linkFolderPickerItems: await repo.listLinkFolderPickerItems(),
+      };
+  }
+}
+
 /** Owns decrypted entity repositories, tab state, and list loading. */
 export function useExtensionEntities({
   supabase,
@@ -108,17 +143,28 @@ export function useExtensionEntities({
       setListBusy(true);
       setListError(null);
       try {
-        await touchVaultActivity();
-        if (target === "tasks") {
-          setTasks(await repo.listTasks());
-        } else if (target === "notes") {
-          setNotes(await repo.listNotes());
-        } else if (target === "contacts") {
-          setContacts(await repo.listContacts());
-        } else if (target === "links") {
-          setLinks(await repo.listLinks());
-          setLinkFolders(await repo.listLinkFolders());
-          setLinkFolderPickerItems(await repo.listLinkFolderPickerItems());
+        const loaded = await loadExtensionEntitiesTab(
+          repo,
+          target,
+          touchVaultActivity
+        );
+        if (loaded.tasks) {
+          setTasks(loaded.tasks);
+        }
+        if (loaded.notes) {
+          setNotes(loaded.notes);
+        }
+        if (loaded.contacts) {
+          setContacts(loaded.contacts);
+        }
+        if (loaded.links) {
+          setLinks(loaded.links);
+        }
+        if (loaded.linkFolders) {
+          setLinkFolders(loaded.linkFolders);
+        }
+        if (loaded.linkFolderPickerItems) {
+          setLinkFolderPickerItems(loaded.linkFolderPickerItems);
         }
         setLoadedTabs((prev) => new Set(prev).add(target));
       } catch (err) {

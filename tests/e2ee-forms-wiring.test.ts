@@ -17,16 +17,22 @@ describe("E2EE forms wiring (extension)", () => {
     expect(src).not.toMatch(/export function noteToInput/);
   });
 
-  it("extension-entity-mutations maps records via shared *ToInput helpers", () => {
-    const src = readFileSync(
+  it("entity form descriptors centralize shared record-to-draft helpers", () => {
+    const descriptors = readFileSync(
+      join(repoRoot, "src/popup/lib/entity-form-descriptors.ts"),
+      "utf8"
+    );
+    const mutations = readFileSync(
       join(repoRoot, "src/popup/lib/extension-entity-mutations.ts"),
       "utf8"
     );
-    expect(src).toContain("taskToInput");
-    expect(src).toContain("contactToInput");
-    expect(src).toContain("../entity-drafts");
-    expect(src).toContain("draftFromRecord");
-    expect(src).not.toMatch(/first_name:\s*contact\.first_name/);
+    expect(descriptors).toContain("taskToInput");
+    expect(descriptors).toContain("contactToInput");
+    expect(descriptors).toContain("../entity-drafts");
+    expect(descriptors).toContain("getEntityFormDescriptor");
+    expect(mutations).toContain("getEntityFormDescriptor");
+    expect(mutations).toContain("draftFromRecord");
+    expect(descriptors).not.toMatch(/first_name:\s*contact\.first_name/);
   });
 
   it("use-extension-entity-form validates via shared validateE2eeDraft", () => {

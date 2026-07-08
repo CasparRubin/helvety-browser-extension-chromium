@@ -32,7 +32,7 @@ describe("side panel chrome", () => {
     expect(app).not.toContain("POPUP_WIDTH_CLASS");
     expect(app).not.toContain("h-[600px]");
     expect(app).toContain("usePopupTheme");
-    expect(app).toContain("STORAGE_KEY_POPUP_THEME");
+    expect(app).toContain("STORAGE_KEY_SIDE_PANEL_THEME");
     expect(app).toContain("@helvety/extension-chrome/use-popup-theme");
     expect(app).toContain("useExtensionAuth");
     expect(app).toContain("useExtensionVault");

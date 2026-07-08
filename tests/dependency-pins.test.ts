@@ -32,18 +32,13 @@ describe("extension dependency pins", () => {
   });
 
   it("mirrors monorepo runtime and toolchain pins from .helvety drift map", () => {
-    const drift = readFileSync(
-      join(repoRoot, ".helvety/scripts/check-workspace-version-drift.mjs"),
-      "utf8"
-    );
-    const extract = (dep: string) => {
-      const match = drift.match(
-        new RegExp(
-          `\\["${dep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}",\\s*"([^"]+)"\\]`
-        )
-      );
-      return match?.[1];
-    };
+    const driftConfig = JSON.parse(
+      readFileSync(
+        join(repoRoot, ".helvety/scripts/workspace-version-drift.config.json"),
+        "utf8"
+      )
+    ) as { requiredVersionByDep?: Record<string, string> };
+    const extract = (dep: string) => driftConfig.requiredVersionByDep?.[dep];
 
     expect(packageJson.dependencies?.["@supabase/supabase-js"]).toBe("2.110.0");
     expect(packageJson.pnpm?.overrides?.["@supabase/supabase-js"]).toBe(
