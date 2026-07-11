@@ -26,9 +26,28 @@ describe("extension dependency pins", () => {
   });
 
   it("pins lucide-react, tailwindcss, and @types/chrome to current monorepo toolchain", () => {
-    expect(packageJson.dependencies?.["lucide-react"]).toBe("^1.23.0");
-    expect(packageJson.devDependencies?.tailwindcss).toBe("^4.3.2");
-    expect(packageJson.devDependencies?.["@types/chrome"]).toBe("^0.2.2");
+    const driftConfig = JSON.parse(
+      readFileSync(
+        join(repoRoot, ".helvety/scripts/workspace-version-drift.config.json"),
+        "utf8"
+      )
+    ) as { requiredVersionByDep?: Record<string, string> };
+    const monorepoExtensionPackage = JSON.parse(
+      readFileSync(
+        join(repoRoot, ".helvety/packages/extension-chrome/package.json"),
+        "utf8"
+      )
+    ) as { devDependencies?: Record<string, string> };
+
+    expect(packageJson.dependencies?.["lucide-react"]).toBe(
+      driftConfig.requiredVersionByDep?.["lucide-react"]
+    );
+    expect(packageJson.devDependencies?.tailwindcss).toBe(
+      driftConfig.requiredVersionByDep?.tailwindcss
+    );
+    expect(packageJson.devDependencies?.["@types/chrome"]).toBe(
+      monorepoExtensionPackage.devDependencies?.["@types/chrome"]
+    );
   });
 
   it("mirrors monorepo runtime and toolchain pins from .helvety drift map", () => {
@@ -38,18 +57,28 @@ describe("extension dependency pins", () => {
         "utf8"
       )
     ) as { requiredVersionByDep?: Record<string, string> };
+    const monorepoPackage = JSON.parse(
+      readFileSync(join(repoRoot, ".helvety/package.json"), "utf8")
+    ) as { overrides?: Record<string, string> };
     const extract = (dep: string) => driftConfig.requiredVersionByDep?.[dep];
+    const supabaseVersion =
+      monorepoPackage.overrides?.["@supabase/supabase-js"];
+    const viteVersion = monorepoPackage.overrides?.vite;
 
-    expect(packageJson.dependencies?.["@supabase/supabase-js"]).toBe("2.110.0");
+    expect(supabaseVersion).toBeTruthy();
+    expect(viteVersion).toBeTruthy();
+    expect(packageJson.dependencies?.["@supabase/supabase-js"]).toBe(
+      supabaseVersion
+    );
     expect(packageJson.pnpm?.overrides?.["@supabase/supabase-js"]).toBe(
-      "2.110.0"
+      supabaseVersion
     );
     expect(packageJson.dependencies?.["lucide-react"]).toBe(
       extract("lucide-react")
     );
     expect(packageJson.dependencies?.react).toBe(extract("react"));
     expect(packageJson.dependencies?.["react-dom"]).toBe(extract("react-dom"));
-    expect(packageJson.devDependencies?.vite).toBe("^8.1.3");
+    expect(packageJson.devDependencies?.vite).toBe(`^${viteVersion}`);
     expect(packageJson.devDependencies?.prettier).toBe(extract("prettier"));
     expect(packageJson.devDependencies?.vitest).toBe(extract("vitest"));
     expect(packageJson.devDependencies?.typescript).toBe(extract("typescript"));
