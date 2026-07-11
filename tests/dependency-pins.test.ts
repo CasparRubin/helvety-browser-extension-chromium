@@ -83,6 +83,16 @@ describe("extension dependency pins", () => {
     expect(packageJson.devDependencies?.vitest).toBe(extract("vitest"));
     expect(packageJson.devDependencies?.typescript).toBe(extract("typescript"));
     expect(packageJson.devDependencies?.eslint).toBe(extract("eslint"));
+    expect(packageJson.devDependencies?.["@testing-library/jest-dom"]).toBe(
+      extract("@testing-library/jest-dom")
+    );
+    expect(packageJson.devDependencies?.["@vitest/coverage-v8"]).toBe(
+      extract("@vitest/coverage-v8")
+    );
+    expect(packageJson.devDependencies?.["prettier-plugin-tailwindcss"]).toBe(
+      extract("prettier-plugin-tailwindcss")
+    );
+    expect(packageJson.devDependencies?.["@vitejs/plugin-react"]).toBe("^6");
   });
 
   it("uses pnpm 9.x packageManager (not a major jump without review)", () => {
@@ -92,6 +102,7 @@ describe("extension dependency pins", () => {
   it("README documents tests/ layout including dependency and guardrail suites", () => {
     const readme = readFileSync(join(repoRoot, "README.md"), "utf8");
     expect(readme).toContain("dependency-pins");
+    expect(readme).toContain("extension-config-wiring");
     expect(readme).toContain("e2ee-catalog-wiring");
     expect(readme).toContain("e2ee-crypto-wiring");
     expect(readme).toContain("e2ee-forms-wiring");
@@ -99,5 +110,7 @@ describe("extension dependency pins", () => {
     expect(readme).toContain("security-e2ee-docs");
     expect(readme).toContain("guardrail-scripts");
     expect(readme).toContain("automation-policy-consistency");
+    expect(readme).toContain("test:coverage");
+    expect(readme).toContain("env.example");
   });
 });

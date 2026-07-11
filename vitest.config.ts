@@ -1,12 +1,5 @@
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vitest/config";
+import { createExtensionVitestConfig } from "@helvety/config/vitest-extension";
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    environment: "node",
-    globals: false,
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "tests/**/*.test.ts"],
-    passWithNoTests: false,
-  },
+export default createExtensionVitestConfig(import.meta.dirname, {
+  passWithNoTests: false,
 });

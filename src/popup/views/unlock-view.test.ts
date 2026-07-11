@@ -64,4 +64,22 @@ describe("App unlock wiring", () => {
       /<UnlockView[\s\S]*cryptoError=\{vault\.cryptoError\}/
     );
   });
+
+  it("guards unlock and vault activity when session proof or keys are missing", () => {
+    expect(vaultHookSource).toContain('setCryptoError("Not signed in.")');
+    expect(vaultHookSource).toMatch(
+      /if \(!accessToken \|\| !userId \|\| !weeklyProof\)/
+    );
+    expect(vaultHookSource).toMatch(
+      /if \(!userId \|\| !masterKey\) \{\s*return;\s*\}/
+    );
+    expect(vaultHookSource).toContain("touchVaultSessionInStorage");
+  });
+
+  it("locks vault by deleting cached keys and clearing local state", () => {
+    expect(vaultHookSource).toContain("deleteMasterKey");
+    expect(vaultHookSource).toContain("clearAllKeys");
+    expect(vaultHookSource).toContain("clearCachedPRFSalt");
+    expect(vaultHookSource).toContain("useVaultIdleLock");
+  });
 });

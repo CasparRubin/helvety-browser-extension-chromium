@@ -11,25 +11,48 @@ function readSource(relativePath: string): string {
 }
 
 describe("TypeScript and build config", () => {
-  it("tsconfig avoids deprecated TS 6 options (no ignoreDeprecations escape hatch)", () => {
+  it("tsconfig extends shared extension base from @helvety/config", () => {
     const tsconfig = JSON.parse(
       readFileSync(join(repoRoot, "tsconfig.json"), "utf8")
     ) as {
+      extends?: string;
       compilerOptions?: Record<string, unknown>;
     };
 
+    expect(tsconfig.extends).toBe("@helvety/config/tsconfig.extension.json");
     expect(tsconfig.compilerOptions?.ignoreDeprecations).toBeUndefined();
     expect(tsconfig.compilerOptions?.baseUrl).toBeUndefined();
     expect(tsconfig.compilerOptions?.paths).toBeUndefined();
   });
 
-  it("vite resolve aliases are limited to required CSS package imports", () => {
-    const viteConfig = readSource("vite.config.ts");
+  it("vitest uses createExtensionVitestConfig from @helvety/config", () => {
     const vitestConfig = readSource("vitest.config.ts");
 
-    expect(vitestConfig).not.toMatch(/resolve:\s*\{[\s\S]*alias:/);
+    expect(vitestConfig).toMatch(
+      /createExtensionVitestConfig\s*\(\s*import\.meta\.dirname/
+    );
+    expect(vitestConfig).toMatch(/@helvety\/config\/vitest-extension/);
+  });
+
+  it("vite resolve aliases are limited to required CSS package imports", () => {
+    const viteConfig = readSource("vite.config.ts");
+
     expect(viteConfig).toMatch(/shadcn\/tailwind\.css/);
     expect(viteConfig).not.toMatch(/@\//);
+  });
+
+  it("prettier uses shared ESM config with tailwind plugin", () => {
+    const prettierConfig = readSource("prettier.config.mjs");
+
+    expect(prettierConfig).toMatch(/prettier-plugin-tailwindcss/);
+    expect(prettierConfig).toMatch(/printWidth:\s*80/);
+  });
+
+  it("ships env.example for optional VITE_HELVETY_AUTH_ORIGIN override", () => {
+    const envExample = readSource("env.example");
+
+    expect(envExample).toContain("VITE_HELVETY_AUTH_ORIGIN");
+    expect(envExample).not.toMatch(/SUPABASE_SECRET|service_role|sb_secret/i);
   });
 
   it("uses TypeScript 6 for type-check and build", () => {

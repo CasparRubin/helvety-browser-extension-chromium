@@ -75,7 +75,10 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("copy-accuracy");
     expect(readme).toContain("e2ee-catalog-wiring");
     expect(readme).toContain("dependency-pins");
+    expect(readme).toContain("extension-config-wiring");
     expect(readme).toContain("tsconfig-build");
+    expect(readme).toContain("test:coverage");
+    expect(readme).toContain("env.example");
     expect(readme).toContain("src/**/*.test.ts");
     expect(readme).toMatch(/src\/\*\*\/\*\.test\.ts\(x\)/);
     expect(readme).toContain("extension-entity-links-hooks");

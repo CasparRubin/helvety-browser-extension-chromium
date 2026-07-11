@@ -1,6 +1,8 @@
 # Build
 dist/
 node_modules/
+*.tsbuildinfo
+coverage/
 
 # Secrets (extension uses public client config in src/lib/config.ts only)
 .env
