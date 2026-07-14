@@ -128,6 +128,8 @@ The values there are **public client config** (same as `NEXT_PUBLIC_*` on helvet
 | Web deep links       | `HELVETY_GATEWAY` → `https://helvety.com`                                                   |
 | Supabase (public)    | `HELVETY_SUPABASE_URL`, `HELVETY_SUPABASE_PUBLISHABLE_KEY`                                  |
 
+`public/manifest.json` `host_permissions` must stay scoped to that same project URL (`${HELVETY_SUPABASE_URL}/*`), plus `helvety.com` / `*.helvety.com` for auth and deep links — not a broad `*.supabase.co` wildcard.
+
 ## Scripts
 
 ```bash

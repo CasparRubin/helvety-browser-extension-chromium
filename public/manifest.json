@@ -13,7 +13,7 @@
   },
   "permissions": ["storage", "sidePanel"],
   "host_permissions": [
-    "https://*.supabase.co/*",
+    "https://bkdzeihxzvrkndjvyzye.supabase.co/*",
     "https://helvety.com/*",
     "https://*.helvety.com/*"
   ],

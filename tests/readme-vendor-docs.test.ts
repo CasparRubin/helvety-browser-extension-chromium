@@ -108,6 +108,18 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toMatch(/auth API/i);
   });
 
+  it("documents project-scoped Supabase host_permissions (not *.supabase.co)", () => {
+    const configSection = readme.slice(readme.indexOf("## Configuration"));
+    expect(configSection).toContain("host_permissions");
+    expect(configSection).toContain("HELVETY_SUPABASE_URL");
+    expect(configSection).toMatch(
+      /not a broad.*\*\.supabase\.co|not.*\*\.supabase\.co wildcard/i
+    );
+    expect(configSection).not.toMatch(
+      /host_permissions[^\n]*https:\/\/\*\.supabase\.co/
+    );
+  });
+
   it("does not describe a separate read-only detail step", () => {
     expect(readme).not.toMatch(/view details/i);
     expect(readme).not.toMatch(/view full decrypted/i);

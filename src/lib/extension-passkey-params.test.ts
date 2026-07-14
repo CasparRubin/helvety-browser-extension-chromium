@@ -295,7 +295,7 @@ describe("fetchPasskeyParamsForUser", () => {
     expect(result).toEqual({
       ok: false,
       error:
-        "Network blocked. Allow *.supabase.co for this extension (check ad blockers).",
+        "Network blocked. Allow bkdzeihxzvrkndjvyzye.supabase.co for this extension (check ad blockers).",
     });
   });
 

@@ -21,6 +21,12 @@ describe("SECURITY-E2EE.md", () => {
     expect(doc).not.toMatch(/`storage` only/i);
   });
 
+  it("documents project-scoped Supabase host permission (not *.supabase.co)", () => {
+    expect(doc).toContain("bkdzeihxzvrkndjvyzye.supabase.co");
+    expect(doc).toMatch(/host_permissions/);
+    expect(doc).not.toContain("`*.supabase.co`");
+  });
+
   it("still documents client-side decrypt and privacy guards", () => {
     expect(doc).toContain("e2ee-write-guard");
     expect(doc).toContain("e2ee-entity-crypto");

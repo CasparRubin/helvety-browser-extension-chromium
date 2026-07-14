@@ -256,7 +256,7 @@ describe("unlockEncryptionWithPasskey", () => {
     fetchPasskeyParamsForUser.mockResolvedValue({
       ok: false,
       error:
-        "Network blocked. Allow *.supabase.co for this extension (check ad blockers).",
+        "Network blocked. Allow bkdzeihxzvrkndjvyzye.supabase.co for this extension (check ad blockers).",
     });
 
     const result = await unlockEncryptionWithPasskey({
@@ -269,7 +269,7 @@ describe("unlockEncryptionWithPasskey", () => {
     expect(result).toEqual({
       ok: false,
       error:
-        "Network blocked. Allow *.supabase.co for this extension (check ad blockers).",
+        "Network blocked. Allow bkdzeihxzvrkndjvyzye.supabase.co for this extension (check ad blockers).",
     });
     expect(helvetyAuthFetch).not.toHaveBeenCalled();
   });

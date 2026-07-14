@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { HELVETY_SUPABASE_URL } from "../src/lib/config";
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("manifest side panel", () => {
@@ -14,6 +16,7 @@ describe("manifest side panel", () => {
       version: string;
       description: string;
       permissions: string[];
+      host_permissions: string[];
       minimum_chrome_version: string;
       action?: { default_popup?: string; default_title?: string };
       side_panel?: { default_path: string };
@@ -34,5 +37,11 @@ describe("manifest side panel", () => {
     expect(manifest.action?.default_popup).toBeUndefined();
     expect(manifest.action?.default_title).toBe("Helvety");
     expect(manifest.background?.service_worker).toBe("background.js");
+    expect(manifest.host_permissions).toEqual([
+      `${HELVETY_SUPABASE_URL}/*`,
+      "https://helvety.com/*",
+      "https://*.helvety.com/*",
+    ]);
+    expect(manifest.host_permissions).not.toContain("https://*.supabase.co/*");
   });
 });

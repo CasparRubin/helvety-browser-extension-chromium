@@ -25,6 +25,8 @@ describe("webauthn-extension.md", () => {
     expect(doc).toMatch(/origin errors|allowlist/i);
     expect(doc).toMatch(/not authorized to sign in yet|user-safe/i);
     expect(doc).not.toMatch(/Auth not redeployed/i);
+    expect(doc).toContain("bkdzeihxzvrkndjvyzye.supabase.co");
+    expect(doc).not.toContain("`*.supabase.co`");
   });
 
   it("does not document localhost auth as the default unlock path", () => {

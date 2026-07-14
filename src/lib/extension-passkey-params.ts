@@ -117,7 +117,7 @@ export async function fetchPasskeyParamsForUser(
       return {
         ok: false,
         error:
-          "Network blocked. Allow *.supabase.co for this extension (check ad blockers).",
+          "Network blocked. Allow bkdzeihxzvrkndjvyzye.supabase.co for this extension (check ad blockers).",
       };
     }
     logUnlockFailure("passkey_params", { code: "network", message: msg });
