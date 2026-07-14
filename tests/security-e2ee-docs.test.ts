@@ -24,7 +24,14 @@ describe("SECURITY-E2EE.md", () => {
   it("documents project-scoped Supabase host permission (not *.supabase.co)", () => {
     expect(doc).toContain("bkdzeihxzvrkndjvyzye.supabase.co");
     expect(doc).toMatch(/host_permissions/);
+    expect(doc).toContain("*.helvety.com");
     expect(doc).not.toContain("`*.supabase.co`");
+  });
+
+  it("lists co-located session and dead-export guards", () => {
+    expect(doc).toContain("auth-session-policy-wiring.test.ts");
+    expect(doc).toContain("dead-export-cleanup.test.ts");
+    expect(doc).toContain("automation-policy-consistency.test.ts");
   });
 
   it("still documents client-side decrypt and privacy guards", () => {

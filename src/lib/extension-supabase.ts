@@ -71,9 +71,3 @@ export function createExtensionSupabaseClient() {
 export type ExtensionSupabaseClient = ReturnType<
   typeof createExtensionSupabaseClient
 >;
-
-/** @internal Test-only storage keys. */
-export const extensionSupabaseStorageInternals = {
-  STORAGE_KEY,
-  ACCESS_TOKEN_SESSION_KEY,
-};

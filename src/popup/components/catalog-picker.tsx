@@ -23,12 +23,12 @@ const PRIORITY_ICONS = [
 ] as const;
 
 /**
- *
+ * Catalog entry shape used by stage/label/category chip pickers.
  */
 type CatalogPickerEntry = Pick<CatalogEntry, "id" | "name" | "color" | "icon">;
 
 /**
- *
+ * Shared chip grid for selecting a catalog entry (stage, label, or category).
  */
 function CatalogPicker({
   label,
@@ -77,7 +77,7 @@ function CatalogPicker({
 }
 
 /**
- *
+ * Task stage chip picker.
  */
 export function TaskStagePicker(props: {
   value: string;
@@ -87,7 +87,7 @@ export function TaskStagePicker(props: {
 }
 
 /**
- *
+ * Task label chip picker.
  */
 export function TaskLabelPicker(props: {
   value: string;
@@ -97,7 +97,7 @@ export function TaskLabelPicker(props: {
 }
 
 /**
- *
+ * Generic category chip picker (notes/contacts catalogs).
  */
 export function CategoryPicker(props: {
   label?: string;
@@ -116,7 +116,7 @@ export function CategoryPicker(props: {
 }
 
 /**
- *
+ * Task priority chip picker (numeric priorities with icons).
  */
 export function PriorityPicker({
   value,

@@ -55,6 +55,24 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).not.toMatch(/default_popup/i);
   });
 
+  it("documents E2EE data-layer modules accurately (re-exports vs delete registry)", () => {
+    const panelSection = readme.slice(
+      readme.indexOf("## Side panel UI (structure)")
+    );
+    expect(panelSection).toContain("encrypt-entities.ts");
+    expect(panelSection).toContain("decrypt-entities.ts");
+    expect(panelSection).toContain("link-url-normalize.ts");
+    expect(panelSection).toContain("link-tree.ts");
+    expect(panelSection).toContain("entity-config.ts");
+    expect(panelSection).toContain("defineEntityDeleteRegistry");
+    expect(panelSection).toContain("buildDeleteMessage");
+    expect(panelSection).not.toMatch(
+      /entity-config\.ts` re-export other shared E2EE modules/
+    );
+    expect(panelSection).toMatch(/chip buttons|chip pickers/i);
+    expect(panelSection).not.toMatch(/priority toggles/i);
+  });
+
   it("documents sonner toasts through the shared UI wrapper", () => {
     expect(readme).toContain("sonner");
     expect(readme).toContain("@helvety/ui/sonner");
@@ -89,11 +107,19 @@ describe("README vendor and side panel documentation", () => {
     expect(readme).toContain("e2ee-forms-wiring");
     expect(readme).toContain("e2ee-types-wiring");
     expect(readme).toContain("automation-policy-consistency");
+    expect(readme).toContain("auth-session-policy-wiring.test.ts");
+    // Co-located under src/lib/, not listed as a tests/ contract suite name alone.
+    const testsRow = readme
+      .split("\n")
+      .find((line) => line.includes("| `tests/`"));
+    expect(testsRow).toBeDefined();
+    expect(testsRow).not.toContain("auth-session-policy-wiring");
   });
 
   it("documents local-only validation in Scripts section", () => {
     const scriptsSection = readme.slice(readme.indexOf("## Scripts"));
     expect(scriptsSection).toContain("pnpm ci:check");
+    expect(scriptsSection).toContain("format:check");
     expect(scriptsSection).toContain("pnpm ci:release");
     expect(scriptsSection).toMatch(/local only/i);
     expect(scriptsSection).toMatch(/no remote automation/i);

@@ -16,7 +16,7 @@ export type PasskeyParamsResult =
   { ok: true; params: UserPasskeyParams | null } | { ok: false; error: string };
 
 /** PostgREST error fields used for user-facing unlock diagnostics. */
-export type PasskeyParamsPostgrestError = Partial<
+type PasskeyParamsPostgrestError = Partial<
   Pick<PostgrestError, "code" | "message" | "details">
 >;
 

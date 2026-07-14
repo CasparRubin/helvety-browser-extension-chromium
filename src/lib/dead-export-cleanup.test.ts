@@ -76,4 +76,28 @@ describe("extension dead export cleanup guards", () => {
     expect(src).toContain("ENTITY_LINKS_LOAD_ERROR");
     expect(src).not.toMatch(/catch \{\s*\}/);
   });
+
+  it("does not re-export retired theme alias or unused supabase internals", () => {
+    const constantsSrc = readFileSync(
+      join(libRoot, "../popup/constants.ts"),
+      "utf8"
+    );
+    expect(constantsSrc).toContain("STORAGE_KEY_SIDE_PANEL_THEME");
+    expect(constantsSrc).not.toContain("STORAGE_KEY_POPUP_THEME");
+
+    const supabaseSrc = readLibSource("extension-supabase.ts");
+    expect(supabaseSrc).not.toContain("extensionSupabaseStorageInternals");
+
+    const linkNormalizeSrc = readLibSource("link-url-normalize.ts");
+    expect(linkNormalizeSrc).toContain("normalizeBookmarkUrl");
+    expect(linkNormalizeSrc).not.toContain("resolveLinkDisplayName");
+
+    const entityConfigSrc = readLibSource("entity-config.ts");
+    expect(entityConfigSrc).toContain("type EntityTypeId");
+    expect(entityConfigSrc).not.toMatch(/export type EntityTypeId/);
+
+    const passkeySrc = readLibSource("extension-passkey-params.ts");
+    expect(passkeySrc).toContain("type PasskeyParamsPostgrestError");
+    expect(passkeySrc).not.toMatch(/export type PasskeyParamsPostgrestError/);
+  });
 });

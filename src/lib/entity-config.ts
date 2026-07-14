@@ -6,8 +6,7 @@
 import { defineEntityDeleteRegistry } from "@helvety/shared/entity-delete-message";
 
 /** Entity kinds used in extension CRUD and delete flows. */
-export type EntityTypeId =
-  "tasks" | "notes" | "contacts" | "links" | "link_folder";
+type EntityTypeId = "tasks" | "notes" | "contacts" | "links" | "link_folder";
 
 const { buildDeleteMessage } = defineEntityDeleteRegistry<EntityTypeId>({
   tasks: {
