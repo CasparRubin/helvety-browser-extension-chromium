@@ -76,6 +76,9 @@ describe("extension dependency pins", () => {
     expect(packageJson.dependencies?.["lucide-react"]).toBe(
       extract("lucide-react")
     );
+    expect(packageJson.dependencies?.["@simplewebauthn/browser"]).toBe(
+      extract("@simplewebauthn/browser")
+    );
     expect(packageJson.dependencies?.react).toBe(extract("react"));
     expect(packageJson.dependencies?.["react-dom"]).toBe(extract("react-dom"));
     expect(packageJson.devDependencies?.vite).toBe(`^${viteVersion}`);

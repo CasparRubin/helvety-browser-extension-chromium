@@ -55,12 +55,20 @@ describe("TypeScript and build config", () => {
     expect(envExample).not.toMatch(/SUPABASE_SECRET|service_role|sb_secret/i);
   });
 
-  it("uses TypeScript 6 for type-check and build", () => {
+  it("uses TypeScript 6.0.x matching monorepo drift", () => {
+    const driftConfig = JSON.parse(
+      readFileSync(
+        join(repoRoot, ".helvety/scripts/workspace-version-drift.config.json"),
+        "utf8"
+      )
+    ) as { requiredVersionByDep?: Record<string, string> };
     const pkg = JSON.parse(
       readFileSync(join(repoRoot, "package.json"), "utf8")
     ) as { devDependencies?: { typescript?: string } };
 
-    expect(pkg.devDependencies?.typescript).toMatch(/^(\^)?6/);
+    expect(pkg.devDependencies?.typescript).toBe(
+      driftConfig.requiredVersionByDep?.typescript
+    );
   });
 
   it("vscode settings point at workspace TypeScript for editor parity", () => {
