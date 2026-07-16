@@ -6,23 +6,27 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const CRYPTO_REEXPORT_FILES = [
-  "src/lib/encrypt-entities.ts",
-  "src/lib/decrypt-entities.ts",
-] as const;
-
 describe("E2EE crypto wiring (extension)", () => {
-  it.each(CRYPTO_REEXPORT_FILES)(
-    "%s re-exports @helvety/shared/crypto/e2ee-entity-crypto",
-    (relativePath) => {
-      const src = readFileSync(join(repoRoot, relativePath), "utf8");
-      expect(src).toContain("@helvety/shared/crypto/e2ee-entity-crypto");
-      expect(src).not.toContain("encryptEntityField");
-      expect(src).not.toContain("decryptEntityField");
-      expect(src).not.toMatch(/\bawait\s+encrypt\s*\(/);
-      expect(src).not.toMatch(/\bawait\s+decrypt\s*\(/);
-    }
-  );
+  it("encrypt-entities re-exports @helvety/shared/crypto/e2ee-entity-crypto", () => {
+    const src = readFileSync(
+      join(repoRoot, "src/lib/encrypt-entities.ts"),
+      "utf8"
+    );
+    expect(src).toContain("@helvety/shared/crypto/e2ee-entity-crypto");
+    expect(src).not.toContain("encryptEntityField");
+    expect(src).not.toContain("decryptEntityField");
+    expect(src).not.toMatch(/\bawait\s+encrypt\s*\(/);
+    expect(src).not.toMatch(/\bawait\s+decrypt\s*\(/);
+  });
+
+  it("decrypt-entities delegates to the encrypt-entities barrel", () => {
+    const src = readFileSync(
+      join(repoRoot, "src/lib/decrypt-entities.ts"),
+      "utf8"
+    );
+    expect(src).toContain("./encrypt-entities");
+    expect(src).not.toContain("encryptEntityField");
+  });
 
   it("entity-repository imports crypto through extension facades", () => {
     const src = readFileSync(

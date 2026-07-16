@@ -53,9 +53,9 @@ describe("extension dead export cleanup guards", () => {
     expect(src).not.toMatch(/export type HelvetyJsonResponse/);
   });
 
-  it("decrypt-entities delegates shared crypto helpers", () => {
+  it("decrypt-entities delegates to the encrypt-entities shared crypto barrel", () => {
     const src = readLibSource("decrypt-entities.ts");
-    expect(src).toContain("@helvety/shared/crypto/e2ee-entity-crypto");
+    expect(src).toContain("./encrypt-entities");
     expect(src).not.toMatch(/function decryptLinkFolderName/);
   });
 

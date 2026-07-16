@@ -58,12 +58,9 @@ describe("createExtensionSupabaseClient", () => {
       .mockResolvedValue({ "helvety-extension-supabase-auth": "x" });
     const set = vi.fn().mockResolvedValue(undefined);
     const remove = vi.fn().mockResolvedValue(undefined);
-    const sessionSet = vi.fn().mockResolvedValue(undefined);
-    const sessionRemove = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("chrome", {
       storage: {
         local: { get, set, remove },
-        session: { set: sessionSet, remove: sessionRemove },
       },
     });
 
@@ -91,18 +88,7 @@ describe("createExtensionSupabaseClient", () => {
     await storage.setItem("k", "v");
     expect(set).toHaveBeenCalledWith({ k: "v" });
 
-    await storage.setItem(
-      "helvety-extension-supabase-auth",
-      JSON.stringify({ access_token: "access-1" })
-    );
-    expect(sessionSet).toHaveBeenCalledWith({
-      "helvety-extension-supabase-auth:access": "access-1",
-    });
-
     await storage.removeItem("k");
     expect(remove).toHaveBeenCalledWith("k");
-    expect(sessionRemove).toHaveBeenCalledWith(
-      "helvety-extension-supabase-auth:access"
-    );
   });
 });

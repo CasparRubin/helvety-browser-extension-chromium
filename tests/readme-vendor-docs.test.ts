@@ -204,7 +204,8 @@ describe("README vendor and side panel documentation", () => {
     expect(policySection).toContain("helvety_extension_weekly_proof");
     expect(policySection).toMatch(/weekly proof/i);
     expect(policySection).toContain("X-Helvety-Weekly-Proof");
-    expect(policySection).toContain("chrome.storage.session");
+    expect(policySection).toContain("chrome.storage.local");
+    expect(policySection).not.toContain("chrome.storage.session");
     expect(policySection).toMatch(/24h sliding idle/i);
     expect(policySection).toMatch(/7d absolute max/i);
     expect(policySection).toContain("useVaultIdleLock");

@@ -24,7 +24,7 @@ You can sign in and the extension will load PRF params when configured (prefligh
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Email OTP send / verify           | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_OTP_SEND_PATH` and `EXTENSION_OTP_VERIFY_PATH` (EU/EEA attestation; session tokens via `setSession` into Supabase client storage)                                                                    |
 | PRF params (salt, KCV)            | **Supabase** PostgREST — `PASSKEY_PARAMS_SELECT` in `extension-passkey-params.ts`                                                                                                                                                           |
-| OTP session storage               | **Supabase client** (`extension-supabase.ts`) — refresh token in `chrome.storage.local`; access token mirrored to `chrome.storage.session` (not website cookies)                                                                            |
+| OTP session storage               | **Supabase client** (`extension-supabase.ts`) — full session JSON (access + refresh) in `chrome.storage.local` (not website cookies)                                                                                                        |
 | Passkey options / verify          | **`HELVETY_AUTH_ORIGIN`** — `EXTENSION_PASSKEY_OPTIONS_PATH` and `EXTENSION_PASSKEY_VERIFY_PATH` only                                                                                                                                       |
 | Encrypted list and edit-form rows | **Supabase** PostgREST — projections from `@helvety/shared/e2ee-entity-columns` (`E2EE_LIST_COLUMNS` for grouped lists; `E2EE_DETAIL_COLUMNS` when opening the editor)                                                                      |
 | Decryption                        | **This extension** — `@helvety/shared/crypto/e2ee-entity-crypto` via thin `decrypt-entities.ts` re-export (client-side only)                                                                                                                |
@@ -57,7 +57,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 
 - Entry: `index.html` → `src/popup/main.tsx` (imports `@helvety/extension-chrome/theme-boot` before React). The `src/popup/` path is the React UI module (legacy folder name); the Chrome surface is the side panel, not an action popup.
 - Surface: global side panel (`manifest.json` `side_panel.default_path`); toolbar icon opens the panel via `background.ts` (`openPanelOnActionClick`).
-- Root: `src/popup/App.tsx` — composes `use-extension-auth`, `use-extension-vault`, `use-extension-entities`, and `use-extension-entity-form`; sign-in, unlock, or data tabs after session + passkey unlock; wires vault `onLocked` → wipe decrypted UI (`clearDecryptedEntityState` in `use-extension-entities.ts`).
+- Root: `src/popup/App.tsx` — composes `use-extension-auth`, `use-extension-vault`, `use-extension-entities`, and `use-extension-entity-form`; sign-in, unlock, or data tabs after session + passkey unlock; wires vault `onVaultUiReset` → wipe decrypted UI (`clearDecryptedEntityState` in `use-extension-entities.ts`).
 - Views: `src/popup/views/` — `SignInView`, `UnlockView`, `DataTabsView` (grouped lists + edit-first navigation), `EntityFormView`, `AboutTab`.
 - Lists: `src/popup/components/lists/` — stage/category groups and links tree (mobile-style rows); row tap opens the edit form (links: tap opens URL, pencil opens edit); up/down reorder for tasks, notes, contacts, links, and folders.
 - **Open in web app**: list mode opens the zone path on the gateway; edit mode opens an entity deep link (`buildE2eeDeepLink`).
@@ -69,7 +69,7 @@ Requires **Chrome 114+** (or equivalent Chromium) for the Side Panel API.
 - Tooltips: `@helvety/ui/tooltip` via `IconTooltipButton`; session email appears on sign-out hover only (not as always-visible header text). Unlock sign-out uses `variant="ghost"`.
 - Layout: full viewport height in the side panel; `EntityScreenLayout` — scrollable body with pinned footers (Add / Save only); OKLCH tokens via `@helvety/extension-chrome/extension-tokens.css` and `@helvety/extension-chrome/popup.css` (imported from `src/globals.css`, not a local fork).
 - Rich text: `entity-rich-text.ts` + lazy `EntityRichTextEditor` (shared `@helvety/ui/tiptap-editor`) for task/note descriptions and contact notes. Remount key is `entityFormSessionKey` (record identity), never serialized draft text; `content` is mount-only so TipTap v3 does not reset on each keystroke. Web apps mirror this in `E2eeRichTextItemEditorShell` (`editorSessionKey`). `@helvety/ui/input`, `@helvety/ui/textarea`, and `@helvety/ui/native-select` for other fields.
-- E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`; `encrypt-entities.ts` / `decrypt-entities.ts` re-export `@helvety/shared/crypto/e2ee-entity-crypto`; `link-url-normalize.ts` and `link-tree.ts` re-export shared URL/tree helpers; `entity-config.ts` wraps `@helvety/shared/entity-delete-message` (`defineEntityDeleteRegistry` → `buildDeleteMessage`).
+- E2EE data layer: `entity-repository.ts`, `entity-link-repository.ts`; `encrypt-entities.ts` re-exports `@helvety/shared/crypto/e2ee-entity-crypto` and `decrypt-entities.ts` re-exports that barrel; `link-url-normalize.ts` and `link-tree.ts` re-export shared URL/tree helpers; `entity-config.ts` wraps `@helvety/shared/entity-delete-message` (`defineEntityDeleteRegistry` → `buildDeleteMessage`).
 - Hooks: `src/popup/hooks/use-extension-{auth,vault,entities,entity-form}.ts` — session, vault lock, decrypted lists, and form/draft state (orchestrated by `App.tsx`).
 - Entity links UI: `extension-entity-links-hooks.tsx` (load/link/unlink failures surface `toast.error` via `getE2eeHookErrorMessage`), `ExtensionEntityLinkPanels.tsx` in edit forms.
 - Chrome: `src/popup/components/PopupHeader.tsx` (wraps shared header; icon URL from `extension-icon.ts` → `assets/icon-48.png`).
@@ -88,12 +88,12 @@ Aligned with helvety.com (`@helvety/shared/auth-session-policy.ts`; no extension
 
 ### Token storage threat model
 
-| Token / data      | Storage                      | Notes                                                                      |
-| ----------------- | ---------------------------- | -------------------------------------------------------------------------- |
-| Refresh token     | `chrome.storage.local`       | Persists across browser restarts (standard MV3 Supabase adapter)           |
-| Access token      | `chrome.storage.session`     | Cleared when the browser session ends; also embedded in local session JSON |
-| Weekly proof      | `chrome.storage.local`       | HMAC-signed by auth app; verified on Bearer routes                         |
-| Master key (E2EE) | IndexedDB (extension origin) | Requires passkey unlock; separate from helvety.com web storage             |
+| Token / data      | Storage                      | Notes                                                            |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Refresh token     | `chrome.storage.local`       | Persists across browser restarts (standard MV3 Supabase adapter) |
+| Access token      | `chrome.storage.local`       | Embedded in the persisted Supabase session JSON (same adapter)   |
+| Weekly proof      | `chrome.storage.local`       | HMAC-signed by auth app; verified on Bearer routes               |
+| Master key (E2EE) | IndexedDB (extension origin) | Requires passkey unlock; separate from helvety.com web storage   |
 
 Malware or a modified extension build can read extension storage. **RLS + valid JWT + passkey/PRF** remain the server and crypto boundaries. See [docs/SECURITY-E2EE.md](docs/SECURITY-E2EE.md).
 

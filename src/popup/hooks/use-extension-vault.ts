@@ -25,7 +25,8 @@ export interface UseExtensionVaultOptions {
   userId: string | null;
   accessToken: string | null;
   weeklyProof: string | null;
-  onLocked: () => void;
+  /** Clears decrypted list/form UI (lock, sign-out, or post-unlock reset). */
+  onVaultUiReset: () => void;
   onSessionExpired: () => Promise<void>;
 }
 
@@ -51,7 +52,7 @@ export function useExtensionVault({
   userId,
   accessToken,
   weeklyProof,
-  onLocked,
+  onVaultUiReset,
   onSessionExpired,
 }: UseExtensionVaultOptions): UseExtensionVaultResult {
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
@@ -62,11 +63,11 @@ export function useExtensionVault({
     useState<ParamsPreflight | null>(null);
 
   const clearVaultState = useCallback(() => {
-    onLocked();
+    onVaultUiReset();
     setMasterKey(null);
     setVaultUnlockedAt(null);
     setParamsPreflight(null);
-  }, [onLocked]);
+  }, [onVaultUiReset]);
 
   const touchVaultActivity = useCallback(async () => {
     if (!userId || !masterKey) {
@@ -196,14 +197,14 @@ export function useExtensionVault({
       const cached = await getCachedMasterKey(userId);
       setMasterKey(key);
       setVaultUnlockedAt(cached?.unlockedAt ?? null);
-      onLocked();
+      onVaultUiReset();
     } finally {
       setCryptoBusy(false);
     }
   }, [
     accessToken,
     clearVaultForSignOut,
-    onLocked,
+    onVaultUiReset,
     onSessionExpired,
     supabase,
     userId,

@@ -1,1 +1,2 @@
-export * from "@helvety/shared/crypto/e2ee-entity-crypto";
+/** Stable import path; delegates to the shared encrypt/decrypt barrel. */
+export * from "./encrypt-entities";

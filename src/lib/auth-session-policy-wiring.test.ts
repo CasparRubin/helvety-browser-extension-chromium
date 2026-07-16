@@ -42,12 +42,12 @@ describe("auth session policy wiring (extension)", () => {
     expect(src).not.toContain("extension-weekly-otp-anchor");
   });
 
-  it("extension supabase mirrors access token to chrome.storage.session", () => {
+  it("extension supabase persists session in chrome.storage.local", () => {
     const src = readFileSync(
       join(repoRoot, "src/lib/extension-supabase.ts"),
       "utf8"
     );
-    expect(src).toContain("chrome.storage.session");
     expect(src).toContain("chrome.storage.local");
+    expect(src).not.toContain("chrome.storage.session");
   });
 });

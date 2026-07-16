@@ -7,11 +7,12 @@ import { describe, expect, it } from "vitest";
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("background side panel", () => {
-  it("registers side panel open behavior on install (not a popup stub)", () => {
+  it("enables side panel on action click at SW startup and on install", () => {
     const background = readFileSync(
       join(repoRoot, "src", "background.ts"),
       "utf8"
     );
+    expect(background).toContain("enableSidePanelOnActionClick");
     expect(background).toContain("chrome.runtime.onInstalled.addListener");
     expect(background).toContain("chrome.sidePanel");
     expect(background).toContain("setPanelBehavior");

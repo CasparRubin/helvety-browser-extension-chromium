@@ -61,7 +61,7 @@ export default function App() {
   const clearUnlockedUiRef = useRef<() => void>(() => {});
 
   const auth = useExtensionAuth(supabase);
-  const handleVaultLocked = useCallback(() => {
+  const handleVaultUiReset = useCallback(() => {
     clearUnlockedUiRef.current();
   }, []);
   const handleSessionExpired = useCallback(async () => {
@@ -74,7 +74,7 @@ export default function App() {
     userId: auth.userId,
     accessToken: auth.accessToken,
     weeklyProof: auth.weeklyProof,
-    onLocked: handleVaultLocked,
+    onVaultUiReset: handleVaultUiReset,
     onSessionExpired: handleSessionExpired,
   });
 
